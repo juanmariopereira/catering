@@ -54,7 +54,7 @@ class CobroAdmin(admin.ModelAdmin):
 
     def monto_pagado_display(self, obj):
         monto_pagado = obj.calcular_monto_pagado()
-        return f'${monto_pagado:.2f} / ${obj.monto:.2f}'
+        return f'Bs. {monto_pagado:.2f} / Bs. {obj.monto:.2f}'
     monto_pagado_display.short_description = 'Monto pagado'
 
     def actualizar_estados(self, request, queryset):

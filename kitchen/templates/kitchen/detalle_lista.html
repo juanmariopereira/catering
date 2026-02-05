@@ -12,16 +12,36 @@
 
 {% block extra_css %}
 <style>
+    .filtros-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 20px; padding: 12px; background: #f9f9f9; border-radius: 8px; border: 1px solid #eee; }
+    .filtros-form input[type="date"] { padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; height: 38px; box-sizing: border-box; }
+    .filtros-form label { font-size: 0.9rem; color: #555; margin-right: 4px; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: #7CB342; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
+    .btn:hover { background-color: #689F38; }
+    .btn-secondary { background-color: #6c757d; color: white; }
+    .btn-secondary:hover { background-color: #5a6268; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
     th { background-color: #7CB342; color: white; }
     tr:hover { background-color: #f5f5f5; }
+    .pagination { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 0.875rem; }
+    .pagination a, .pagination span { padding: 5px 10px; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; color: #333; background: #fff; }
+    .pagination a:hover { background: #e8f5e9; color: #2e7d32; }
+    .pagination .current { background: #7CB342; color: white; border-color: #7CB342; }
+    .pagination .disabled { color: #999; cursor: not-allowed; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
     <h1>Lista de Detalles de Cocina</h1>
+
+    <form method="get" class="filtros-form">
+        <label for="fecha_desde">Desde</label>
+        <input type="date" name="fecha_desde" id="fecha_desde" value="{{ request.GET.fecha_desde }}">
+        <label for="fecha_hasta">Hasta</label>
+        <input type="date" name="fecha_hasta" id="fecha_hasta" value="{{ request.GET.fecha_hasta }}">
+        <button type="submit" class="btn btn-secondary">Filtrar</button>
+    </form>
     
     <div class="table-responsive">
     <table>
@@ -35,9 +55,9 @@
             {% for detalle in detalles %}
                 <tr>
                     <td>{{ detalle.fecha|date:"d/m/Y" }}</td>
-                    <td>
-                        <a href="{% url 'kitchen:detalle_fecha' detalle.fecha|date:'Y-m-d' %}">Ver</a> |
-                        <a href="{% url 'kitchen:editar_notas' detalle.pk %}">Editar notas</a>
+                    <td class="table-actions">
+                        <a href="{% url 'kitchen:detalle_fecha' detalle.fecha|date:'Y-m-d' %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
+                        <a href="{% url 'kitchen:editar_notas' detalle.pk %}" title="Editar notas" aria-label="Editar notas"><span aria-hidden="true">✏️</span></a>
                     </td>
                 </tr>
             {% empty %}
@@ -48,5 +68,24 @@
         </tbody>
     </table>
     </div>
+    {% if page_obj.has_other_pages %}
+    <nav class="pagination" aria-label="Paginación">
+        {% if page_obj.has_previous %}
+        <a href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page=1">« Primera</a>
+        <a href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">‹ Anterior</a>
+        {% else %}
+        <span class="disabled">« Primera</span>
+        <span class="disabled">‹ Anterior</span>
+        {% endif %}
+        <span class="current">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+        <a href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Siguiente ›</a>
+        <a href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page={{ page_obj.paginator.num_pages }}">Última »</a>
+        {% else %}
+        <span class="disabled">Siguiente ›</span>
+        <span class="disabled">Última »</span>
+        {% endif %}
+    </nav>
+    {% endif %}
 </div>
 {% endblock %}

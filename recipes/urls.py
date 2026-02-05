@@ -13,6 +13,7 @@ urlpatterns = [
     path('sugerir-descripcion/', views.sugerir_descripcion_receta_view, name='sugerir_descripcion_receta'),
     path('sugerir-ingredientes/', views.sugerir_ingredientes_receta_view, name='sugerir_ingredientes_receta'),
     path('<int:pk>/editar/', views.RecetaUpdateView.as_view(), name='editar'),
+    path('<int:pk>/duplicar/', views.receta_duplicar_view, name='duplicar'),
     path('<int:pk>/eliminar/', views.RecetaDeleteView.as_view(), name='eliminar'),
     path('tipos-receta/', views.TipoRecetaListView.as_view(), name='tipo_receta_lista'),
     path('tipos-receta/crear/', views.TipoRecetaCreateView.as_view(), name='tipo_receta_crear'),

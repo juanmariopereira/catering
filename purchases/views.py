@@ -74,6 +74,17 @@ class PrevisionCompraDetailView(LoginRequiredMixin, DetailView):
     template_name = 'purchases/prevision_detalle.html'
     context_object_name = 'prevision'
 
+    def get_context_data(self, **kwargs):
+        from purchases.utils import agrupar_items_prevision_por_tipo
+        context = super().get_context_data(**kwargs)
+        items_qs = (
+            self.object.items
+            .select_related('ingrediente', 'ingrediente__tipo_ingrediente', 'unidad_medida')
+            .order_by('ingrediente__nombre')
+        )
+        context['items_por_tipo'] = agrupar_items_prevision_por_tipo(items_qs)
+        return context
+
 
 class PrevisionCompraUpdateView(LoginRequiredMixin, UpdateView):
     """Vista para editar una previsión de compra (fechas y notas; items se recalculan)"""
@@ -111,29 +122,46 @@ def exportar_excel(request, prevision_id):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="prevision_compra_{prevision.fecha_desde}_{prevision.fecha_hasta}.csv"'
     
+    from purchases.utils import (
+        prevision_cantidad_display,
+        prevision_unidad_display,
+        prevision_medida_por_unidad_item_display,
+        agrupar_items_prevision_por_tipo,
+    )
+
     writer = csv.writer(response)
-    writer.writerow(['Ingrediente', 'Cantidad Total', 'Unidad de Medida'])
-    
-    for item in prevision.items.all().order_by('ingrediente__nombre'):
-        writer.writerow([
-            item.ingrediente.nombre,
-            item.cantidad_total,
-            item.unidad_medida
-        ])
-    
+    writer.writerow(['Tipo', 'Ingrediente', 'Cantidad Total', 'Unidad de Medida', 'Medida por unidad'])
+
+    items_qs = prevision.items.select_related(
+        'ingrediente', 'ingrediente__tipo_ingrediente', 'unidad_medida'
+    ).order_by('ingrediente__nombre')
+    items_por_tipo = agrupar_items_prevision_por_tipo(items_qs)
+
+    for grupo in items_por_tipo:
+        for item in grupo['items']:
+            writer.writerow([
+                grupo['tipo_nombre'],
+                item.ingrediente.nombre,
+                prevision_cantidad_display(item.cantidad_total, item.unidad_medida),
+                prevision_unidad_display(item.cantidad_total, item.unidad_medida),
+                prevision_medida_por_unidad_item_display(item) or '',
+            ])
+
     return response
 
 
 @login_required
 def exportar_pdf(request, prevision_id):
     """Exporta una previsión de compra a formato PDF"""
+    from purchases.utils import agrupar_items_prevision_por_tipo
     # Nota: Para PDF real necesitarías instalar reportlab o weasyprint
     # Por ahora, retornamos una vista HTML que se puede imprimir como PDF
     prevision = get_object_or_404(PrevisionCompra, id=prevision_id)
-    
+    items_qs = prevision.items.select_related(
+        'ingrediente', 'ingrediente__tipo_ingrediente', 'unidad_medida'
+    ).order_by('ingrediente__nombre')
     context = {
         'prevision': prevision,
-        'items': prevision.items.all().order_by('ingrediente__nombre'),
+        'items_por_tipo': agrupar_items_prevision_por_tipo(items_qs),
     }
-    
     return render(request, 'purchases/prevision_pdf.html', context)

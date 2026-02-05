@@ -38,9 +38,9 @@
     
     <div class="filtros">
         <form method="get">
-            <label>Fecha Desde: <input type="date" name="fecha_desde" value="{{ fecha_desde }}"></label>
-            <label>Fecha Hasta: <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}"></label>
-            <label>Estado: 
+            <label>Período desde: <input type="date" name="fecha_desde" value="{{ fecha_desde }}"></label>
+            <label>Período hasta: <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}"></label>
+            <label>Estado:
                 <select name="estado">
                     <option value="">Todos</option>
                     <option value="pendiente" {% if estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
@@ -48,24 +48,33 @@
                     <option value="vencida" {% if estado == 'vencida' %}selected{% endif %}>Vencida</option>
                 </select>
             </label>
+            <label>Cliente:
+                <select name="cliente">
+                    <option value="">Todos</option>
+                    {% for c in clientes %}
+                    <option value="{{ c.pk }}" {% if request.GET.cliente == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </label>
             <button type="submit">Filtrar</button>
         </form>
     </div>
-    
+
     <div class="resumen">
         <h3>Resumen</h3>
-        <p><strong>Total Monto:</strong> ${{ total_monto|floatformat:2 }}</p>
-        <p><strong>Total Pagado:</strong> ${{ total_pagado|floatformat:2 }}</p>
-        <p><strong>Total Pendiente:</strong> ${{ total_pendiente|floatformat:2 }}</p>
+        <p><strong>Total Monto:</strong> Bs. {{ total_monto|floatformat:2 }}</p>
+        <p><strong>Total Pagado:</strong> Bs. {{ total_pagado|floatformat:2 }}</p>
+        <p><strong>Total Pendiente:</strong> Bs. {{ total_pendiente|floatformat:2 }}</p>
     </div>
-    
+
     <table>
         <thead>
             <tr>
                 <th>Número</th>
                 <th>Cliente</th>
-                <th>Fecha Emisión</th>
-                <th>Fecha Vencimiento</th>
+                <th>Período desde</th>
+                <th>Período hasta</th>
+                <th>Vencimiento</th>
                 <th>Monto</th>
                 <th>Pagado</th>
                 <th>Pendiente</th>
@@ -73,24 +82,25 @@
             </tr>
         </thead>
         <tbody>
-            {% for factura in facturas %}
+            {% for cobro in cobros %}
                 <tr>
-                    <td>{{ factura.numero_factura }}</td>
-                    <td>{{ factura.contrato.cliente.nombre }}</td>
-                    <td>{{ factura.fecha_emision|date:"d/m/Y" }}</td>
-                    <td>{{ factura.fecha_vencimiento|date:"d/m/Y" }}</td>
-                    <td>${{ factura.monto|floatformat:2 }}</td>
-                    <td>${{ factura.calcular_monto_pagado|floatformat:2 }}</td>
-                    <td>${{ factura.monto_pendiente|floatformat:2 }}</td>
+                    <td>{{ cobro.numero_cobro|default:cobro.id }}</td>
+                    <td>{{ cobro.contrato.cliente.nombre }}</td>
+                    <td>{{ cobro.periodo_desde|date:"d/m/Y" }}</td>
+                    <td>{{ cobro.periodo_hasta|date:"d/m/Y" }}</td>
+                    <td>{% if cobro.fecha_vencimiento %}{{ cobro.fecha_vencimiento|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+                    <td>Bs. {{ cobro.monto|floatformat:2 }}</td>
+                    <td>Bs. {{ cobro.calcular_monto_pagado|floatformat:2 }}</td>
+                    <td>Bs. {{ cobro.monto_pendiente|floatformat:2 }}</td>
                     <td>
-                        <span class="badge badge-{{ factura.estado }}">
-                            {{ factura.get_estado_display }}
+                        <span class="badge badge-{{ cobro.estado }}">
+                            {{ cobro.get_estado_display }}
                         </span>
                     </td>
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="8">No hay facturas que coincidan con los filtros.</td>
+                    <td colspan="9">No hay cobros que coincidan con los filtros.</td>
                 </tr>
             {% endfor %}
         </tbody>

@@ -77,11 +77,11 @@
             <dt>Período</dt>
             <dd>{{ factura.periodo_desde|date:"d/m/Y" }} – {{ factura.periodo_hasta|date:"d/m/Y" }}</dd>
             <dt>Monto total</dt>
-            <dd>${{ factura.monto|floatformat:2 }}</dd>
+            <dd>Bs. {{ factura.monto|floatformat:2 }}</dd>
             <dt>Monto pagado</dt>
-            <dd>${{ factura.calcular_monto_pagado|floatformat:2 }}</dd>
+            <dd>Bs. {{ factura.calcular_monto_pagado|floatformat:2 }}</dd>
             <dt>Monto pendiente</dt>
-            <dd>${{ factura.monto_pendiente|floatformat:2 }}</dd>
+            <dd>Bs. {{ factura.monto_pendiente|floatformat:2 }}</dd>
             {% if factura.notas %}
             <dt>Notas</dt>
             <dd>{{ factura.notas }}</dd>
@@ -107,12 +107,12 @@
                 {% for pago in factura.pagos.all %}
                 <tr>
                     <td>{{ pago.fecha_pago|date:"d/m/Y" }}</td>
-                    <td>${{ pago.monto|floatformat:2 }}</td>
+                    <td>Bs. {{ pago.monto|floatformat:2 }}</td>
                     <td>{{ pago.get_metodo_pago_display }}</td>
                     <td>{{ pago.referencia|default:"—" }}</td>
-                    <td>
-                        <a href="{% url 'billing:pago_editar' pago.pk %}">Editar</a>
-                        <a href="{% url 'billing:pago_eliminar' pago.pk %}">Eliminar</a>
+                    <td class="table-actions">
+                        <a href="{% url 'billing:pago_editar' pago.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
+                        <a href="{% url 'billing:pago_eliminar' pago.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
                     </td>
                 </tr>
                 {% endfor %}

@@ -53,9 +53,9 @@
                 <td>{{ t.orden }}</td>
                 <td>{{ t.nombre }}</td>
                 <td><span class="badge-{% if t.activo %}activo{% else %}inactivo{% endif %}">{% if t.activo %}Activo{% else %}Inactivo{% endif %}</span></td>
-                <td>
-                    <a href="{% url 'recipes:tipo_receta_editar' t.pk %}">Editar</a> |
-                    <a href="{% url 'recipes:tipo_receta_eliminar' t.pk %}">Eliminar</a>
+                <td class="table-actions">
+                    <a href="{% url 'recipes:tipo_receta_editar' t.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
+                    <a href="{% url 'recipes:tipo_receta_eliminar' t.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
                 </td>
             </tr>
             {% empty %}

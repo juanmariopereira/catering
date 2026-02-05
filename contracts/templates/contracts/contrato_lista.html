@@ -32,6 +32,7 @@
     .th-sortable a:hover { color: #e8f5e9; }
     .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
     .badge-activo { background-color: #4CAF50; color: white; }
+    .badge-pre_renovacion { background-color: #2196F3; color: white; }
     .badge-pausado { background-color: #ff9800; color: white; }
     .badge-vencido { background-color: #757575; color: white; }
     .badge-cancelado { background-color: #F44336; color: white; }
@@ -57,6 +58,7 @@
     .pagination .disabled { color: #999; cursor: not-allowed; }
     .per-page-form { margin-left: auto; align-items: center; gap: 6px; }
     .per-page-form label { margin: 0; font-size: 0.875rem; }
+    .filtro-cliente-wrap { min-width: 240px; flex-shrink: 0; }
 </style>
 {% endblock %}
 
@@ -76,6 +78,7 @@
             <select name="estado">
                 <option value="">Todos los estados</option>
                 <option value="activo" {% if request.GET.estado == 'activo' %}selected{% endif %}>Activo</option>
+                <option value="pre_renovacion" {% if request.GET.estado == 'pre_renovacion' %}selected{% endif %}>Pre-Renovación</option>
                 <option value="pausado" {% if request.GET.estado == 'pausado' %}selected{% endif %}>Pausado</option>
                 <option value="vencido" {% if request.GET.estado == 'vencido' %}selected{% endif %}>Vencido</option>
                 <option value="cancelado" {% if request.GET.estado == 'cancelado' %}selected{% endif %}>Cancelado</option>
@@ -86,12 +89,14 @@
                 <option value="{{ p.pk }}" {% if request.GET.plan == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
                 {% endfor %}
             </select>
+            <div class="filtro-cliente-wrap">
             <select name="cliente">
                 <option value="">Todos los clientes</option>
                 {% for c in clientes %}
                 <option value="{{ c.pk }}" {% if request.GET.cliente == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>
                 {% endfor %}
             </select>
+            </div>
         </div>
         <div class="filtros-row">
             <label>Vencimiento desde</label>
@@ -138,13 +143,13 @@
                     <td>{{ contrato.plan.nombre }}</td>
                     <td>{{ contrato.fecha_inicio|date:"d/m/Y" }}</td>
                     <td>{% if contrato.fecha_fin %}{{ contrato.fecha_fin|date:"d/m/Y" }}{% else %}—{% endif %}</td>
-                    <td>${{ contrato.precio|floatformat:2 }}</td>
+                    <td>Bs. {{ contrato.precio|floatformat:2 }}</td>
                     <td><span class="badge badge-{{ contrato.estado_badge }}">{{ contrato.get_estado_display }}</span></td>
-                    <td>
-                        <a href="{% url 'contracts:detalle' contrato.pk %}">Ver</a> |
-                        <a href="{% url 'contracts:editar' contrato.pk %}">Editar</a> |
-                        {% if contrato.estado == 'activo' %}<a href="{% url 'planning:clientes_por_fecha' %}">Planificación</a> | {% endif %}
-                        <a href="{% url 'contracts:eliminar' contrato.pk %}">Eliminar</a>
+                    <td class="table-actions">
+                        <a href="{% url 'contracts:detalle' contrato.pk %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
+                        <a href="{% url 'contracts:editar' contrato.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
+                        {% if contrato.estado == 'activo' %}<a href="{% url 'planning:clientes_por_fecha' %}" title="Ir a planificación" aria-label="Ir a planificación"><span aria-hidden="true">📅</span></a>{% endif %}
+                        <a href="{% url 'contracts:eliminar' contrato.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
                     </td>
                 </tr>
             {% empty %}

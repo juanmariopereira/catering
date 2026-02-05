@@ -63,12 +63,12 @@
                 <td>{{ pago.fecha_pago|date:"d/m/Y" }}</td>
                 <td><a href="{% url 'billing:cobro_detalle' pago.cobro_id %}">{{ pago.cobro.numero_cobro }}</a></td>
                 <td>{{ pago.cobro.contrato.cliente.nombre }}</td>
-                <td>${{ pago.monto|floatformat:2 }}</td>
+                <td>Bs. {{ pago.monto|floatformat:2 }}</td>
                 <td>{{ pago.get_metodo_pago_display }}</td>
                 <td>{{ pago.referencia|default:"—" }}</td>
-                <td>
-                    <a href="{% url 'billing:pago_editar' pago.pk %}">Editar</a>
-                    <a href="{% url 'billing:pago_eliminar' pago.pk %}">Eliminar</a>
+                <td class="table-actions">
+                    <a href="{% url 'billing:pago_editar' pago.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
+                    <a href="{% url 'billing:pago_eliminar' pago.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
                 </td>
             </tr>
             {% empty %}

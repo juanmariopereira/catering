@@ -59,11 +59,11 @@
             {% for plan in planes %}
                 <tr>
                     <td>{{ plan.nombre }}</td>
-                    <td>${{ plan.precio_base|floatformat:2 }}</td>
+                    <td>Bs. {{ plan.precio_base|floatformat:2 }}</td>
                     <td><span class="badge badge-{% if plan.activo %}activo{% else %}inactivo{% endif %}">{% if plan.activo %}Activo{% else %}Inactivo{% endif %}</span></td>
-                    <td>
-                        <a href="{% url 'plans:editar' plan.pk %}">Editar</a> |
-                        <a href="{% url 'plans:eliminar' plan.pk %}">Eliminar</a>
+                    <td class="table-actions">
+                        <a href="{% url 'plans:editar' plan.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
+                        <a href="{% url 'plans:eliminar' plan.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
                     </td>
                 </tr>
             {% empty %}

@@ -12,6 +12,7 @@ class EstadoContratoListFilter(admin.SimpleListFilter):
     def lookups(self, request, model_admin):
         return [
             ('activo', 'Activo'),
+            ('pre_renovacion', 'Pre-Renovación'),
             ('pausado', 'Pausado'),
             ('vencido', 'Vencido'),
             ('cancelado', 'Cancelado'),
@@ -20,6 +21,8 @@ class EstadoContratoListFilter(admin.SimpleListFilter):
     def queryset(self, request, queryset):
         if self.value() == 'activo':
             return queryset.filter(q_filtro_estado('activo'))
+        if self.value() == 'pre_renovacion':
+            return queryset.filter(q_filtro_estado('pre_renovacion'))
         if self.value() == 'pausado':
             return queryset.filter(q_filtro_estado('pausado'))
         if self.value() == 'vencido':
@@ -62,6 +65,7 @@ class ContratoAdmin(admin.ModelAdmin):
     def estado_badge(self, obj):
         colors = {
             'activo': 'green',
+            'pre_renovacion': '#2196F3',
             'pausado': 'orange',
             'vencido': '#757575',
             'cancelado': 'red'

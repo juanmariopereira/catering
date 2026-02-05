@@ -27,7 +27,7 @@
 {% block content %}
 <div class="container">
     <h1>Eliminar Pago</h1>
-    <p>¿Está seguro de que desea eliminar el pago de <strong>${{ object.monto }}</strong> ({{ object.get_metodo_pago_display }}) del cobro {{ object.cobro.numero_cobro }}?</p>
+    <p>¿Está seguro de que desea eliminar el pago de <strong>Bs. {{ object.monto }}</strong> ({{ object.get_metodo_pago_display }}) del cobro {{ object.cobro.numero_cobro }}?</p>
     <p>Esta acción no se puede deshacer. El estado del cobro se actualizará.</p>
     <form method="post">
         {% csrf_token %}

@@ -193,6 +193,29 @@
         .actions .btn, .btn-group .btn {
             margin-right: 0;
         }
+        /* Columna Acciones en tablas: iconos con hint (title) */
+        .table-actions {
+            white-space: nowrap;
+        }
+        .table-actions a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            margin: 0 2px;
+            border-radius: 4px;
+            color: #555;
+            text-decoration: none;
+            font-size: 1.1rem;
+        }
+        .table-actions a:hover {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .table-actions a[aria-label] span {
+            font-style: normal;
+        }
         /* Breadcrumb */
         .breadcrumb-nav {
             display: flex;
@@ -322,6 +345,56 @@
                 min-width: 400px;
             }
         }
+        /* Select de contratos: evitar que el texto largo se deforme o se corte */
+        select[name="contrato"],
+        select[name$="-contrato"] {
+            min-width: 280px;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        .formset-table td.td-contrato-select,
+        .formset-table td:has(select[name$="-contrato"]) {
+            min-width: 280px;
+        }
+        /* Choices.js: evitar que el texto se parta (ej. lista de clientes en filtros de contratos) */
+        .choices { min-width: 160px; }
+        .choices .choices__inner { min-width: 160px; }
+        .choices .choices__list--dropdown { min-width: 260px; width: max-content; max-width: 90vw; }
+        .choices .choices__list--dropdown .choices__list { min-width: 100%; }
+        .choices .choices__item { white-space: nowrap; }
+        .filtro-cliente-wrap .choices,
+        .filtro-cliente-wrap .choices__inner { min-width: 240px; }
+        .filtro-cliente-wrap .choices .choices__list--dropdown { min-width: 280px; }
+        /* Pie de página */
+        .site-footer {
+            margin-top: auto;
+            padding: 20px 24px;
+            background-color: #2d3e2d;
+            color: #e8f0e8;
+            font-size: 0.875rem;
+            text-align: center;
+            border-top: 3px solid #7CB342;
+        }
+        .site-footer a {
+            color: #a5d6a7;
+            text-decoration: none;
+        }
+        .site-footer a:hover {
+            color: #c8e6c9;
+            text-decoration: underline;
+        }
+        .site-footer .footer-sep {
+            margin: 0 0.5em;
+            opacity: 0.7;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .main-content {
+            flex: 1;
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/choices.js/10.0.0/choices.min.css">
     {% block extra_css %}{% endblock %}
@@ -334,7 +407,7 @@
                 <a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/dashboard/' or request.path == '/' %}active{% endif %}">Inicio</a>
             </li>
             <li class="nav-item nav-dropdown">
-                <span class="nav-link nav-dropdown-toggle {% if '/clients/' in request.path or '/plans/' in request.path or '/recipes/' in request.path or '/routes/' in request.path or '/feriados/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Catálogos</span>
+                <span class="nav-link nav-dropdown-toggle {% if '/clients/' in request.path or '/plans/' in request.path or '/recipes/' in request.path or '/diets/' in request.path or '/routes/' in request.path or '/feriados/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Catálogos</span>
                 <ul class="nav-dropdown-menu">
                     <li><a href="{% url 'clients:lista' %}" class="{% if '/clients/' in request.path %}active{% endif %}">Clientes</a></li>
                     <li><a href="{% url 'plans:lista' %}" class="{% if '/plans/' in request.path %}active{% endif %}">Planes</a></li>
@@ -342,6 +415,8 @@
                     <li><a href="{% url 'recipes:ingrediente_lista' %}" class="{% if 'ingredientes' in request.path %}active{% endif %}">Ingredientes</a></li>
                     <li><a href="{% url 'recipes:unidad_medida_lista' %}" class="{% if 'unidades-medida' in request.path %}active{% endif %}">Unidades de medida</a></li>
                     <li><a href="{% url 'recipes:tipo_receta_lista' %}" class="{% if 'tipos-receta' in request.path %}active{% endif %}">Tipos de receta</a></li>
+                    <li><a href="{% url 'diets:lista' %}" class="{% if '/diets/' in request.path and 'composicion' not in request.path %}active{% endif %}">Dietas</a></li>
+                    <li><a href="{% url 'diets:composicion_por_fecha' %}" class="{% if 'composicion-por-fecha' in request.path %}active{% endif %}">Composición por fecha</a></li>
                     <li><a href="{% url 'routes:entregador_lista' %}" class="{% if '/routes/' in request.path %}active{% endif %}">Entregadores</a></li>
                     <li><a href="{% url 'feriado_lista' %}" class="{% if '/feriados/' in request.path %}active{% endif %}">Feriados</a></li>
                 </ul>
@@ -385,6 +460,13 @@
         </nav>
         {% block content %}{% endblock %}
     </main>
+
+    <footer class="site-footer no-print" role="contentinfo">
+        Desarrollado por Juan Mario Pereira Sanguino
+        <span class="footer-sep">·</span>
+        <a href="https://wa.me/5541991454952" target="_blank" rel="noopener noreferrer" title="Contactar por WhatsApp">WhatsApp +5541991454952</a>
+    </footer>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/choices.js/10.0.0/choices.min.js"></script>
     <script>
     (function() {
@@ -394,6 +476,7 @@
             selects.forEach(function(select) {
                 if (select.closest('#empty-form-row') || select.closest('.choices')) return;
                 if (select._choicesInstance) return;
+                if (select.getAttribute('name') === 'tipo_receta') return;
                 try {
                     var instance = new Choices(select, { searchEnabled: true, placeholderValue: 'Buscar...' });
                     select._choicesInstance = instance;

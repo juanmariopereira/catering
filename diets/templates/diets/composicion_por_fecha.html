@@ -1,0 +1,107 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Composición por contrato - {{ fecha|date:"d/m/Y" }} - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'diets:lista' %}">Dietas</a>
+<span class="sep">/</span>
+<span>Composición por fecha</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filtros { margin-bottom: 20px; padding: 14px; background: #f9f9f9; border-radius: 8px; border: 1px solid #eee; }
+    .filtros .fila { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 10px; }
+    .filtros .fila:last-child { margin-bottom: 0; }
+    .filtros label { font-size: 0.9rem; color: #555; margin: 0 4px 0 0; min-width: 50px; height: 38px; display: inline-flex; align-items: center; }
+    .filtros input[type="date"], .filtros select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; height: 38px; box-sizing: border-box; min-width: 120px; vertical-align: middle; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: #7CB342; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; font-size: 1rem; }
+    .btn:hover { background-color: #689F38; }
+    .aviso-feriado { margin-bottom: 12px; padding: 10px 14px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; color: #856404; }
+    .bloque-contrato { margin-bottom: 24px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .bloque-contrato h3 { margin: 0; padding: 12px 16px; background: #7CB342; color: white; font-size: 1rem; }
+    .bloque-contrato .plan { padding: 6px 16px; background: #e8f5e9; color: #2e7d32; font-size: 0.9rem; }
+    .bloque-contrato table { width: 100%; border-collapse: collapse; margin: 0; }
+    .bloque-contrato th, .bloque-contrato td { padding: 10px 16px; text-align: left; border-bottom: 1px solid #eee; }
+    .bloque-contrato th { background: #f5f5f5; font-weight: 600; width: 140px; }
+    .bloque-contrato tr:last-child td { border-bottom: none; }
+    .sustituta { color: #1976d2; font-style: italic; }
+    .codigo-entrega { font-weight: normal; font-size: 0.85em; opacity: 0.95; margin-left: 8px; background: rgba(255,255,255,0.25); padding: 2px 8px; border-radius: 4px; }
+    .sin-codigo { font-style: italic; color: #888; font-size: 0.9em; }
+    .sin-menu { padding: 14px 16px; color: #666; font-style: italic; }
+    .vacio { padding: 20px; text-align: center; color: #666; background: #f9f9f9; border-radius: 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Composición de dieta por contrato</h1>
+
+    <form method="get" action="{% url 'diets:composicion_por_fecha' %}" class="filtros">
+        <div class="fila">
+            <label for="fecha">Fecha</label>
+            <input type="date" name="fecha" id="fecha" value="{{ fecha|date:'Y-m-d' }}">
+            <label for="cliente">Cliente</label>
+            <select name="cliente" id="cliente">
+                <option value="">Todos</option>
+                {% for c in clientes_fecha %}
+                <option value="{{ c.pk }}" {% if filtro_cliente == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>
+                {% endfor %}
+            </select>
+            <label for="plan">Plan</label>
+            <select name="plan" id="plan">
+                <option value="">Todos</option>
+                {% for p in planes_fecha %}
+                <option value="{{ p.pk }}" {% if filtro_plan == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+                {% endfor %}
+            </select>
+            <label for="comida">Comida</label>
+            <select name="comida" id="comida">
+                <option value="">Todas</option>
+                {% for tc in tipos_comida %}
+                <option value="{{ tc.pk }}" {% if filtro_comida == tc.pk|stringformat:"s" %}selected{% endif %}>{{ tc.nombre }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn">Filtrar</button>
+        </div>
+    </form>
+
+    {% if es_feriado %}
+    <div class="aviso-feriado" role="alert">
+        <strong>Feriado:</strong> {{ feriado.nombre }}
+    </div>
+    {% endif %}
+
+    {% if filas %}
+        {% for fila in filas %}
+        <div class="bloque-contrato">
+            <h3>{{ fila.cliente.nombre }}{% if fila.codigo_entrega %} <span class="codigo-entrega" title="Código único de entrega">{{ fila.codigo_entrega }}</span>{% endif %}</h3>
+            <div class="plan">Plan: {{ fila.plan.nombre }}{% if not fila.codigo_entrega %} <span class="sin-codigo">(sin ruta asignada)</span>{% endif %}</div>
+            {% if fila.composicion %}
+            <table>
+                <tbody>
+                    {% for item in fila.composicion %}
+                    <tr>
+                        <th>{{ item.tipo_comida.nombre }}</th>
+                        <td>
+                            {{ item.receta.nombre }}
+                            {% if item.es_sustituta %}<span class="sustituta"> (sustitución)</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="sin-menu">No hay menú planificado para esta fecha y plan.</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="vacio">No hay contratos con entrega el {{ fecha|date:"d/m/Y" }}.</div>
+    {% endif %}
+</div>
+{% endblock %}

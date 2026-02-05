@@ -12,7 +12,7 @@
 
 {% block extra_css %}
 <style>
-    .actions { margin-bottom: 20px; }
+    .actions { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     .btn {
         display: inline-block;
         padding: 10px 20px;
@@ -20,13 +20,25 @@
         color: white;
         text-decoration: none;
         border-radius: 4px;
-        margin-right: 10px;
+        margin-right: 0;
     }
     .btn:hover { background-color: #689F38; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    .filtros-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; padding: 12px; background: #f9f9f9; border-radius: 8px; border: 1px solid #eee; }
+    .filtros-form input[type="date"], .filtros-form select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; height: 38px; box-sizing: border-box; }
+    .filtros-form label { font-size: 0.9rem; color: #555; margin-right: 4px; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
     th { background-color: #7CB342; color: white; }
     tr:hover { background-color: #f5f5f5; }
+    .th-sortable a { color: white; text-decoration: underline; }
+    .th-sortable a:hover { color: #e8f5e9; }
+    .pagination { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 0.875rem; }
+    .pagination a, .pagination span { padding: 5px 10px; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; color: #333; background: #fff; }
+    .pagination a:hover { background: #e8f5e9; color: #2e7d32; }
+    .pagination .current { background: #7CB342; color: white; border-color: #7CB342; }
+    .pagination .disabled { color: #999; cursor: not-allowed; }
 </style>
 {% endblock %}
 
@@ -43,13 +55,35 @@
         <a href="{% url 'planning:calendario' %}" class="btn">Ver Calendario</a>
     </div>
 
+    <form method="get" class="filtros-form">
+        <label for="fecha_desde">Desde</label>
+        <input type="date" name="fecha_desde" id="fecha_desde" value="{{ request.GET.fecha_desde }}">
+        <label for="fecha_hasta">Hasta</label>
+        <input type="date" name="fecha_hasta" id="fecha_hasta" value="{{ request.GET.fecha_hasta }}">
+        <label for="plan">Plan</label>
+        <select name="plan" id="plan">
+            <option value="">Todos los planes</option>
+            {% for p in planes %}
+            <option value="{{ p.id }}" {% if request.GET.plan == p.id|stringformat:"d" %}selected{% endif %}>{{ p.nombre }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-secondary">Filtrar</button>
+    </form>
+
     <div class="table-responsive">
     <table>
         <thead>
             <tr>
-                <th>Fecha</th>
-                <th>Plan</th>
-                <th>Acciones</th>
+                {% for header in table_headers %}
+                {% if header.sortable %}
+                <th class="th-sortable">
+                    <a href="?{% if query_base_no_sort %}{{ query_base_no_sort }}&amp;{% endif %}{% if header.next_sort %}sort={{ header.next_sort }}{% endif %}">{{ header.label }}</a>
+                    {% if header.direction == 'desc' %} ↓{% elif header.direction == 'asc' %} ↑{% endif %}
+                </th>
+                {% else %}
+                <th>{{ header.label }}</th>
+                {% endif %}
+                {% endfor %}
             </tr>
         </thead>
         <tbody>
@@ -57,9 +91,9 @@
             <tr>
                 <td>{{ planificacion.fecha|date:"d/m/Y" }}</td>
                 <td>{{ planificacion.plan.nombre }}</td>
-                <td>
-                    <a href="{% url 'planning:editar' planificacion.pk %}">Editar</a> |
-                    <a href="{% url 'planning:eliminar' planificacion.pk %}">Eliminar</a>
+                <td class="table-actions">
+                    <a href="{% url 'planning:editar' planificacion.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
+                    <a href="{% url 'planning:eliminar' planificacion.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
                 </td>
             </tr>
             {% empty %}
@@ -68,5 +102,24 @@
         </tbody>
     </table>
     </div>
+    {% if page_obj.has_other_pages %}
+    <nav class="pagination" aria-label="Paginación">
+        {% if page_obj.has_previous %}
+        <a href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page=1">« Primera</a>
+        <a href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">‹ Anterior</a>
+        {% else %}
+        <span class="disabled">« Primera</span>
+        <span class="disabled">‹ Anterior</span>
+        {% endif %}
+        <span class="current">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+        <a href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Siguiente ›</a>
+        <a href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page={{ page_obj.paginator.num_pages }}">Última »</a>
+        {% else %}
+        <span class="disabled">Siguiente ›</span>
+        <span class="disabled">Última »</span>
+        {% endif %}
+    </nav>
+    {% endif %}
 </div>
 {% endblock %}

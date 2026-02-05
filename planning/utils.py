@@ -3,7 +3,7 @@ from django.db.models import Q
 from .models import PlanificacionMenu, PlanificacionMenuReceta, PlanificacionClienteSustituta
 from clients.models import IngredienteNoGustado
 from diets.models import DietaReceta
-from recipes.models import Receta, RecetaIngrediente
+from recipes.models import Receta, RecetaIngrediente, UnidadMedida
 from contracts.models import Contrato, contratos_activos_en_fecha
 
 
@@ -338,17 +338,34 @@ def resumen_cocina_por_momento(fecha) -> List[Dict[str, Any]]:
     return result
 
 
+def _unidad_medida_es_unidad(unidad_medida) -> bool:
+    """True si la unidad es tipo 'unidad' (un, unidad, etc.)."""
+    if not unidad_medida:
+        return False
+    nom = (getattr(unidad_medida, 'nombre', None) or '').lower()
+    sim = (getattr(unidad_medida, 'simbolo', None) or '').lower()
+    return nom == 'unidad' or sim == 'un' or 'unidad' in nom
+
+
 def ingredientes_por_rango_fechas(fecha_desde, fecha_hasta) -> Dict[tuple, float]:
     """
     Suma de ingredientes (id, unidad) -> cantidad para menús planificados en el rango,
     aplicando sustituciones por cliente. Para previsiones de compra.
+    Cuando la unidad es 'unidad' y el ingrediente tiene equivalencia_por_unidad,
+    convierte a gramos o ml y agrega con esa unidad para unificar la cuenta.
     """
     from collections import defaultdict
-    from recipes.models import RecetaIngrediente
     menus = PlanificacionMenu.objects.filter(
         fecha__gte=fecha_desde,
         fecha__lte=fecha_hasta,
     ).select_related('plan').prefetch_related('recetas')
+    # Resolver unidades gramo y ml para convertir "unidad" con equivalencia
+    unidad_gramo = UnidadMedida.objects.filter(
+        Q(nombre__iexact='Gramo') | Q(simbolo__iexact='g') | Q(simbolo__iexact='gr')
+    ).values_list('pk', flat=True).first()
+    unidad_ml = UnidadMedida.objects.filter(
+        Q(nombre__iexact='Mililitro') | Q(nombre__iexact='ml') | Q(simbolo__iexact='ml')
+    ).values_list('pk', flat=True).first()
     ingredientes_totales = defaultdict(float)
     for menu in menus:
         sustituciones = PlanificacionClienteSustituta.objects.filter(
@@ -364,7 +381,29 @@ def ingredientes_por_rango_fechas(fecha_desde, fecha_hasta) -> Dict[tuple, float
                 receta_id = _receta_efectiva_por_contrato(
                     menu.fecha, contrato.id, mr.tipo_comida_id, mr.receta_id, sustituciones_map
                 )
-                for ri in RecetaIngrediente.objects.filter(receta_id=receta_id):
-                    key = (ri.ingrediente_id, ri.unidad_medida_id)
-                    ingredientes_totales[key] += float(ri.cantidad)
+                for ri in RecetaIngrediente.objects.filter(receta_id=receta_id).select_related(
+                    'ingrediente', 'unidad_medida'
+                ):
+                    cantidad = float(ri.cantidad)
+                    um = ri.unidad_medida
+                    ing = ri.ingrediente
+                    if _unidad_medida_es_unidad(um) and ing:
+                        eq = getattr(ing, 'equivalencia_por_unidad', None)
+                        eq_tipo = (getattr(ing, 'equivalencia_por_unidad_tipo', None) or 'g').strip().lower()
+                        try:
+                            eq_val = float(eq) if eq is not None else 0
+                        except (TypeError, ValueError):
+                            eq_val = 0
+                        if eq_val > 0 and eq_tipo == 'g' and unidad_gramo:
+                            key = (ri.ingrediente_id, unidad_gramo)
+                            ingredientes_totales[key] += cantidad * eq_val
+                        elif eq_val > 0 and eq_tipo == 'ml' and unidad_ml:
+                            key = (ri.ingrediente_id, unidad_ml)
+                            ingredientes_totales[key] += cantidad * eq_val
+                        else:
+                            key = (ri.ingrediente_id, ri.unidad_medida_id)
+                            ingredientes_totales[key] += cantidad
+                    else:
+                        key = (ri.ingrediente_id, ri.unidad_medida_id)
+                        ingredientes_totales[key] += cantidad
     return dict(ingredientes_totales)

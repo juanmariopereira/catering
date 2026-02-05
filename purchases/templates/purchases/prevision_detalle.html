@@ -1,4 +1,5 @@
 {% extends 'base/base.html' %}
+{% load prevision_filters %}
 
 {% block title %}Previsión de Compra - {{ catering_name }}{% endblock %}
 
@@ -52,28 +53,31 @@
     {% endif %}
     
     <div class="table-responsive">
+    {% for grupo in items_por_tipo %}
+    <h2 class="grupo-tipo" style="margin-top: {% if forloop.first %}0{% else %}20px{% endif %}; margin-bottom: 8px; color: #E65100; font-size: 1.1rem;">{{ grupo.tipo_nombre }}</h2>
     <table>
         <thead>
             <tr>
                 <th>Ingrediente</th>
                 <th>Cantidad Total</th>
                 <th>Unidad de Medida</th>
+                <th>Medida por unidad</th>
             </tr>
         </thead>
         <tbody>
-            {% for item in prevision.items.all %}
+            {% for item in grupo.items %}
                 <tr>
                     <td>{{ item.ingrediente.nombre }}</td>
-                    <td>{{ item.cantidad_total }}</td>
-                    <td>{{ item.unidad_medida }}</td>
-                </tr>
-            {% empty %}
-                <tr>
-                    <td colspan="3">No hay items en esta previsión.</td>
+                    <td>{{ item.cantidad_total|prevision_cantidad_display:item.unidad_medida }}</td>
+                    <td>{{ item.cantidad_total|prevision_unidad_display:item.unidad_medida }}</td>
+                    <td>{{ item|prevision_medida_por_unidad_display|default:"—" }}</td>
                 </tr>
             {% endfor %}
         </tbody>
     </table>
+    {% empty %}
+    <p>No hay items en esta previsión.</p>
+    {% endfor %}
     </div>
 </div>
 {% endblock %}

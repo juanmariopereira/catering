@@ -59,6 +59,28 @@
         </div>
         <div class="form-row form-row-1">
             <div class="form-group">
+                <label for="{{ form.tipo_ingrediente.id_for_label }}">{{ form.tipo_ingrediente.label }}</label>
+                {{ form.tipo_ingrediente }}
+                {% if form.tipo_ingrediente.help_text %}<div class="help-text">{{ form.tipo_ingrediente.help_text }}</div>{% endif %}
+                {% if form.tipo_ingrediente.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.tipo_ingrediente.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div id="equivalencia-por-unidad-row" class="form-row form-row-2 equivalencia-por-unidad-row" style="display: none;">
+            <div class="form-group">
+                <label for="{{ form.equivalencia_por_unidad.id_for_label }}">{{ form.equivalencia_por_unidad.label }}</label>
+                {{ form.equivalencia_por_unidad }}
+                {% if form.equivalencia_por_unidad.help_text %}<div class="help-text">{{ form.equivalencia_por_unidad.help_text }}</div>{% endif %}
+                {% if form.equivalencia_por_unidad.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.equivalencia_por_unidad.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.equivalencia_por_unidad_tipo.id_for_label }}">{{ form.equivalencia_por_unidad_tipo.label }}</label>
+                {{ form.equivalencia_por_unidad_tipo }}
+                {% if form.equivalencia_por_unidad_tipo.help_text %}<div class="help-text">{{ form.equivalencia_por_unidad_tipo.help_text }}</div>{% endif %}
+                {% if form.equivalencia_por_unidad_tipo.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.equivalencia_por_unidad_tipo.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-1">
+            <div class="form-group">
                 <label for="{{ form.info_nutricional.id_for_label }}">{{ form.info_nutricional.label }}</label>
                 {% if openai_available %}
                 <span style="margin-left: 10px;">
@@ -105,7 +127,41 @@
 </div>
 {% endblock %}
 
+{{ unidad_medida_unidad_ids|json_script:"unidad-medida-unidad-ids" }}
 {% block extra_js %}
+<script>
+(function() {
+    var unidadIdsEl = document.getElementById('unidad-medida-unidad-ids');
+    var unidadIds = [];
+    try {
+        if (unidadIdsEl && unidadIdsEl.textContent) {
+            var parsed = JSON.parse(unidadIdsEl.textContent);
+            unidadIds = Array.isArray(parsed) ? parsed : [];
+        }
+    } catch (e) {}
+    var unidadSelect = document.querySelector('select[name="unidad_medida"]');
+    var equivalenciaRow = document.getElementById('equivalencia-por-unidad-row');
+    function isUnidadOption(val, select) {
+        if (!val) return false;
+        var idNum = Number(val);
+        if (unidadIds.some(function(id) { return id === idNum || id === val || String(id) === val; }))
+            return true;
+        var opt = select && select.options[select.selectedIndex];
+        if (!opt || !opt.text) return false;
+        var t = (opt.text || '').trim().toLowerCase();
+        return t === 'un' || t === 'unidad' || t === 'unidades' || t.indexOf('unidad') !== -1;
+    }
+    function toggleEquivalencia() {
+        if (!equivalenciaRow || !unidadSelect) return;
+        var val = unidadSelect.value ? String(unidadSelect.value).trim() : '';
+        equivalenciaRow.style.display = isUnidadOption(val, unidadSelect) ? '' : 'none';
+    }
+    if (unidadSelect) {
+        unidadSelect.addEventListener('change', toggleEquivalencia);
+        toggleEquivalencia();
+    }
+})();
+</script>
 <script>
 (function() {
     var checkboxesWrap = document.querySelector('.alergenos-checkboxes');

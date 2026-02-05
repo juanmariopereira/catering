@@ -54,9 +54,9 @@
             <tr>
                 <td>{{ f.fecha|date:"d/m/Y" }}</td>
                 <td>{{ f.nombre }}</td>
-                <td>
-                    <a href="{% url 'feriado_editar' f.pk %}">Editar</a> |
-                    <a href="{% url 'feriado_eliminar' f.pk %}">Eliminar</a>
+                <td class="table-actions">
+                    <a href="{% url 'feriado_editar' f.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
+                    <a href="{% url 'feriado_eliminar' f.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
                 </td>
             </tr>
             {% empty %}

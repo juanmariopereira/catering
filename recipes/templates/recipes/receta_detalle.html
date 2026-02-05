@@ -109,6 +109,7 @@
 
     <div class="actions">
         <a href="{% url 'recipes:editar' receta.pk %}" class="btn">Editar receta e ingredientes</a>
+        <a href="{% url 'recipes:duplicar' receta.pk %}" class="btn btn-secondary">Duplicar receta (crear variación)</a>
         <a href="{% url 'recipes:lista' %}" class="btn btn-secondary">Volver a lista</a>
     </div>
 </div>

@@ -70,15 +70,15 @@
                     <td>{{ factura.contrato.cliente.nombre }}</td>
                     <td>{{ factura.fecha_emision|date:"d/m/Y" }}</td>
                     <td>{{ factura.fecha_vencimiento|date:"d/m/Y" }}</td>
-                    <td>${{ factura.monto|floatformat:2 }}</td>
+                    <td>Bs. {{ factura.monto|floatformat:2 }}</td>
                     <td>
                         <span class="badge badge-{{ factura.estado }}">
                             {{ factura.get_estado_display }}
                         </span>
                     </td>
-                    <td>
-                        <a href="{% url 'billing:factura_detalle' factura.pk %}">Ver</a>
-                        <a href="{% url 'billing:pago_crear' %}?factura={{ factura.id }}">Pagar</a>
+                    <td class="table-actions">
+                        <a href="{% url 'billing:factura_detalle' factura.pk %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
+                        <a href="{% url 'billing:pago_crear' %}?factura={{ factura.id }}" title="Registrar pago" aria-label="Registrar pago"><span aria-hidden="true">💰</span></a>
                     </td>
                 </tr>
             {% empty %}

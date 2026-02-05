@@ -46,10 +46,18 @@
         </div>
         <div class="form-row form-row-2">
             <div class="form-group">
+                <label for="{{ form.tipo.id_for_label }}">{{ form.tipo.label }}</label>
+                {{ form.tipo }}
+                {% if form.tipo.help_text %}<div class="help-text">{{ form.tipo.help_text }}</div>{% endif %}
+                {% if form.tipo.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.tipo.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
                 <label for="{{ form.orden.id_for_label }}">{{ form.orden.label }}</label>
                 {{ form.orden }}
                 {% if form.orden.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.orden.errors }}</div>{% endif %}
             </div>
+        </div>
+        <div class="form-row form-row-2">
             <div class="form-group checkbox-group">
                 <label for="{{ form.activo.id_for_label }}">{{ form.activo }} {{ form.activo.label }}</label>
                 {% if form.activo.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.activo.errors }}</div>{% endif %}

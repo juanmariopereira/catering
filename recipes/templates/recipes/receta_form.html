@@ -227,7 +227,10 @@
 {% if object %}
 {% block extra_js %}
 {{ ingrediente_unidad_defecto|json_script:"ingrediente-unidad-defecto" }}
+{{ ingrediente_tipo_unidad|json_script:"ingrediente-tipo-unidad" }}
+{{ unidad_tipo_by_id|json_script:"unidad-tipo-by-id" }}
 {{ ingredientes_lista|json_script:"ingredientes-lista" }}
+{{ unidad_medida_unidad_ids|json_script:"unidad-medida-unidad-ids" }}
 <script>
 (function() {
     var prefix = '{{ ingredientes_formset.prefix }}';
@@ -238,11 +241,56 @@
         var el = document.getElementById('ingrediente-unidad-defecto');
         if (el) ingredienteUnidadDefecto = JSON.parse(el.textContent || '{}');
     } catch (e) {}
+    var ingredienteTipoUnidad = {};
+    try {
+        var elTipo = document.getElementById('ingrediente-tipo-unidad');
+        if (elTipo) ingredienteTipoUnidad = JSON.parse(elTipo.textContent || '{}');
+    } catch (e) {}
+    var unidadTipoById = {};
+    try {
+        var elUnTipo = document.getElementById('unidad-tipo-by-id');
+        if (elUnTipo) unidadTipoById = JSON.parse(elUnTipo.textContent || '{}');
+    } catch (e) {}
     var ingredientesLista = [];
     try {
         var elLista = document.getElementById('ingredientes-lista');
         if (elLista) ingredientesLista = JSON.parse(elLista.textContent || '[]');
     } catch (e) {}
+    var unidadMedidaUnidadIds = [];
+    try {
+        var elUn = document.getElementById('unidad-medida-unidad-ids');
+        if (elUn && elUn.textContent) unidadMedidaUnidadIds = JSON.parse(elUn.textContent);
+        if (!Array.isArray(unidadMedidaUnidadIds)) unidadMedidaUnidadIds = [];
+    } catch (e) {}
+
+    function isUnidadId(uid) {
+        if (uid === '' || uid == null) return false;
+        var n = Number(uid);
+        return unidadMedidaUnidadIds.some(function(id) { return id === n || id === uid || String(id) === String(uid); });
+    }
+
+    /** Filtra opciones de unidad por tipo del ingrediente: solo peso, solo volumen o solo unidad. */
+    function setUnidadOptionsByTipo(row, tipo) {
+        var unidadSelect = row.querySelector('select[name*="-unidad_medida"]');
+        if (!unidadSelect) return;
+        for (var i = 0; i < unidadSelect.options.length; i++) {
+            var opt = unidadSelect.options[i];
+            if (!opt.value) { opt.disabled = false; continue; }
+            var optTipo = unidadTipoById[opt.value] || 'peso';
+            opt.disabled = (tipo != null && optTipo !== tipo);
+        }
+        if (tipo != null && unidadSelect.value) {
+            var selTipo = unidadTipoById[unidadSelect.value];
+            if (selTipo !== tipo) {
+                var ingId = row.querySelector('select[name*="-ingrediente"]');
+                var defId = ingId && ingId.value ? ingredienteUnidadDefecto[ingId.value] : null;
+                if (defId != null && unidadTipoById[String(defId)] === tipo)
+                    unidadSelect.value = String(defId);
+                else
+                    unidadSelect.selectedIndex = -1;
+            }
+        }
+    }
 
     function onIngredienteChange(ev) {
         var row = ev.target.closest('tr');
@@ -251,16 +299,32 @@
         var unidadSelect = row.querySelector('select[name*="-unidad_medida"]');
         if (!unidadSelect || !ingSelect) return;
         var ingId = (ingSelect.value || '').trim();
+        var tipo = ingId ? (ingredienteTipoUnidad[ingId] || 'peso') : null;
         var unidadId = ingId ? ingredienteUnidadDefecto[ingId] : null;
         if (unidadId != null && String(unidadId)) {
-            if (unidadSelect.querySelector('option[value="' + unidadId + '"]')) {
+            if (unidadTipoById[String(unidadId)] === tipo && unidadSelect.querySelector('option[value="' + unidadId + '"]')) {
                 unidadSelect.value = String(unidadId);
             }
         }
+        setUnidadOptionsByTipo(row, tipo);
     }
     if (tbody) tbody.addEventListener('change', function(ev) {
         if (ev.target && ev.target.name && ev.target.name.indexOf('-ingrediente') !== -1) onIngredienteChange(ev);
     });
+
+    function applyUnidadUnRestrictionToAllRows() {
+        if (!tbody) return;
+        var rows = tbody.querySelectorAll('tr.formset-row');
+        for (var r = 0; r < rows.length; r++) {
+            var row = rows[r];
+            var ingSelect = row.querySelector('select[name*="-ingrediente"]');
+            var ingId = ingSelect && (ingSelect.value || '').trim();
+            var tipo = ingId ? (ingredienteTipoUnidad[ingId] || 'peso') : null;
+            setUnidadOptionsByTipo(row, tipo);
+        }
+    }
+    applyUnidadUnRestrictionToAllRows();
+
     var addIngBtn = document.getElementById('add-ingrediente-row');
     var totalInput = document.getElementById('id_' + prefix + '-TOTAL_FORMS');
     var descInput = document.querySelector('#id_descripcion, textarea[name="descripcion"]');

@@ -1,9 +1,11 @@
+import json
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 from django.urls import reverse_lazy, reverse
 from django.shortcuts import redirect, render
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Min, Value
+from django.db.models.functions import Coalesce
 from django.forms import inlineformset_factory
 
 from django.http import JsonResponse
@@ -13,7 +15,7 @@ from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 
-from .forms import IngredienteForm
+from .forms import IngredienteForm, RecetaIngredienteForm
 from .models import TipoReceta, UnidadMedida, Receta, Ingrediente, RecetaIngrediente
 from .services.ai_nutricion import (
     estimar_info_nutricional_ingrediente,
@@ -24,6 +26,47 @@ from .services.ai_nutricion import (
     importar_receta_desde_texto_ia,
     obtener_alergenos_receta,
 )
+
+
+def _parse_sort_receta(sort_param):
+    """'nombre:desc,tipo:asc' -> [('nombre', 'desc'), ('tipo', 'asc')]"""
+    result = []
+    if not sort_param or not sort_param.strip():
+        return result
+    valid_cols = {'nombre', 'tipo', 'momento', 'cocina'}
+    for part in sort_param.strip().split(','):
+        part = part.strip()
+        if ':' in part:
+            col, dir_ = part.split(':', 1)
+            col, dir_ = col.strip(), dir_.strip().lower()
+            if col in valid_cols and dir_ in ('asc', 'desc'):
+                result.append((col, dir_))
+    return result
+
+
+def _next_sort_receta(current_parsed, column):
+    """Ciclo: (ninguno) -> desc -> asc -> (ninguno). Devuelve (nueva_lista, nueva_dirección)."""
+    current_dir = next((d for c, d in current_parsed if c == column), None)
+    if current_dir == 'desc':
+        new_parsed = [(c, 'asc' if c == column else d) for c, d in current_parsed]
+        return new_parsed, 'asc'
+    if current_dir == 'asc':
+        new_parsed = [(c, d) for c, d in current_parsed if c != column]
+        return new_parsed, None
+    new_parsed = current_parsed + [(column, 'desc')]
+    return new_parsed, 'desc'
+
+
+def _sort_to_string_receta(parsed):
+    return ','.join(f'{c}:{d}' for c, d in parsed)
+
+
+SORTABLE_COLUMNS_RECETA = [
+    ('nombre', 'Nombre'),
+    ('tipo', 'Tipo de receta'),
+    ('momento', 'Momentos día'),
+    ('cocina', 'Cocina'),
+]
 
 
 def planificaciones_que_incluyen_receta(receta):
@@ -296,6 +339,7 @@ def importar_receta_view(request):
 RecetaIngredienteFormSet = inlineformset_factory(
     Receta,
     RecetaIngrediente,
+    form=RecetaIngredienteForm,
     fields=['ingrediente', 'cantidad', 'unidad_medida'],
     extra=3,
     can_delete=True,
@@ -315,20 +359,70 @@ class RecetaListView(LoginRequiredMixin, ListView):
             queryset = queryset.filter(Q(nombre__icontains=busqueda) | Q(descripcion__icontains=busqueda))
         tipo_receta_id = self.request.GET.get('tipo_receta')
         if tipo_receta_id:
-            queryset = queryset.filter(tipos_receta_id=tipo_receta_id)
+            queryset = queryset.filter(tipos_receta=tipo_receta_id)
         momento_id = self.request.GET.get('momento')
         if momento_id:
             queryset = queryset.filter(momentos_dia_id=momento_id)
         activa = self.request.GET.get('activa')
         if activa is not None and activa != '':
             queryset = queryset.filter(activa=activa == '1')
-        return queryset.order_by('nombre')
+        queryset = queryset.annotate(
+            orden_tipo=Coalesce(Min('tipos_receta__nombre'), Value('')),
+            orden_momento=Coalesce(Min('momentos_dia__nombre'), Value('')),
+        )
+        sort_parsed = _parse_sort_receta(self.request.GET.get('sort', ''))
+        if not sort_parsed:
+            queryset = queryset.order_by('nombre', 'orden_tipo', 'orden_momento', 'producido_en_cocina')
+            return queryset
+        order_by_list = []
+        for col, dir_ in sort_parsed:
+            prefix = '' if dir_ == 'asc' else '-'
+            if col == 'nombre':
+                order_by_list.append(f'{prefix}nombre')
+            elif col == 'tipo':
+                order_by_list.append(f'{prefix}orden_tipo')
+            elif col == 'momento':
+                order_by_list.append(f'{prefix}orden_momento')
+            elif col == 'cocina':
+                order_by_list.append(f'{prefix}producido_en_cocina')
+        order_by_list.append('nombre')
+        return queryset.order_by(*order_by_list)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['tipos_receta'] = TipoReceta.objects.filter(activo=True).order_by('orden', 'nombre')
         from diets.models import TipoComida
         context['momentos_dia'] = TipoComida.objects.all().order_by('orden', 'nombre')
+        get_copy = self.request.GET.copy()
+        if 'page' in get_copy:
+            get_copy.pop('page')
+        context['query_string'] = get_copy.urlencode()
+        get_no_sort = self.request.GET.copy()
+        get_no_sort.pop('sort', None)
+        get_no_sort.pop('page', None)
+        context['query_base_no_sort'] = get_no_sort.urlencode()
+        sort_parsed = _parse_sort_receta(self.request.GET.get('sort', ''))
+        sort_headers = []
+        for col_key, col_label in SORTABLE_COLUMNS_RECETA:
+            next_parsed, next_dir = _next_sort_receta(sort_parsed, col_key)
+            next_sort = _sort_to_string_receta(next_parsed) if next_parsed else ''
+            current_dir = next((d for c, d in sort_parsed if c == col_key), None)
+            sort_headers.append({
+                'sortable': True,
+                'key': col_key,
+                'label': col_label,
+                'direction': current_dir,
+                'next_sort': next_sort,
+            })
+        context['table_headers'] = [
+            sort_headers[0],
+            sort_headers[1],
+            sort_headers[2],
+            {'sortable': False, 'label': 'Ingredientes'},
+            {'sortable': False, 'label': 'Estado'},
+            sort_headers[3],
+            {'sortable': False, 'label': 'Acciones'},
+        ]
         return context
 
 
@@ -342,6 +436,34 @@ class RecetaDetailView(LoginRequiredMixin, DetailView):
         context['alergenos'] = obtener_alergenos_receta(self.object)
         context['planificaciones_con_receta'] = planificaciones_que_incluyen_receta(self.object)
         return context
+
+
+@login_required
+def receta_duplicar_view(request, pk):
+    """Duplica una receta (nombre, tipos, momentos, ingredientes y cantidades) para crear variaciones."""
+    original = get_object_or_404(Receta, pk=pk)
+    nombre_copia = ('Copia de ' + original.nombre)[:200]
+    nueva = Receta.objects.create(
+        nombre=nombre_copia,
+        descripcion=original.descripcion or '',
+        info_nutricional=dict(original.info_nutricional) if original.info_nutricional else {},
+        activa=original.activa,
+        producido_en_cocina=original.producido_en_cocina,
+    )
+    nueva.tipos_receta.set(original.tipos_receta.all())
+    nueva.momentos_dia.set(original.momentos_dia.all())
+    for ri in original.receta_ingredientes.select_related('ingrediente', 'unidad_medida').order_by('ingrediente'):
+        RecetaIngrediente.objects.create(
+            receta=nueva,
+            ingrediente=ri.ingrediente,
+            cantidad=ri.cantidad,
+            unidad_medida=ri.unidad_medida,
+        )
+    messages.success(
+        request,
+        f'Receta duplicada como «{nueva.nombre}». Edite el nombre y los ingredientes para crear su variación.',
+    )
+    return redirect('recipes:editar', pk=nueva.pk)
 
 
 class RecetaCreateView(LoginRequiredMixin, CreateView):
@@ -381,14 +503,26 @@ class RecetaUpdateView(LoginRequiredMixin, UpdateView):
         unidad_gramo = unidades.filter(Q(nombre__iexact='Gramo') | Q(simbolo__iexact='gr')).first()
         context['unidades_medida'] = unidades
         context['unidad_medida_por_defecto_id'] = unidad_gramo.pk if unidad_gramo else None
+        ingredientes_con_unidad = Ingrediente.objects.select_related('unidad_medida').only(
+            'pk', 'unidad_medida_id', 'nombre'
+        )
         context['ingrediente_unidad_defecto'] = {
-            str(ing.pk): ing.unidad_medida_id
-            for ing in Ingrediente.objects.select_related('unidad_medida').only('pk', 'unidad_medida_id')
+            str(ing.pk): ing.unidad_medida_id for ing in ingredientes_con_unidad
+        }
+        context['ingrediente_tipo_unidad'] = {
+            str(ing.pk): (ing.unidad_medida.tipo if ing.unidad_medida_id else 'peso')
+            for ing in ingredientes_con_unidad
         }
         context['ingredientes_lista'] = [
             {'id': ing.pk, 'nombre': ing.nombre}
             for ing in Ingrediente.objects.order_by('nombre').only('pk', 'nombre')
         ]
+        context['unidad_medida_unidad_ids'] = _unidad_medida_unidad_ids()
+        # Tipo de cada unidad (peso/volumen/unidad) para filtrar en la receta
+        context['unidad_tipo_by_id'] = {
+            str(u.pk): (u.tipo or 'peso')
+            for u in UnidadMedida.objects.filter(activo=True)
+        }
         return context
 
     def form_valid(self, form):
@@ -430,12 +564,38 @@ class IngredienteListView(LoginRequiredMixin, ListView):
             queryset = queryset.filter(activo=activo == '1')
         return queryset.order_by('nombre')
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        get_copy = self.request.GET.copy()
+        if 'page' in get_copy:
+            get_copy.pop('page')
+        context['query_string'] = get_copy.urlencode()
+        return context
+
+
+def _unidad_medida_unidad_ids():
+    """IDs de UnidadMedida que representan 'unidad' (para mostrar equivalencia por unidad)."""
+    return list(
+        UnidadMedida.objects.filter(
+            Q(nombre__iexact='Unidad')
+            | Q(nombre__iexact='Unidades')
+            | Q(nombre__icontains='unidad')
+            | Q(simbolo__iexact='un')
+            | Q(simbolo__iendswith='un')
+        ).values_list('pk', flat=True)
+    )
+
 
 class IngredienteCreateView(LoginRequiredMixin, CreateView):
     model = Ingrediente
     form_class = IngredienteForm
     template_name = 'recipes/ingrediente_form.html'
     success_url = reverse_lazy('recipes:ingrediente_lista')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['unidad_medida_unidad_ids'] = _unidad_medida_unidad_ids()
+        return context
 
     def form_valid(self, form):
         messages.success(self.request, 'Ingrediente creado exitosamente.')
@@ -447,6 +607,11 @@ class IngredienteUpdateView(LoginRequiredMixin, UpdateView):
     form_class = IngredienteForm
     template_name = 'recipes/ingrediente_form.html'
     success_url = reverse_lazy('recipes:ingrediente_lista')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['unidad_medida_unidad_ids'] = _unidad_medida_unidad_ids()
+        return context
 
     def form_valid(self, form):
         messages.success(self.request, 'Ingrediente actualizado exitosamente.')

@@ -1,5 +1,15 @@
 from django.contrib import admin
-from .models import TipoReceta, UnidadMedida, Alergeno, Ingrediente, Receta, RecetaIngrediente
+from django.db.models import Min, Value
+from django.db.models.functions import Coalesce
+from .models import TipoReceta, TipoIngrediente, UnidadMedida, Alergeno, Ingrediente, Receta, RecetaIngrediente
+
+
+@admin.register(TipoIngrediente)
+class TipoIngredienteAdmin(admin.ModelAdmin):
+    list_display = ['nombre', 'orden', 'activo', 'fecha_creacion']
+    list_filter = ['activo']
+    search_fields = ['nombre']
+    ordering = ['orden', 'nombre']
 
 
 @admin.register(Alergeno)
@@ -12,8 +22,8 @@ class AlergenoAdmin(admin.ModelAdmin):
 
 @admin.register(UnidadMedida)
 class UnidadMedidaAdmin(admin.ModelAdmin):
-    list_display = ['nombre', 'simbolo', 'orden', 'activo', 'fecha_creacion']
-    list_filter = ['activo']
+    list_display = ['nombre', 'simbolo', 'tipo', 'orden', 'activo', 'fecha_creacion']
+    list_filter = ['activo', 'tipo']
     search_fields = ['nombre', 'simbolo']
     ordering = ['orden', 'nombre']
 
@@ -28,8 +38,8 @@ class TipoRecetaAdmin(admin.ModelAdmin):
 
 @admin.register(Ingrediente)
 class IngredienteAdmin(admin.ModelAdmin):
-    list_display = ['nombre', 'unidad_medida', 'activo', 'fecha_creacion']
-    list_filter = ['activo', 'unidad_medida', 'fecha_creacion']
+    list_display = ['nombre', 'tipo_ingrediente', 'unidad_medida', 'activo', 'fecha_creacion']
+    list_filter = ['activo', 'tipo_ingrediente', 'unidad_medida', 'fecha_creacion']
     search_fields = ['nombre']
     readonly_fields = ['fecha_creacion']
 
@@ -47,6 +57,13 @@ class RecetaAdmin(admin.ModelAdmin):
     readonly_fields = ['fecha_creacion', 'fecha_actualizacion']
     filter_horizontal = ['tipos_receta', 'momentos_dia']
     inlines = [RecetaIngredienteInline]
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.annotate(
+            _orden_tipo=Coalesce(Min('tipos_receta__nombre'), Value('')),
+            _orden_momento=Coalesce(Min('momentos_dia__nombre'), Value('')),
+        ).order_by('nombre', '_orden_tipo', '_orden_momento', 'producido_en_cocina')
     fieldsets = (
         ('Información Básica', {
             'fields': ('nombre', 'descripcion', 'tipos_receta', 'momentos_dia', 'activa', 'producido_en_cocina')

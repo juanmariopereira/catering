@@ -63,9 +63,9 @@
                     <td>{% for p in dieta.planes.all %}{{ p.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
                     <td>{{ dieta.dieta_recetas.count }}</td>
                     <td><span class="badge badge-{% if dieta.activa %}activa{% else %}inactiva{% endif %}">{% if dieta.activa %}Activa{% else %}Inactiva{% endif %}</span></td>
-                    <td>
-                        <a href="{% url 'diets:editar' dieta.pk %}">Editar</a> |
-                        <a href="{% url 'diets:eliminar' dieta.pk %}">Eliminar</a>
+                    <td class="table-actions">
+                        <a href="{% url 'diets:editar' dieta.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
+                        <a href="{% url 'diets:eliminar' dieta.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
                     </td>
                 </tr>
             {% empty %}

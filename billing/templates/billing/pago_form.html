@@ -40,7 +40,7 @@
         {% if cobro and not object %}
         <div class="form-row form-row-1">
             <div class="form-group monto-esperado">
-                <strong>Monto pendiente (esperado):</strong> ${{ cobro.monto_pendiente|floatformat:2 }}
+                <strong>Monto pendiente (esperado):</strong> Bs. {{ cobro.monto_pendiente|floatformat:2 }}
             </div>
         </div>
         {% endif %}

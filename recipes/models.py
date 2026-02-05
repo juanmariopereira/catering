@@ -51,6 +51,14 @@ class Alergeno(models.Model):
 
 class UnidadMedida(models.Model):
     """Unidad de medida parametrizable: kg, gr, lt, un, etc."""
+    TIPO_PESO = 'peso'
+    TIPO_VOLUMEN = 'volumen'
+    TIPO_UNIDAD = 'unidad'
+    TIPO_CHOICES = [
+        (TIPO_PESO, 'Peso'),
+        (TIPO_VOLUMEN, 'Volumen'),
+        (TIPO_UNIDAD, 'Unidad'),
+    ]
     nombre = models.CharField(max_length=50, unique=True, verbose_name="Nombre")
     simbolo = models.CharField(
         max_length=20,
@@ -58,6 +66,13 @@ class UnidadMedida(models.Model):
         null=True,
         verbose_name="Símbolo",
         help_text="Opcional: ej. kg, g, L"
+    )
+    tipo = models.CharField(
+        max_length=10,
+        choices=TIPO_CHOICES,
+        default=TIPO_PESO,
+        verbose_name="Tipo",
+        help_text="Peso (g, kg), Volumen (ml, L) o Unidad (piezas). En la receta solo se pueden elegir unidades del mismo tipo que el ingrediente."
     )
     orden = models.PositiveIntegerField(
         default=1,
@@ -77,15 +92,65 @@ class UnidadMedida(models.Model):
         return self.simbolo or self.nombre
 
 
+class TipoIngrediente(models.Model):
+    """
+    Tipo de ingrediente: Lácteos, Granos, Cereales, Legumbres, Carnes, Aceites,
+    Salsas, Hortalizas, Sazonadores, Frutas, Pescados y mariscos, etc.
+    """
+    nombre = models.CharField(max_length=80, unique=True, verbose_name="Nombre")
+    orden = models.PositiveIntegerField(
+        default=1,
+        validators=[MinValueValidator(1)],
+        verbose_name="Orden",
+        help_text="Orden para mostrar en listas"
+    )
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+    fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
+
+    class Meta:
+        verbose_name = "Tipo de ingrediente"
+        verbose_name_plural = "Tipos de ingrediente"
+        ordering = ['orden', 'nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
 class Ingrediente(models.Model):
     """Modelo para gestionar ingredientes utilizados en las recetas"""
     nombre = models.CharField(max_length=200, unique=True, verbose_name="Nombre")
+    tipo_ingrediente = models.ForeignKey(
+        TipoIngrediente,
+        on_delete=models.PROTECT,
+        related_name='ingredientes',
+        verbose_name="Tipo de ingrediente",
+        blank=True,
+        null=True,
+        help_text="Categoría del ingrediente: lácteos, hortalizas, carnes, etc."
+    )
     unidad_medida = models.ForeignKey(
         UnidadMedida,
         on_delete=models.PROTECT,
         related_name='ingredientes',
         verbose_name="Unidad de medida",
         help_text="Unidad por defecto para este ingrediente"
+    )
+    equivalencia_por_unidad = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        verbose_name="Equivalencia por unidad",
+        help_text="Cuando la unidad es 'Unidad', indique cuántos gramos o ml tiene cada unidad (ej. 1 huevo = 50 g)."
+    )
+    equivalencia_por_unidad_tipo = models.CharField(
+        max_length=5,
+        choices=[('g', 'Gramos'), ('ml', 'Mililitros')],
+        blank=True,
+        default='g',
+        verbose_name="Tipo de equivalencia",
+        help_text="Si la equivalencia anterior es en gramos o en mililitros."
     )
     info_nutricional = models.JSONField(
         default=dict,

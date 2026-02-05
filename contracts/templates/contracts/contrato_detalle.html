@@ -25,6 +25,7 @@
     .btn-danger:hover { background-color: #D32F2F; }
     .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
     .badge-activo { background-color: #4CAF50; color: white; }
+    .badge-pre_renovacion { background-color: #2196F3; color: white; }
     .badge-pausado { background-color: #ff9800; color: white; }
     .badge-vencido { background-color: #757575; color: white; }
     .badge-cancelado { background-color: #F44336; color: white; }
@@ -56,7 +57,7 @@
         <a href="{% url 'contracts:editar' contrato.pk %}" class="btn btn-primary">Editar contrato</a>
         <a href="{% url 'contracts:eliminar' contrato.pk %}" class="btn btn-danger">Eliminar</a>
         <a href="{% url 'billing:cobro_crear' %}?contrato={{ contrato.pk }}" class="btn btn-secondary">Nuevo cobro</a>
-        {% if contrato.estado == 'activo' %}
+        {% if contrato.estado == 'activo' or contrato.estado == 'pre_renovacion' %}
         <a href="{% url 'planning:clientes_por_fecha' %}" class="btn btn-secondary">Planificación</a>
         {% endif %}
     </div>
@@ -74,7 +75,7 @@
             <dt>Fecha fin</dt>
             <dd>{% if contrato.fecha_fin %}{{ contrato.fecha_fin|date:"d/m/Y" }}{% else %}—{% endif %}</dd>
             <dt>Precio</dt>
-            <dd>${{ contrato.precio|floatformat:2 }} ({{ contrato.get_frecuencia_pago_display }})</dd>
+            <dd>Bs. {{ contrato.precio|floatformat:2 }} ({{ contrato.get_frecuencia_pago_display }})</dd>
             <dt>Dirección de entrega</dt>
             <dd>{% if contrato.direccion_entrega %}{{ contrato.direccion_entrega|linebreaksbr }}{% else %}—{% endif %}
                 {% if contrato.link_maps %}
@@ -123,22 +124,21 @@
                     <td><a href="{% url 'billing:cobro_detalle' cobro.pk %}">{{ cobro.numero_cobro|default:cobro.id }}</a></td>
                     <td>{{ cobro.periodo_desde|date:"d/m/Y" }} – {{ cobro.periodo_hasta|date:"d/m/Y" }}</td>
                     <td>{{ cobro.fecha_vencimiento|date:"d/m/Y" }}</td>
-                    <td>${{ cobro.monto|floatformat:2 }}</td>
+                    <td>Bs. {{ cobro.monto|floatformat:2 }}</td>
                     <td><span class="badge badge-{{ cobro.estado }}">{{ cobro.get_estado_display }}</span></td>
                     <td>
                         <ul class="cobros-pagos" style="list-style: none; padding: 0; margin: 0;">
                             {% for pago in cobro.pagos.all %}
-                            <li>${{ pago.monto|floatformat:2 }} — {{ pago.fecha_pago|date:"d/m/Y" }} ({{ pago.get_metodo_pago_display }})</li>
+                            <li>Bs. {{ pago.monto|floatformat:2 }} — {{ pago.fecha_pago|date:"d/m/Y" }} ({{ pago.get_metodo_pago_display }})</li>
                             {% empty %}
                             <li>—</li>
                             {% endfor %}
                         </ul>
                     </td>
-                    <td>
-                        <a href="{% url 'billing:cobro_detalle' cobro.pk %}">Ver</a>
+                    <td class="table-actions">
+                        <a href="{% url 'billing:cobro_detalle' cobro.pk %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
                         {% if cobro.estado != 'pagada' %}
-                        <span style="margin: 0 4px;">|</span>
-                        <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.pk }}">Registrar pago</a>
+                        <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.pk }}" title="Registrar pago" aria-label="Registrar pago"><span aria-hidden="true">💰</span></a>
                         {% endif %}
                     </td>
                 </tr>
@@ -174,9 +174,9 @@
                     <td>{{ p.fecha_inicio|date:"d/m/Y" }}</td>
                     <td>{{ p.fecha_fin|date:"d/m/Y" }}</td>
                     <td>{{ p.motivo|default:"—" }}</td>
-                    <td>
-                        <a href="{% url 'contracts:pausa_editar' p.pk %}">Editar</a> |
-                        <a href="{% url 'contracts:pausa_eliminar' p.pk %}">Eliminar</a>
+                    <td class="table-actions">
+                        <a href="{% url 'contracts:pausa_editar' p.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
+                        <a href="{% url 'contracts:pausa_eliminar' p.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
                     </td>
                 </tr>
                 {% endfor %}

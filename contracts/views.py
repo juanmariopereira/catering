@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 from django.db.models import Q, Case, When, Value, IntegerField, Exists, OuterRef, Min, F
 from django.db.models.functions import Coalesce
-from datetime import date as date_type
+from datetime import date as date_type, timedelta
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
@@ -96,7 +96,8 @@ class ContratoListView(LoginRequiredMixin, ListView):
         hoy = timezone.now().date()
 
         if not sort_parsed:
-            # Orden por defecto: estado (pendiente de pago, activo, inactivo) + vencimiento cobro más antiguo (asc)
+            # Orden por defecto: estado (pendiente, pre_renovacion, activo, inactivo) + vencimiento cobro (asc)
+            limite_pre = hoy + timedelta(days=5)
             cobro_vigente = Cobro.objects.filter(contrato_id=OuterRef('pk'), periodo_hasta__gte=hoy)
             cobros_pendientes = Cobro.objects.filter(
                 contrato_id=OuterRef('pk'),
@@ -118,7 +119,16 @@ class ContratoListView(LoginRequiredMixin, ListView):
                         Q(fecha_fin__isnull=False) & Q(fecha_fin__lt=hoy) & Q(tiene_cobro_vigente=False),
                         then=Value(3),
                     ),
-                    When(tiene_cobros_pendientes=True, then=Value(1)),
+                    When(tiene_cobros_pendientes=True, then=Value(0)),
+                    When(
+                        Q(fecha_cancelacion__isnull=True)
+                        & (Q(fecha_pausa__isnull=True) | Q(fecha_reanudacion__isnull=False))
+                        & Q(fecha_fin__isnull=False)
+                        & Q(fecha_fin__gte=hoy)
+                        & Q(fecha_fin__lte=limite_pre)
+                        & Q(fecha_inicio__lte=hoy),
+                        then=Value(1),
+                    ),
                     default=Value(2),
                     output_field=IntegerField(),
                 ),
@@ -132,6 +142,7 @@ class ContratoListView(LoginRequiredMixin, ListView):
         # Orden por columnas elegidas (prioridad = orden de clic)
         sort_columns = [c for c, _ in sort_parsed]
         if 'estado' in sort_columns:
+            limite_pre = hoy + timedelta(days=5)
             cobro_vigente = Cobro.objects.filter(contrato_id=OuterRef('pk'), periodo_hasta__gte=hoy)
             cobros_pendientes = Cobro.objects.filter(
                 contrato_id=OuterRef('pk'),
@@ -141,17 +152,26 @@ class ContratoListView(LoginRequiredMixin, ListView):
                 tiene_cobro_vigente=Exists(cobro_vigente),
                 tiene_cobros_pendientes=Exists(cobros_pendientes),
             )
-            # 1=inactivo (pausado/vencido/cancelado), 2=activo, 3=pendiente de pago → desc = pendiente_pago, activo, inactivo
+            # 0=inactivo, 1=activo, 2=pre_renovacion, 3=pendiente → asc/desc ordenan por estado
             queryset = queryset.annotate(
                 estado_orden=Case(
-                    When(fecha_cancelacion__isnull=False, then=Value(1)),
-                    When(fecha_pausa__isnull=False, fecha_reanudacion__isnull=True, then=Value(1)),
+                    When(fecha_cancelacion__isnull=False, then=Value(0)),
+                    When(fecha_pausa__isnull=False, fecha_reanudacion__isnull=True, then=Value(0)),
                     When(
                         Q(fecha_fin__isnull=False) & Q(fecha_fin__lt=hoy) & Q(tiene_cobro_vigente=False),
-                        then=Value(1),
+                        then=Value(0),
                     ),
                     When(tiene_cobros_pendientes=True, then=Value(3)),
-                    default=Value(2),
+                    When(
+                        Q(fecha_cancelacion__isnull=True)
+                        & (Q(fecha_pausa__isnull=True) | Q(fecha_reanudacion__isnull=False))
+                        & Q(fecha_fin__isnull=False)
+                        & Q(fecha_fin__gte=hoy)
+                        & Q(fecha_fin__lte=limite_pre)
+                        & Q(fecha_inicio__lte=hoy),
+                        then=Value(2),
+                    ),
+                    default=Value(1),
                     output_field=IntegerField(),
                 ),
             )

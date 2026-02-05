@@ -131,15 +131,15 @@
         </div>
         <div class="stat-card warning">
             <div class="stat-label">Por cobrar</div>
-            <div class="stat-value">${{ monto_total_pendiente|floatformat:0 }}</div>
+            <div class="stat-value">Bs. {{ monto_total_pendiente|floatformat:0 }}</div>
         </div>
         <div class="stat-card success">
             <div class="stat-label">Total cobrado</div>
-            <div class="stat-value">${{ monto_total_pagado|floatformat:0 }}</div>
+            <div class="stat-value">Bs. {{ monto_total_pagado|floatformat:0 }}</div>
         </div>
         <div class="stat-card info">
             <div class="stat-label">Cobrado este mes</div>
-            <div class="stat-value">${{ cobrado_este_mes|floatformat:0 }}</div>
+            <div class="stat-value">Bs. {{ cobrado_este_mes|floatformat:0 }}</div>
         </div>
         <div class="stat-card info">
             <div class="stat-label">Contratos activos</div>
@@ -167,7 +167,7 @@
             <tr>
                 <td>{{ pago.fecha_pago|date:"d/m/Y" }}</td>
                 <td><a href="{% url 'clients:detalle' pago.cobro.contrato.cliente_id %}">{{ pago.cobro.contrato.cliente.nombre }}</a></td>
-                <td>${{ pago.monto|floatformat:2 }}</td>
+                <td>Bs. {{ pago.monto|floatformat:2 }}</td>
                 <td>{{ pago.get_metodo_pago_display }}</td>
                 <td><a href="{% url 'billing:cobro_detalle' pago.cobro_id %}">{{ pago.cobro.numero_cobro|default:pago.cobro_id }}</a></td>
             </tr>
@@ -198,12 +198,11 @@
             <tr>
                 <td><a href="{% url 'billing:cobro_detalle' cobro.pk %}">{{ cobro.numero_cobro|default:cobro.id }}</a></td>
                 <td><a href="{% url 'clients:detalle' cobro.contrato.cliente_id %}">{{ cobro.contrato.cliente.nombre }}</a></td>
-                <td>${{ cobro.monto|floatformat:2 }}</td>
+                <td>Bs. {{ cobro.monto|floatformat:2 }}</td>
                 <td>{{ cobro.fecha_vencimiento|date:"d/m/Y" }}</td>
-                <td>
-                    <a href="{% url 'billing:cobro_detalle' cobro.pk %}">Ver</a>
-                    <span style="margin: 0 6px;">|</span>
-                    <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.pk }}" class="btn-cobrar">Cobrar</a>
+                <td class="table-actions">
+                    <a href="{% url 'billing:cobro_detalle' cobro.pk %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
+                    <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.pk }}" class="btn-cobrar" title="Registrar pago" aria-label="Registrar pago"><span aria-hidden="true">💰</span></a>
                 </td>
             </tr>
             {% endfor %}
@@ -233,12 +232,11 @@
             <tr>
                 <td><a href="{% url 'billing:cobro_detalle' cobro.pk %}">{{ cobro.numero_cobro|default:cobro.id }}</a></td>
                 <td><a href="{% url 'clients:detalle' cobro.contrato.cliente_id %}">{{ cobro.contrato.cliente.nombre }}</a></td>
-                <td>${{ cobro.monto|floatformat:2 }}</td>
+                <td>Bs. {{ cobro.monto|floatformat:2 }}</td>
                 <td>{{ cobro.fecha_vencimiento|date:"d/m/Y" }}</td>
-                <td>
-                    <a href="{% url 'billing:cobro_detalle' cobro.pk %}">Ver</a>
-                    <span style="margin: 0 6px;">|</span>
-                    <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.pk }}" class="btn-cobrar">Cobrar</a>
+                <td class="table-actions">
+                    <a href="{% url 'billing:cobro_detalle' cobro.pk %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
+                    <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.pk }}" class="btn-cobrar" title="Registrar pago" aria-label="Registrar pago"><span aria-hidden="true">💰</span></a>
                 </td>
             </tr>
             {% endfor %}

@@ -18,17 +18,29 @@ class DetalleCocinaListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        
-        # Filtrar por fecha si se proporciona
-        fecha_param = self.request.GET.get('fecha')
-        if fecha_param:
+        fecha_desde = self.request.GET.get('fecha_desde')
+        if fecha_desde:
             try:
-                fecha = date.fromisoformat(fecha_param)
-                queryset = queryset.filter(fecha=fecha)
+                fd = date.fromisoformat(fecha_desde)
+                queryset = queryset.filter(fecha__gte=fd)
             except ValueError:
                 pass
-        
+        fecha_hasta = self.request.GET.get('fecha_hasta')
+        if fecha_hasta:
+            try:
+                fh = date.fromisoformat(fecha_hasta)
+                queryset = queryset.filter(fecha__lte=fh)
+            except ValueError:
+                pass
         return queryset.order_by('-fecha')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        get_copy = self.request.GET.copy()
+        if 'page' in get_copy:
+            get_copy.pop('page')
+        context['query_string'] = get_copy.urlencode()
+        return context
 
 
 class DetalleCocinaUpdateView(LoginRequiredMixin, UpdateView):

@@ -45,10 +45,10 @@
                     <td>{{ ruta.entregador.nombre }}</td>
                     <td>{{ ruta.ruta_clientes.count }}</td>
                     <td>{% if ruta.activa %}Activa{% else %}Inactiva{% endif %}</td>
-                    <td>
-                        <a href="{% url 'delivery:ruta_imprimible' ruta.id %}">Imprimir</a> |
-                        <a href="{% url 'delivery:ruta_editar' ruta.id %}">Editar</a> |
-                        <a href="{% url 'delivery:ruta_eliminar' ruta.id %}">Eliminar</a>
+                    <td class="table-actions">
+                        <a href="{% url 'delivery:ruta_imprimible' ruta.id %}" title="Imprimir" aria-label="Imprimir"><span aria-hidden="true">🖨️</span></a>
+                        <a href="{% url 'delivery:ruta_editar' ruta.id %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
+                        <a href="{% url 'delivery:ruta_eliminar' ruta.id %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
                     </td>
                 </tr>
             {% empty %}

@@ -75,11 +75,11 @@
             <dt>Fecha vencimiento</dt>
             <dd>{{ cobro.fecha_vencimiento|date:"d/m/Y" }}</dd>
             <dt>Monto total</dt>
-            <dd>${{ cobro.monto|floatformat:2 }}</dd>
+            <dd>Bs. {{ cobro.monto|floatformat:2 }}</dd>
             <dt>Monto pagado</dt>
-            <dd>${{ cobro.calcular_monto_pagado|floatformat:2 }}</dd>
+            <dd>Bs. {{ cobro.calcular_monto_pagado|floatformat:2 }}</dd>
             <dt>Monto pendiente</dt>
-            <dd>${{ cobro.monto_pendiente|floatformat:2 }}</dd>
+            <dd>Bs. {{ cobro.monto_pendiente|floatformat:2 }}</dd>
             {% if cobro.notas %}
             <dt>Notas</dt>
             <dd>{{ cobro.notas }}</dd>
@@ -105,12 +105,12 @@
                 {% for pago in cobro.pagos.all %}
                 <tr>
                     <td>{{ pago.fecha_pago|date:"d/m/Y" }}</td>
-                    <td>${{ pago.monto|floatformat:2 }}</td>
+                    <td>Bs. {{ pago.monto|floatformat:2 }}</td>
                     <td>{{ pago.get_metodo_pago_display }}</td>
                     <td>{{ pago.referencia|default:"—" }}</td>
-                    <td>
-                        <a href="{% url 'billing:pago_editar' pago.pk %}">Editar</a>
-                        <a href="{% url 'billing:pago_eliminar' pago.pk %}">Eliminar</a>
+                    <td class="table-actions">
+                        <a href="{% url 'billing:pago_editar' pago.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
+                        <a href="{% url 'billing:pago_eliminar' pago.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
                     </td>
                 </tr>
                 {% endfor %}

@@ -10,10 +10,11 @@ class Contrato(models.Model):
     """Modelo para gestionar contratos de clientes"""
     ESTADO_CHOICES = [
         ('activo', 'Activo'),
+        ('pre_renovacion', 'Pre-Renovación'),
         ('pausado', 'Pausado'),
         ('vencido', 'Vencido'),
         ('cancelado', 'Cancelado'),
-        ('pendiente_pago', 'Pendiente de pago'),  # solo para etiqueta cuando activo con cobros sin pagar
+        ('pendiente_pago', 'Pendiente'),  # solo para etiqueta cuando activo con cobros sin pagar
     ]
 
     FRECUENCIA_PAGO_CHOICES = [
@@ -130,13 +131,18 @@ class Contrato(models.Model):
             if self.cobros.filter(periodo_hasta__gte=hoy).exists():
                 return 'activo'
             return 'vencido'
+        # Vigente: si tiene fecha_fin dentro de 5 días o menos, es Pre-Renovación
+        if self.fecha_fin is not None:
+            limite = hoy + timedelta(days=5)
+            if hoy <= self.fecha_fin <= limite:
+                return 'pre_renovacion'
         return 'activo'
 
     def get_estado_display(self):
-        """Texto legible del estado calculado. Si está activo y tiene cobros pendientes/vencidos, muestra 'Pendiente de pago'."""
+        """Texto legible del estado calculado. Si está activo y tiene cobros pendientes/vencidos, muestra 'Pendiente'."""
         if self.estado == 'activo':
             if self.cobros.filter(estado__in=['pendiente', 'vencida']).exists():
-                return dict(self.ESTADO_CHOICES).get('pendiente_pago', 'Pendiente de pago')
+                return dict(self.ESTADO_CHOICES).get('pendiente_pago', 'Pendiente')
         return dict(self.ESTADO_CHOICES).get(self.estado, self.estado)
 
     @property
@@ -237,13 +243,28 @@ def _q_estado_cancelado():
     return Q(fecha_cancelacion__isnull=False)
 
 
+def _q_estado_pre_renovacion():
+    """Q para contratos vigentes cuya fecha_fin está dentro de 5 días (inclusive)."""
+    from django.utils import timezone
+    hoy = timezone.now().date()
+    limite = hoy + timedelta(days=5)
+    return (
+        _q_estado_activo()
+        & Q(fecha_fin__isnull=False)
+        & Q(fecha_fin__gte=hoy)
+        & Q(fecha_fin__lte=limite)
+    )
+
+
 def q_filtro_estado(estado):
     """
     Devuelve el Q para filtrar contratos por estado calculado.
-    estado: 'activo', 'pausado', 'vencido' o 'cancelado'.
+    estado: 'activo', 'pre_renovacion', 'pausado', 'vencido' o 'cancelado'.
     """
     if estado == 'activo':
         return _q_estado_activo()
+    if estado == 'pre_renovacion':
+        return _q_estado_pre_renovacion()
     if estado == 'pausado':
         return _q_estado_pausado()
     if estado == 'vencido':

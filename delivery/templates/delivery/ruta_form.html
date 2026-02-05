@@ -89,7 +89,7 @@
                     {% for f in formset %}
                     <tr class="formset-row">
                         <td class="drag-cell"><span class="drag-handle" title="Arrastrar para reordenar">⋮⋮</span><span class="orden-input-wrap">{{ f.orden_entrega }}</span>{% if f.orden_entrega.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.orden_entrega.errors }}</div>{% endif %}</td>
-                        <td>
+                        <td class="td-contrato-select">
                             {{ f.id }}
                             {{ f.contrato }}
                             {% if f.contrato.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.contrato.errors }}</div>{% endif %}
@@ -101,7 +101,7 @@
                     {% endfor %}
                     <tr id="ruta-empty-form-row" style="display: none;">
                         <td class="drag-cell"><span class="drag-handle" title="Arrastrar para reordenar">⋮⋮</span><span class="orden-input-wrap">{{ formset.empty_form.orden_entrega }}</span></td>
-                        <td>
+                        <td class="td-contrato-select">
                             {{ formset.empty_form.id }}
                             {{ formset.empty_form.contrato }}
                         </td>

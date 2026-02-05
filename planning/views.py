@@ -261,6 +261,45 @@ def sugerir_menu_ia_view(request):
         )
 
 
+def _parse_sort_planning(sort_param):
+    """'fecha:desc,plan:asc' -> [('fecha', 'desc'), ('plan', 'asc')]"""
+    result = []
+    if not sort_param or not sort_param.strip():
+        return result
+    valid_cols = {'fecha', 'plan'}
+    for part in sort_param.strip().split(','):
+        part = part.strip()
+        if ':' in part:
+            col, dir_ = part.split(':', 1)
+            col, dir_ = col.strip(), dir_.strip().lower()
+            if col in valid_cols and dir_ in ('asc', 'desc'):
+                result.append((col, dir_))
+    return result
+
+
+def _next_sort_planning(current_parsed, column):
+    """Ciclo: (ninguno) -> desc -> asc -> (ninguno)."""
+    current_dir = next((d for c, d in current_parsed if c == column), None)
+    if current_dir == 'desc':
+        new_parsed = [(c, 'asc' if c == column else d) for c, d in current_parsed]
+        return new_parsed, 'asc'
+    if current_dir == 'asc':
+        new_parsed = [(c, d) for c, d in current_parsed if c != column]
+        return new_parsed, None
+    new_parsed = current_parsed + [(column, 'desc')]
+    return new_parsed, 'desc'
+
+
+def _sort_to_string_planning(parsed):
+    return ','.join(f'{c}:{d}' for c, d in parsed)
+
+
+SORTABLE_COLUMNS_PLANNING = [
+    ('fecha', 'Fecha'),
+    ('plan', 'Plan'),
+]
+
+
 class PlanificacionMenuListView(LoginRequiredMixin, ListView):
     """Lista de planificaciones por fecha y plan (menús)."""
     model = PlanificacionMenu
@@ -270,17 +309,66 @@ class PlanificacionMenuListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         queryset = PlanificacionMenu.objects.all().select_related('plan')
-        fecha_param = self.request.GET.get('fecha')
-        if fecha_param:
+        fecha_desde = self.request.GET.get('fecha_desde')
+        if fecha_desde:
             try:
-                fecha = date.fromisoformat(fecha_param)
-                queryset = queryset.filter(fecha=fecha)
+                fd = date.fromisoformat(fecha_desde)
+                queryset = queryset.filter(fecha__gte=fd)
+            except ValueError:
+                pass
+        fecha_hasta = self.request.GET.get('fecha_hasta')
+        if fecha_hasta:
+            try:
+                fh = date.fromisoformat(fecha_hasta)
+                queryset = queryset.filter(fecha__lte=fh)
             except ValueError:
                 pass
         plan_id = self.request.GET.get('plan')
         if plan_id:
             queryset = queryset.filter(plan_id=plan_id)
-        return queryset.order_by('-fecha', 'plan__nombre')
+        sort_parsed = _parse_sort_planning(self.request.GET.get('sort', ''))
+        if not sort_parsed:
+            return queryset.order_by('-fecha', 'plan__nombre')
+        order_by_list = []
+        for col, dir_ in sort_parsed:
+            prefix = '' if dir_ == 'asc' else '-'
+            if col == 'fecha':
+                order_by_list.append(f'{prefix}fecha')
+            elif col == 'plan':
+                order_by_list.append(f'{prefix}plan__nombre')
+        order_by_list.extend(['-fecha', 'plan__nombre'])
+        return queryset.order_by(*order_by_list)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['planes'] = Plan.objects.filter(activo=True).order_by('nombre')
+        get_copy = self.request.GET.copy()
+        if 'page' in get_copy:
+            get_copy.pop('page')
+        context['query_string'] = get_copy.urlencode()
+        get_no_sort = self.request.GET.copy()
+        get_no_sort.pop('sort', None)
+        get_no_sort.pop('page', None)
+        context['query_base_no_sort'] = get_no_sort.urlencode()
+        sort_parsed = _parse_sort_planning(self.request.GET.get('sort', ''))
+        sort_headers = []
+        for col_key, col_label in SORTABLE_COLUMNS_PLANNING:
+            next_parsed, _ = _next_sort_planning(sort_parsed, col_key)
+            next_sort = _sort_to_string_planning(next_parsed) if next_parsed else ''
+            current_dir = next((d for c, d in sort_parsed if c == col_key), None)
+            sort_headers.append({
+                'sortable': True,
+                'key': col_key,
+                'label': col_label,
+                'direction': current_dir,
+                'next_sort': next_sort,
+            })
+        context['table_headers'] = [
+            sort_headers[0],
+            sort_headers[1],
+            {'sortable': False, 'label': 'Acciones'},
+        ]
+        return context
 
 
 class PlanificacionMenuCreateView(LoginRequiredMixin, CreateView):
@@ -491,7 +579,16 @@ def calendario_planificacion(request, year=None, month=None):
         siguiente_mes = fecha.replace(month=fecha.month + 1)
     
     ultimo_dia = (siguiente_mes - timedelta(days=1)).day
-    
+    # Día de la semana del 1 (0=lunes, 6=domingo): celdas vacías antes del día 1
+    primer_dia_mes = fecha.replace(day=1)
+    celdas_vacias_inicio = primer_dia_mes.weekday()
+    dias_del_mes = list(range(1, ultimo_dia + 1))
+    # Siempre 6 filas (42 celdas) para que el calendario no cambie de altura al cambiar de mes
+    TOTAL_CELDAS_MES = 6 * 7
+    celdas_vacias_fin = TOTAL_CELDAS_MES - celdas_vacias_inicio - ultimo_dia
+    rango_vacias_inicio = list(range(celdas_vacias_inicio))
+    rango_vacias_fin = list(range(max(0, celdas_vacias_fin)))
+
     # Menús planificados por fecha (PlanificacionMenu)
     planificaciones = PlanificacionMenu.objects.filter(
         fecha__year=fecha.year,
@@ -524,6 +621,11 @@ def calendario_planificacion(request, year=None, month=None):
         'mes_anterior': mes_anterior,
         'mes_siguiente': siguiente_mes,
         'ultimo_dia': ultimo_dia,
+        'celdas_vacias_inicio': celdas_vacias_inicio,
+        'celdas_vacias_fin': celdas_vacias_fin,
+        'rango_vacias_inicio': rango_vacias_inicio,
+        'rango_vacias_fin': rango_vacias_fin,
+        'dias_del_mes': dias_del_mes,
         'planificaciones_por_dia': planificaciones_por_dia,
         'feriados_por_dia': feriados_por_dia,
     }

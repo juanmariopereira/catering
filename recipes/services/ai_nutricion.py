@@ -169,10 +169,15 @@ def _cantidad_a_gramos(cantidad: Decimal, unidad_simbolo: str, ingrediente) -> f
     if u in UNIDAD_A_GRAMOS:
         return float(cantidad) * UNIDAD_A_GRAMOS[u]
 
-    # Unidad, ud, etc. -> usar gramos_por_unidad del ingrediente
+    # Unidad, ud, etc. -> usar gramos_por_unidad o equivalencia_por_unidad del ingrediente
     if u in ('un', 'ud', 'unidad', 'unidades', 'u'):
         info = getattr(ingrediente, 'info_nutricional', None) or {}
         gramos = info.get('gramos_por_unidad')
+        if not gramos or gramos <= 0:
+            eq = getattr(ingrediente, 'equivalencia_por_unidad', None)
+            eq_tipo = getattr(ingrediente, 'equivalencia_por_unidad_tipo', None) or 'g'
+            if eq and float(eq) > 0 and eq_tipo == 'g':
+                gramos = float(eq)
         if gramos and gramos > 0:
             return float(cantidad) * gramos
         return 0  # sin conversión, no podemos calcular

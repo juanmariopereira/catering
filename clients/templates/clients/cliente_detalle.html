@@ -119,12 +119,11 @@
                     <td class="direccion-cell">{% if c.direccion_entrega %}{{ c.direccion_entrega|truncatewords:10 }}{% else %}—{% endif %}</td>
                     <td>{{ c.fecha_inicio|date:"d/m/Y" }}</td>
                     <td>{% if c.fecha_fin %}{{ c.fecha_fin|date:"d/m/Y" }}{% else %}—{% endif %}</td>
-                    <td>${{ c.precio|floatformat:2 }}</td>
-                    <td>
-                        <a href="{% url 'contracts:detalle' c.pk %}">Ver</a>
+                    <td>Bs. {{ c.precio|floatformat:2 }}</td>
+                    <td class="table-actions">
+                        <a href="{% url 'contracts:detalle' c.pk %}" title="Ver contrato" aria-label="Ver contrato"><span aria-hidden="true">🔍</span></a>
                         {% if c.pk in cobro_pendiente_por_contrato %}
-                        <span style="margin: 0 4px;">|</span>
-                        <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro_pendiente_por_contrato|get_item_pk:c.pk }}" class="btn btn-cobrar">Cobrar</a>
+                        <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro_pendiente_por_contrato|get_item_pk:c.pk }}" class="btn btn-cobrar" title="Registrar pago" aria-label="Registrar pago"><span aria-hidden="true">💰</span></a>
                         {% endif %}
                     </td>
                 </tr>
