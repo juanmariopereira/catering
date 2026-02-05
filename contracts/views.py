@@ -23,7 +23,7 @@ def _parse_sort(sort_param):
     result = []
     if not sort_param or not sort_param.strip():
         return result
-    valid_cols = {'cliente', 'plan', 'estado', 'vencimiento', 'fecha_inicio'}
+    valid_cols = {'cliente', 'plan', 'estado', 'vencimiento', 'fecha_inicio', 'precio'}
     for part in sort_param.strip().split(','):
         part = part.strip()
         if ':' in part:
@@ -56,6 +56,7 @@ SORTABLE_COLUMNS = [
     ('plan', 'Plan'),
     ('fecha_inicio', 'Fecha Inicio'),
     ('vencimiento', 'Fecha vencimiento'),
+    ('precio', 'Precio'),
     ('estado', 'Estado'),
 ]
 
@@ -132,16 +133,25 @@ class ContratoListView(LoginRequiredMixin, ListView):
         sort_columns = [c for c, _ in sort_parsed]
         if 'estado' in sort_columns:
             cobro_vigente = Cobro.objects.filter(contrato_id=OuterRef('pk'), periodo_hasta__gte=hoy)
-            queryset = queryset.annotate(tiene_cobro_vigente=Exists(cobro_vigente))
+            cobros_pendientes = Cobro.objects.filter(
+                contrato_id=OuterRef('pk'),
+                estado__in=['pendiente', 'vencida'],
+            )
+            queryset = queryset.annotate(
+                tiene_cobro_vigente=Exists(cobro_vigente),
+                tiene_cobros_pendientes=Exists(cobros_pendientes),
+            )
+            # 1=inactivo (pausado/vencido/cancelado), 2=activo, 3=pendiente de pago → desc = pendiente_pago, activo, inactivo
             queryset = queryset.annotate(
                 estado_orden=Case(
-                    When(fecha_cancelacion__isnull=False, then=Value(4)),
-                    When(fecha_pausa__isnull=False, fecha_reanudacion__isnull=True, then=Value(3)),
+                    When(fecha_cancelacion__isnull=False, then=Value(1)),
+                    When(fecha_pausa__isnull=False, fecha_reanudacion__isnull=True, then=Value(1)),
                     When(
                         Q(fecha_fin__isnull=False) & Q(fecha_fin__lt=hoy) & Q(tiene_cobro_vigente=False),
-                        then=Value(2),
+                        then=Value(1),
                     ),
-                    default=Value(1),
+                    When(tiene_cobros_pendientes=True, then=Value(3)),
+                    default=Value(2),
                     output_field=IntegerField(),
                 ),
             )
@@ -156,6 +166,8 @@ class ContratoListView(LoginRequiredMixin, ListView):
                 order_by_list.append(f'{prefix}fecha_inicio')
             elif col == 'vencimiento':
                 order_by_list.append(f'{prefix}fecha_fin')
+            elif col == 'precio':
+                order_by_list.append(f'{prefix}precio')
             elif col == 'estado':
                 order_by_list.append(f'{prefix}estado_orden')
         order_by_list.append('-fecha_creacion')
@@ -202,8 +214,8 @@ class ContratoListView(LoginRequiredMixin, ListView):
             sort_headers[1],
             sort_headers[2],
             sort_headers[3],
-            {'sortable': False, 'label': 'Precio'},
             sort_headers[4],
+            sort_headers[5],
             {'sortable': False, 'label': 'Acciones'},
         ]
         context['sort_headers'] = sort_headers
