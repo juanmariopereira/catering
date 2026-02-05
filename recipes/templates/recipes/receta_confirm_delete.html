@@ -1,0 +1,26 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Eliminar Receta - {{ catering_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    .btn-primary { background-color: #7CB342; }
+    .btn-primary:hover { background-color: #689F38; }
+    .btn-danger { background-color: #F44336; }
+    .btn-danger:hover { background-color: #D32F2F; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Eliminar Receta</h1>
+    <p>¿Está seguro de que desea eliminar la receta <strong>{{ object.nombre }}</strong>?</p>
+    <p>Esta acción no se puede deshacer.</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Eliminar</button>
+        <a href="{% url 'recipes:lista' %}" class="btn btn-primary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

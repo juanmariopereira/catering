@@ -1,6 +1,5 @@
 from django.db import models
 from django.core.validators import MinValueValidator
-from planning.models import PlanificacionDieta
 from recipes.models import RecetaIngrediente, Ingrediente
 
 
@@ -21,44 +20,15 @@ class PrevisionCompra(models.Model):
 
     def calcular_items(self):
         """
-        Calcula automáticamente los items de la previsión basándose
-        en las planificaciones de dietas en el rango de fechas
+        Calcula los items de la previsión basándose en los menús planificados
+        (PlanificacionMenu) en el rango de fechas, aplicando sustituciones por cliente.
         """
-        # Obtener todas las planificaciones en el rango de fechas
-        planificaciones = PlanificacionDieta.objects.filter(
-            fecha__gte=self.fecha_desde,
-            fecha__lte=self.fecha_hasta,
-            estado__in=['pendiente', 'en_preparacion']
+        from planning.utils import ingredientes_por_rango_fechas
+        ingredientes_totales = ingredientes_por_rango_fechas(
+            self.fecha_desde,
+            self.fecha_hasta,
         )
-
-        # Agregar ingredientes de todas las recetas de las dietas planificadas
-        ingredientes_totales = {}
-        
-        for planificacion in planificaciones:
-            # Obtener todas las recetas de la dieta
-            from diets.models import DietaReceta
-            recetas_dieta = DietaReceta.objects.filter(dieta=planificacion.dieta)
-            
-            for dieta_receta in recetas_dieta:
-                # Obtener ingredientes de la receta
-                receta_ingredientes = RecetaIngrediente.objects.filter(
-                    receta=dieta_receta.receta
-                )
-                
-                for receta_ingrediente in receta_ingredientes:
-                    ingrediente_id = receta_ingrediente.ingrediente_id
-                    cantidad = receta_ingrediente.cantidad
-                    unidad = receta_ingrediente.unidad_medida
-                    
-                    # Agregar a la suma total
-                    key = (ingrediente_id, unidad)
-                    if key not in ingredientes_totales:
-                        ingredientes_totales[key] = 0
-                    ingredientes_totales[key] += float(cantidad)
-        
-        # Crear o actualizar items de previsión
         PrevisionCompraItem.objects.filter(prevision=self).delete()
-        
         for (ingrediente_id, unidad), cantidad_total in ingredientes_totales.items():
             PrevisionCompraItem.objects.create(
                 prevision=self,

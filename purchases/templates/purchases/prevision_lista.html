@@ -29,6 +29,7 @@
         <a href="{% url 'purchases:crear' %}" class="btn">Nueva Previsión</a>
     </div>
     
+    <div class="table-responsive">
     <table>
         <thead>
             <tr>
@@ -46,8 +47,10 @@
                     <td>{{ prevision.items.count }}</td>
                     <td>
                         <a href="{% url 'purchases:detalle' prevision.id %}">Ver</a> |
+                        <a href="{% url 'purchases:editar' prevision.id %}">Editar</a> |
                         <a href="{% url 'purchases:exportar_excel' prevision.id %}">Excel</a> |
-                        <a href="{% url 'purchases:exportar_pdf' prevision.id %}">PDF</a>
+                        <a href="{% url 'purchases:exportar_pdf' prevision.id %}">PDF</a> |
+                        <a href="{% url 'purchases:eliminar' prevision.id %}">Eliminar</a>
                     </td>
                 </tr>
             {% empty %}
@@ -57,5 +60,6 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endblock %}

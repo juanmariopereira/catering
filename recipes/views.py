@@ -1,10 +1,21 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
-from django.urls import reverse_lazy
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
+from django.urls import reverse_lazy, reverse
+from django.shortcuts import redirect
 from django.contrib import messages
 from django.db.models import Q
+from django.forms import inlineformset_factory
 
-from .models import Receta, Ingrediente
+from .models import Receta, Ingrediente, RecetaIngrediente
+
+
+RecetaIngredienteFormSet = inlineformset_factory(
+    Receta,
+    RecetaIngrediente,
+    fields=['ingrediente', 'cantidad', 'unidad_medida'],
+    extra=3,
+    can_delete=True,
+)
 
 
 class RecetaListView(LoginRequiredMixin, ListView):
@@ -27,14 +38,22 @@ class RecetaListView(LoginRequiredMixin, ListView):
         return queryset.order_by('categoria', 'nombre')
 
 
-class RecetaCreateView(CreateView):
+class RecetaDetailView(LoginRequiredMixin, DetailView):
+    model = Receta
+    template_name = 'recipes/receta_detalle.html'
+    context_object_name = 'receta'
+
+
+class RecetaCreateView(LoginRequiredMixin, CreateView):
     model = Receta
     template_name = 'recipes/receta_form.html'
     fields = ['nombre', 'descripcion', 'categoria', 'info_nutricional', 'activa']
-    success_url = reverse_lazy('recipes:lista')
+
+    def get_success_url(self):
+        return reverse('recipes:editar', args=[self.object.pk])
 
     def form_valid(self, form):
-        messages.success(self.request, 'Receta creada exitosamente.')
+        messages.success(self.request, 'Receta creada. Agregue los ingredientes y cantidades a continuación.')
         return super().form_valid(form)
 
 
@@ -42,11 +61,33 @@ class RecetaUpdateView(LoginRequiredMixin, UpdateView):
     model = Receta
     template_name = 'recipes/receta_form.html'
     fields = ['nombre', 'descripcion', 'categoria', 'info_nutricional', 'activa']
-    success_url = reverse_lazy('recipes:lista')
+
+    def get_success_url(self):
+        return reverse('recipes:editar', args=[self.object.pk])
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if 'ingredientes_formset' in kwargs:
+            context['ingredientes_formset'] = kwargs['ingredientes_formset']
+        elif self.request.POST:
+            context['ingredientes_formset'] = RecetaIngredienteFormSet(
+                self.request.POST, instance=self.object
+            )
+        else:
+            context['ingredientes_formset'] = RecetaIngredienteFormSet(instance=self.object)
+        return context
 
     def form_valid(self, form):
-        messages.success(self.request, 'Receta actualizada exitosamente.')
-        return super().form_valid(form)
+        self.object = form.save()
+        formset = RecetaIngredienteFormSet(self.request.POST, instance=self.object)
+        if formset.is_valid():
+            formset.save()
+            messages.success(self.request, 'Receta e ingredientes guardados correctamente.')
+            return redirect(self.get_success_url())
+        else:
+            return self.render_to_response(
+                self.get_context_data(form=form, ingredientes_formset=formset)
+            )
 
 
 class RecetaDeleteView(LoginRequiredMixin, DeleteView):

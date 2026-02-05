@@ -1,0 +1,132 @@
+{% extends 'base/base.html' %}
+
+{% block title %}{% if object %}Editar menú{% else %}Nuevo menú{% endif %} - {{ catering_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    form { margin-top: 20px; }
+    .form-group { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+    input, select, textarea {
+        width: 100%; max-width: 400px;
+        padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;
+    }
+    textarea { min-height: 80px; }
+    .btn {
+        display: inline-block; padding: 10px 20px; background-color: {{ brand_color|default:'#7CB342' }};
+        color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;
+    }
+    .btn:hover { background-color: {{ brand_color_hover|default:'#689F38' }}; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    .recetas-formset { margin-top: 24px; }
+    .recetas-formset table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .recetas-formset th, .recetas-formset td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
+    .recetas-formset th { background-color: #f0f0f0; }
+    .sustituciones-section {
+        margin-top: 28px; padding: 20px;
+        background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;
+    }
+    .sustituciones-section h2 { margin-top: 0; font-size: 1.2rem; }
+    .cliente-conflictos { margin-bottom: 20px; padding: 12px; background: #fff; border-radius: 4px; border: 1px solid #eee; }
+    .cliente-conflictos h3 { margin-top: 0; font-size: 1rem; }
+    .conflicto-item { margin-bottom: 12px; }
+    .sustitucion-select { max-width: 320px; margin-top: 6px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>{% if object %}Editar menú{% else %}Nuevo menú{% endif %} (fecha + plan)</h1>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="{{ form.fecha.id_for_label }}">Fecha:</label>
+            {{ form.fecha }}
+        </div>
+        <div class="form-group">
+            <label for="{{ form.plan.id_for_label }}">Plan:</label>
+            {{ form.plan }}
+        </div>
+        <div class="form-group">
+            <label for="{{ form.notas.id_for_label }}">Notas:</label>
+            {{ form.notas }}
+        </div>
+
+        {% if receta_formset %}
+        <div class="recetas-formset">
+            <h2>Recetas por momento del día</h2>
+            <p>Defina frutas, postres, bebidas y comidas por momento (Desayuno, Media mañana, Comida, Merienda, Cena).</p>
+            {{ receta_formset.management_form }}
+            <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Momento</th>
+                        <th>Receta</th>
+                        <th>Orden</th>
+                        {% if receta_formset.can_delete %}<th>Eliminar</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in receta_formset %}
+                    <tr>
+                        <td>{{ f.tipo_comida }}</td>
+                        <td>{{ f.receta }}</td>
+                        <td>{{ f.orden }}</td>
+                        {% if receta_formset.can_delete %}<td>{{ f.DELETE }}</td>{% endif %}
+                        {{ f.id }}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if clientes_conflictos %}
+        <div class="sustituciones-section">
+            <h2>Sustituciones por cliente</h2>
+            <p>Clientes con este plan en esta fecha que tienen ingredientes no deseados. Puede asignar una receta sustituta por cliente y momento.</p>
+            {% for item in clientes_conflictos %}
+                {% if item.conflictos %}
+                <div class="cliente-conflictos" id="contrato-{{ item.contrato.id }}">
+                    <h3>{{ item.contrato.cliente.nombre }}</h3>
+                    {% for c in item.conflictos %}
+                    <div class="conflicto-item">
+                        <p><strong>{{ c.tipo_comida.nombre }}</strong>: {{ c.receta.nombre }}</p>
+                        <p>Ingredientes en conflicto: {{ c.ingredientes_nombres|join:", " }}.</p>
+                        <label for="sustituir_contrato_{{ item.contrato.id }}_tipo_{{ c.tipo_comida.id }}_receta_{{ c.receta.id }}">Sustituir por:</label>
+                        <select name="sustituir_contrato_{{ item.contrato.id }}_tipo_{{ c.tipo_comida.id }}_receta_{{ c.receta.id }}" id="sustituir_contrato_{{ item.contrato.id }}_tipo_{{ c.tipo_comida.id }}_receta_{{ c.receta.id }}" class="sustitucion-select">
+                            <option value="">— No sustituir —</option>
+                            {% if c.alternativas %}
+                            <optgroup label="Sugeridas">
+                                {% for r in c.alternativas %}
+                                <option value="{{ r.id }}" {% if c.sustitucion_actual_id == r.id %}selected{% endif %}>{{ r.nombre }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endif %}
+                            {% if c.otras_recetas %}
+                            <optgroup label="Otras recetas">
+                                {% for r in c.otras_recetas %}
+                                <option value="{{ r.id }}" {% if c.sustitucion_actual_id == r.id %}selected{% endif %}>{{ r.nombre }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endif %}
+                        </select>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div style="margin-top: 25px;">
+            <button type="submit" class="btn">Guardar</button>
+            <a href="{% url 'planning:lista' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

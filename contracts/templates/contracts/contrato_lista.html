@@ -25,9 +25,11 @@
 {% block content %}
 <div class="container">
     <h1>Contratos</h1>
-    
+    <p>Gestión de contratos por cliente y plan. Los contratos activos determinan quién recibe menú cada día; desde aquí puede ir a <strong>planificación</strong> para ver la lista de clientes que reciben y los avisos del día.</p>
+
     <div class="actions">
         <a href="{% url 'contracts:crear' %}" class="btn">Nuevo Contrato</a>
+        <a href="{% url 'planning:clientes_por_fecha' %}" class="btn btn-secondary">Ver planificación del día</a>
         <form method="get" class="search-form">
             <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Buscar cliente o plan...">
             <select name="estado">
@@ -40,6 +42,7 @@
         </form>
     </div>
     
+    <div class="table-responsive">
     <table>
         <thead>
             <tr>
@@ -61,6 +64,7 @@
                     <td><span class="badge badge-{{ contrato.estado }}">{{ contrato.get_estado_display }}</span></td>
                     <td>
                         <a href="{% url 'contracts:editar' contrato.pk %}">Editar</a> |
+                        {% if contrato.estado == 'activo' %}<a href="{% url 'planning:clientes_por_fecha' %}">Planificación</a> | {% endif %}
                         <a href="{% url 'contracts:eliminar' contrato.pk %}">Eliminar</a>
                     </td>
                 </tr>
@@ -69,5 +73,6 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endblock %}

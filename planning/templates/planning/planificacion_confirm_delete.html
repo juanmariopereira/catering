@@ -27,10 +27,9 @@
 <div class="container">
     <h1>Eliminar Planificación</h1>
     
-    <p>¿Está seguro de que desea eliminar esta planificación?</p>
-    <p><strong>Fecha:</strong> {{ object.fecha }}</p>
-    <p><strong>Cliente:</strong> {{ object.contrato.cliente.nombre }}</p>
-    <p><strong>Dieta:</strong> {{ object.dieta.nombre }}</p>
+    <p>¿Está seguro de que desea eliminar este menú planificado?</p>
+    <p><strong>Fecha:</strong> {{ planificacion_menu.fecha|date:"d/m/Y" }}</p>
+    <p><strong>Plan:</strong> {{ planificacion_menu.plan.nombre }}</p>
     
     <form method="post">
         {% csrf_token %}

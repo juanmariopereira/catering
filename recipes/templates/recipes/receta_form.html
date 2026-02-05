@@ -12,7 +12,16 @@
     .btn { display: inline-block; padding: 10px 20px; background-color: #7CB342; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
     .btn:hover { background-color: #689F38; }
     .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
     .help-text { font-size: 12px; color: #666; margin-top: 4px; }
+    .ingredientes-section { margin-top: 30px; padding-top: 20px; border-top: 2px solid #7CB342; }
+    .ingredientes-section h2 { margin-bottom: 15px; }
+    .formset-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .formset-table th, .formset-table td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+    .formset-table th { background-color: #e8f5e9; }
+    .formset-table input, .formset-table select { width: 100%; padding: 6px; }
+    .formset-table .delete { width: 40px; text-align: center; }
+    .formset-table .delete input { width: auto; }
 </style>
 {% endblock %}
 
@@ -31,8 +40,52 @@
                 {% if field.errors %}<div style="color: #c62828; font-size: 12px;">{{ field.errors }}</div>{% endif %}
             </div>
         {% endfor %}
-        <div>
+
+        {% if object %}
+        <div class="ingredientes-section">
+            <h2>Ingredientes y cantidades</h2>
+            <p class="help-text">Cada fila es un ingrediente con su cantidad y unidad de medida (ej: kg, gr, litros, unidades, tazas). Marque "Eliminar" para quitar un ingrediente.</p>
+            {{ ingredientes_formset.management_form }}
+            <table class="formset-table">
+                <thead>
+                    <tr>
+                        <th>Ingrediente</th>
+                        <th>Cantidad</th>
+                        <th>Unidad de medida</th>
+                        <th class="delete">Eliminar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for form_ing in ingredientes_formset %}
+                    <tr class="formset-row">
+                        <td>
+                            {{ form_ing.id }}
+                            {{ form_ing.ingrediente }}
+                            {% if form_ing.ingrediente.errors %}<div style="color: #c62828; font-size: 11px;">{{ form_ing.ingrediente.errors }}</div>{% endif %}
+                        </td>
+                        <td>
+                            {{ form_ing.cantidad }}
+                            {% if form_ing.cantidad.errors %}<div style="color: #c62828; font-size: 11px;">{{ form_ing.cantidad.errors }}</div>{% endif %}
+                        </td>
+                        <td>
+                            {{ form_ing.unidad_medida }}
+                            {% if form_ing.unidad_medida.errors %}<div style="color: #c62828; font-size: 11px;">{{ form_ing.unidad_medida.errors }}</div>{% endif %}
+                        </td>
+                        <td class="delete">
+                            {% if form_ing.DELETE %}{{ form_ing.DELETE }}{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <div style="margin-top: 25px;">
             <button type="submit" class="btn">Guardar</button>
+            {% if object %}
+                <a href="{% url 'recipes:detalle' object.pk %}" class="btn btn-secondary">Ver detalle</a>
+            {% endif %}
             <a href="{% url 'recipes:lista' %}" class="btn btn-secondary">Cancelar</a>
         </div>
     </form>

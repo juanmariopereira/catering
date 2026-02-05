@@ -34,6 +34,23 @@
     .btn:hover { background-color: #689F38; }
     .btn-secondary { background-color: #6c757d; }
     .btn-secondary:hover { background-color: #5a6268; }
+    .avisos-section {
+        margin-top: 28px;
+        padding: 20px;
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+        border-radius: 4px;
+    }
+    .avisos-section h2 { margin-top: 0; font-size: 1.2rem; }
+    .conflicto-item {
+        margin-bottom: 16px;
+        padding: 12px;
+        background: #fff;
+        border-radius: 4px;
+        border: 1px solid #eee;
+    }
+    .conflicto-item strong { color: #856404; }
+    .sustitucion-select { max-width: 320px; margin-top: 8px; }
 </style>
 {% endblock %}
 
@@ -68,8 +85,39 @@
             <label for="{{ form.notas.id_for_label }}">Notas:</label>
             {{ form.notas }}
         </div>
+
+        {% if conflictos %}
+        <div class="avisos-section">
+            <h2>Avisos: ingredientes que no son del agrado del cliente</h2>
+            <p>La dieta incluye recetas con ingredientes que este cliente no prefiere. Puede sustituir cada receta por otra más adecuada (individualizada para este cliente).</p>
+            {% for c in conflictos %}
+            <div class="conflicto-item">
+                <p><strong>{{ c.tipo_comida.nombre }}</strong>: {{ c.receta.nombre }}</p>
+                <p>Ingredientes en conflicto: {{ c.ingredientes_nombres|join:", " }}.</p>
+                <label for="sustituta_{{ c.dieta_receta.id }}">Sustituir por:</label>
+                <select name="sustituta_{{ c.dieta_receta.id }}" id="sustituta_{{ c.dieta_receta.id }}" class="sustitucion-select">
+                    <option value="">— No sustituir / mantener original —</option>
+                    {% if c.alternativas %}
+                    <optgroup label="Sugeridas (misma categoría, sin ingredientes no deseados)">
+                        {% for r in c.alternativas %}
+                        <option value="{{ r.id }}" {% if c.sustitucion_actual_id == r.id %}selected{% endif %}>{{ r.nombre }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    {% endif %}
+                    {% if c.otras_recetas %}
+                    <optgroup label="Otras recetas">
+                        {% for r in c.otras_recetas %}
+                        <option value="{{ r.id }}" {% if c.sustitucion_actual_id == r.id %}selected{% endif %}>{{ r.nombre }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    {% endif %}
+                </select>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
         
-        <div>
+        <div style="margin-top: 25px;">
             <button type="submit" class="btn">Guardar</button>
             <a href="{% url 'planning:lista' %}" class="btn btn-secondary">Cancelar</a>
         </div>

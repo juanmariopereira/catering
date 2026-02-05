@@ -1,0 +1,91 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Clientes que reciben menú - {{ fecha|date:"d/m/Y" }} - {{ catering_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .fecha-navegacion { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .fecha-navegacion a { padding: 8px 16px; background-color: {{ brand_color }}; color: white; text-decoration: none; border-radius: 4px; }
+    .fecha-navegacion a:hover { background-color: {{ brand_color_hover }}; }
+    .fecha-actual { font-size: 1.2rem; font-weight: bold; }
+    .actions { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border-radius: 4px; }
+    .btn:hover { background-color: {{ brand_color_hover }}; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    .aviso-badge {
+        display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;
+        background-color: #fff3cd; color: #856404; border: 1px solid #ffc107;
+    }
+    .sin-aviso { color: #6c757d; font-size: 0.9rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: {{ brand_color }}; color: white; }
+    tr:hover { background-color: #f5f5f5; }
+    .accion-link { color: {{ brand_color }}; font-weight: 600; }
+    .accion-link:hover { text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Clientes que reciben menú</h1>
+    <p>Lista de clientes por plan que recibirán sus comidas en la fecha indicada. Sirve para revisar avisos (ingredientes no deseados parametrizados) y definir sustituciones; así la producción en cocina recibe el reporte correcto y la gestión de contratos queda visible (vigencia).</p>
+
+    <div class="fecha-navegacion">
+        <a href="{% url 'planning:clientes_por_fecha' %}?fecha={{ fecha_anterior|date:'Y-m-d' }}">← Día anterior</a>
+        <span class="fecha-actual">{{ fecha|date:"l, d F Y" }}</span>
+        <a href="{% url 'planning:clientes_por_fecha' %}?fecha={{ fecha_siguiente|date:'Y-m-d' }}">Día siguiente →</a>
+        <form method="get" style="display: flex; gap: 8px; align-items: center;">
+            <label for="fecha">Ir a fecha:</label>
+            <input type="date" name="fecha" id="fecha" value="{{ fecha|date:'Y-m-d' }}">
+            <button type="submit" class="btn">Ver</button>
+        </form>
+    </div>
+
+    <div class="actions">
+        <a href="{% url 'planning:resumen' %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn">Resumen por plan</a>
+        <a href="{% url 'planning:lista' %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn btn-secondary">Ver menús</a>
+        <a href="{% url 'kitchen:detalle_fecha' fecha|date:'Y-m-d' %}" class="btn btn-secondary">Reporte cocina</a>
+    </div>
+
+    <div class="table-responsive">
+    <table style="min-width: 600px;">
+        <thead>
+            <tr>
+                <th>Plan</th>
+                <th>Cliente</th>
+                <th>Vigencia contrato</th>
+                <th>Aviso</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in filas %}
+            <tr>
+                <td>{{ f.plan.nombre }}</td>
+                <td>{{ f.cliente.nombre }}</td>
+                <td>{{ f.contrato.fecha_inicio|date:"d/m/Y" }} — {% if f.contrato.fecha_fin %}{{ f.contrato.fecha_fin|date:"d/m/Y" }}{% else %}indefinido{% endif %}</td>
+                <td>
+                    {% if f.tiene_aviso %}
+                    <span class="aviso-badge">Ingrediente(s) no deseados — {{ f.conflictos_count }} receta(s) a revisar</span>
+                    {% else %}
+                    <span class="sin-aviso">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'planning:editar' f.planificacion_menu.pk %}#contrato-{{ f.contrato.id }}" class="accion-link">
+                        {% if f.tiene_aviso %}Definir sustituciones{% else %}Ver menú{% endif %}
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5">No hay clientes con menú planificado para esta fecha. Cree menús desde el <a href="{% url 'planning:resumen' %}?fecha={{ fecha|date:'Y-m-d' }}">resumen por plan</a>.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

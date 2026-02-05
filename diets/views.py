@@ -1,10 +1,21 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
+from django.shortcuts import redirect
 from django.contrib import messages
 from django.db.models import Q
+from django.forms import inlineformset_factory
 
-from .models import Dieta
+from .models import Dieta, DietaReceta
+
+
+DietaRecetaFormSet = inlineformset_factory(
+    Dieta,
+    DietaReceta,
+    fields=['tipo_comida', 'receta', 'orden'],
+    extra=15,
+    can_delete=True,
+)
 
 
 class DietaListView(LoginRequiredMixin, ListView):
@@ -23,30 +34,53 @@ class DietaListView(LoginRequiredMixin, ListView):
             queryset = queryset.filter(activa=activa == '1')
         plan_id = self.request.GET.get('plan')
         if plan_id:
-            queryset = queryset.filter(plan_id=plan_id)
-        return queryset.select_related('plan').order_by('nombre')
+            queryset = queryset.filter(planes=plan_id)
+        return queryset.prefetch_related('planes').order_by('nombre')
 
 
 class DietaCreateView(LoginRequiredMixin, CreateView):
     model = Dieta
     template_name = 'diets/dieta_form.html'
-    fields = ['nombre', 'descripcion', 'plan', 'activa']
-    success_url = reverse_lazy('diets:lista')
+    fields = ['nombre', 'descripcion', 'planes', 'activa']
+    context_object_name = 'dieta'
+
+    def get_success_url(self):
+        return reverse('diets:editar', args=[self.object.pk])
 
     def form_valid(self, form):
-        messages.success(self.request, 'Dieta creada exitosamente.')
+        messages.success(self.request, 'Dieta creada. Agregue las recetas a continuación.')
         return super().form_valid(form)
 
 
-class DietaUpdateView(UpdateView):
+class DietaUpdateView(LoginRequiredMixin, UpdateView):
     model = Dieta
     template_name = 'diets/dieta_form.html'
-    fields = ['nombre', 'descripcion', 'plan', 'activa']
-    success_url = reverse_lazy('diets:lista')
+    fields = ['nombre', 'descripcion', 'planes', 'activa']
+    context_object_name = 'dieta'
+
+    def get_success_url(self):
+        return reverse('diets:editar', args=[self.object.pk])
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.request.POST:
+            context['formset'] = DietaRecetaFormSet(
+                self.request.POST, instance=self.object
+            )
+        else:
+            context['formset'] = DietaRecetaFormSet(instance=self.object)
+        return context
 
     def form_valid(self, form):
-        messages.success(self.request, 'Dieta actualizada exitosamente.')
-        return super().form_valid(form)
+        self.object = form.save()
+        formset = DietaRecetaFormSet(self.request.POST, instance=self.object)
+        if formset.is_valid():
+            formset.save()
+            messages.success(self.request, 'Dieta y recetas guardadas correctamente.')
+            return redirect(self.get_success_url())
+        return self.render_to_response(
+            self.get_context_data(form=form, formset=formset)
+        )
 
 
 class DietaDeleteView(LoginRequiredMixin, DeleteView):

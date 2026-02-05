@@ -100,9 +100,8 @@
 
     <div class="stats-grid">
         <div class="stat-card">
-            <div class="stat-label">Planificaciones hoy</div>
+            <div class="stat-label">Menús planificados hoy</div>
             <div class="stat-value">{{ total_planificaciones_hoy }}</div>
-            <small>{{ planificaciones_pendientes }} pendientes · {{ planificaciones_preparacion }} en preparación · {{ planificaciones_completadas }} completadas</small>
         </div>
         <div class="stat-card {% if facturas_vencidas > 0 %}danger{% endif %}">
             <div class="stat-label">Facturas pendientes</div>
@@ -132,7 +131,7 @@
     </div>
 
     <div class="quick-actions">
-        <a href="{% url 'planning:crear' %}" class="btn">Nueva Planificación</a>
+        <a href="{% url 'planning:crear' %}" class="btn">Nuevo menú</a>
         <a href="{% url 'planning:calendario' %}" class="btn">Ver Calendario</a>
         <a href="{% url 'kitchen:detalle_fecha' hoy|date:'Y-m-d' %}" class="btn">Detalle Cocina Hoy</a>
         <a href="{% url 'delivery:lista' %}?fecha={{ hoy|date:'Y-m-d' }}" class="btn">Rutas de Hoy</a>
@@ -143,20 +142,19 @@
 
     <div class="modules-grid">
         <div class="module-card">
-            <h3>Planificaciones de hoy</h3>
-            {% if planificaciones_hoy_lista %}
+            <h3>Menús de hoy</h3>
+            {% if menus_hoy_lista %}
                 <ul>
-                    {% for p in planificaciones_hoy_lista %}
+                    {% for m in menus_hoy_lista %}
                         <li>
-                            <strong>{{ p.contrato.cliente.nombre }}</strong><br>
-                            {{ p.dieta.nombre }} · {{ p.get_estado_display }}
+                            <strong>{{ m.fecha|date:"d/m" }}</strong> — {{ m.plan.nombre }}
                         </li>
                     {% endfor %}
                 </ul>
-                <a href="{% url 'planning:lista' %}?fecha={{ hoy|date:'Y-m-d' }}" class="btn">Ver todas</a>
+                <a href="{% url 'planning:lista' %}?fecha={{ hoy|date:'Y-m-d' }}" class="btn">Ver todos</a>
             {% else %}
-                <p style="color: #999;">No hay planificaciones para hoy.</p>
-                <a href="{% url 'planning:crear' %}" class="btn">Crear planificación</a>
+                <p style="color: #999;">No hay menús planificados para hoy.</p>
+                <a href="{% url 'planning:crear' %}?fecha={{ hoy|date:'Y-m-d' }}" class="btn">Crear menú</a>
             {% endif %}
         </div>
         <div class="module-card">
@@ -179,7 +177,7 @@
         <div class="module-card">
             <h3>Módulos del sistema</h3>
             <ul>
-                <li><a href="{% url 'planning:lista' %}">Planificación</a> — Dietas por fecha</li>
+                <li><a href="{% url 'planning:lista' %}">Planificación</a> — Menús por fecha y plan</li>
                 <li><a href="{% url 'kitchen:lista' %}">Cocina</a> — Detalle de preparación</li>
                 <li><a href="{% url 'delivery:lista' %}">Entregas</a> — Rutas de entrega</li>
                 <li><a href="{% url 'purchases:lista' %}">Compras</a> — Previsiones</li>

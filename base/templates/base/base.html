@@ -32,18 +32,20 @@
         .navbar-brand:hover { color: #689F38; }
         .navbar-nav {
             display: flex;
-            gap: 5px;
+            gap: 2px;
             list-style: none;
             margin: 0;
             padding: 0;
         }
+        .nav-item { position: relative; }
         .nav-link {
             display: block;
-            padding: 15px 16px;
+            padding: 15px 14px;
             color: #333;
             text-decoration: none;
             border-bottom: 3px solid transparent;
             transition: all 0.2s;
+            font-size: 0.95rem;
         }
         .nav-link:hover {
             color: #7CB342;
@@ -53,6 +55,57 @@
             color: #7CB342;
             font-weight: 600;
             border-bottom-color: #7CB342;
+        }
+        .nav-dropdown-toggle {
+            padding-right: 22px;
+        }
+        .nav-dropdown-toggle::after {
+            content: '';
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 5px solid transparent;
+            border-top-color: #666;
+        }
+        .nav-item:hover .nav-dropdown-toggle::after {
+            border-top-color: #7CB342;
+        }
+        .nav-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            min-width: 200px;
+            background: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-radius: 0 0 6px 6px;
+            border: 1px solid #e0e0e0;
+            border-top: 2px solid #7CB342;
+            list-style: none;
+            margin: 0;
+            padding: 6px 0;
+            z-index: 1000;
+        }
+        .nav-item:hover .nav-dropdown-menu {
+            display: block;
+        }
+        .nav-dropdown-menu a {
+            display: block;
+            padding: 10px 18px;
+            color: #333;
+            text-decoration: none;
+            font-size: 0.9rem;
+            border: none;
+        }
+        .nav-dropdown-menu a:hover {
+            background-color: #f0f7ed;
+            color: #7CB342;
+        }
+        .nav-dropdown-menu a.active {
+            background-color: #e8f5e9;
+            color: #689F38;
+            font-weight: 600;
         }
         .navbar-user {
             display: flex;
@@ -92,6 +145,134 @@
         }
         a { color: #7CB342; text-decoration: none; }
         a:hover { text-decoration: underline; }
+        /* Formularios e inputs no desbordan en móvil */
+        .container input,
+        .container select,
+        .container textarea,
+        .container button {
+            max-width: 100%;
+        }
+        /* Tablas responsivas: scroll horizontal en pantallas pequeñas */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 1rem 0;
+        }
+        .table-responsive table {
+            min-width: 600px;
+        }
+        /* Acciones y botones: wrap en móvil */
+        .actions, .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        .actions .btn, .btn-group .btn {
+            margin-right: 0;
+        }
+        /* Responsive: tablet y móvil */
+        @media (max-width: 992px) {
+            .navbar {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 0 12px;
+            }
+            .navbar-brand {
+                padding: 12px 0;
+                font-size: 1.1rem;
+            }
+            .navbar-nav {
+                flex-wrap: wrap;
+                gap: 0;
+                justify-content: flex-start;
+                border-top: 1px solid #eee;
+            }
+            .nav-item {
+                flex: 1 1 auto;
+            }
+            .nav-link {
+                padding: 10px 12px;
+                font-size: 0.9rem;
+            }
+            .nav-dropdown-menu {
+                min-width: 180px;
+            }
+            .navbar-user {
+                padding: 10px 0;
+                border-top: 1px solid #eee;
+                flex-wrap: wrap;
+            }
+            .main-content {
+                padding: 16px;
+            }
+            .container {
+                padding: 16px;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 12px;
+            }
+            .container {
+                padding: 12px;
+            }
+            h1 {
+                font-size: 1.35rem;
+            }
+            .table-responsive table {
+                min-width: 500px;
+                font-size: 0.9rem;
+            }
+            .table-responsive th,
+            .table-responsive td {
+                padding: 8px 6px;
+            }
+        }
+        @media (max-width: 480px) {
+            .navbar-nav {
+                flex-direction: column;
+            }
+            .nav-item {
+                width: 100%;
+            }
+            .nav-dropdown-toggle {
+                width: 100%;
+            }
+            .nav-dropdown-menu {
+                position: static;
+                display: none;
+                box-shadow: none;
+                border: none;
+                border-top: 1px solid #eee;
+                border-radius: 0;
+                padding-left: 12px;
+            }
+            .nav-item:hover .nav-dropdown-menu,
+            .nav-item:focus-within .nav-dropdown-menu {
+                display: block;
+            }
+            .main-content {
+                padding: 10px;
+            }
+            .container {
+                padding: 10px;
+            }
+            h1 {
+                font-size: 1.2rem;
+            }
+            .actions .btn, .btn-group .btn {
+                width: 100%;
+                text-align: center;
+                margin-bottom: 4px;
+            }
+            .table-responsive table {
+                min-width: 400px;
+            }
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -99,21 +280,39 @@
     <nav class="navbar no-print">
         <a href="{% url 'dashboard' %}" class="navbar-brand">{{ catering_name }}</a>
         <ul class="navbar-nav">
-            <li><a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/dashboard/' or request.path == '/' %}active{% endif %}">Dashboard</a></li>
-            <li><a href="{% url 'clients:lista' %}" class="nav-link {% if '/clients/' in request.path %}active{% endif %}">Clientes</a></li>
-            <li><a href="{% url 'contracts:lista' %}" class="nav-link {% if '/contracts/' in request.path %}active{% endif %}">Contratos</a></li>
-            <li><a href="{% url 'plans:lista' %}" class="nav-link {% if '/plans/' in request.path %}active{% endif %}">Planes</a></li>
-            <li><a href="{% url 'diets:lista' %}" class="nav-link {% if '/diets/' in request.path %}active{% endif %}">Dietas</a></li>
-            <li><a href="{% url 'recipes:lista' %}" class="nav-link {% if '/recipes/' in request.path and 'ingredientes' not in request.path %}active{% endif %}">Recetas</a></li>
-            <li><a href="{% url 'recipes:ingrediente_lista' %}" class="nav-link {% if 'ingredientes' in request.path %}active{% endif %}">Ingredientes</a></li>
-            <li><a href="{% url 'routes:entregador_lista' %}" class="nav-link {% if '/routes/' in request.path %}active{% endif %}">Entregadores</a></li>
-            <li><a href="{% url 'planning:lista' %}" class="nav-link {% if '/planning/' in request.path %}active{% endif %}">Planificación</a></li>
-            <li><a href="{% url 'kitchen:lista' %}" class="nav-link {% if '/kitchen/' in request.path %}active{% endif %}">Cocina</a></li>
-            <li><a href="{% url 'delivery:lista' %}" class="nav-link {% if '/delivery/' in request.path %}active{% endif %}">Entregas</a></li>
-            <li><a href="{% url 'purchases:lista' %}" class="nav-link {% if '/purchases/' in request.path %}active{% endif %}">Compras</a></li>
-            <li><a href="{% url 'billing:factura_lista' %}" class="nav-link {% if '/billing/' in request.path and 'dashboard' not in request.path %}active{% endif %}">Facturación</a></li>
-            <li><a href="{% url 'billing:dashboard' %}" class="nav-link {% if '/billing/dashboard/' in request.path %}active{% endif %}">Cobranza</a></li>
-            <li><a href="{% url 'admin:index' %}" class="nav-link" target="_blank">Admin</a></li>
+            <li class="nav-item">
+                <a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/dashboard/' or request.path == '/' %}active{% endif %}">Inicio</a>
+            </li>
+            <li class="nav-item nav-dropdown">
+                <span class="nav-link nav-dropdown-toggle {% if '/clients/' in request.path or '/contracts/' in request.path or '/plans/' in request.path or '/recipes/' in request.path or '/routes/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Catálogos</span>
+                <ul class="nav-dropdown-menu">
+                    <li><a href="{% url 'clients:lista' %}" class="{% if '/clients/' in request.path %}active{% endif %}">Clientes</a></li>
+                    <li><a href="{% url 'contracts:lista' %}" class="{% if '/contracts/' in request.path %}active{% endif %}">Contratos</a></li>
+                    <li><a href="{% url 'plans:lista' %}" class="{% if '/plans/' in request.path %}active{% endif %}">Planes</a></li>
+                    <li><a href="{% url 'recipes:lista' %}" class="{% if '/recipes/' in request.path and 'ingredientes' not in request.path %}active{% endif %}">Recetas</a></li>
+                    <li><a href="{% url 'recipes:ingrediente_lista' %}" class="{% if 'ingredientes' in request.path %}active{% endif %}">Ingredientes</a></li>
+                    <li><a href="{% url 'routes:entregador_lista' %}" class="{% if '/routes/' in request.path %}active{% endif %}">Entregadores</a></li>
+                </ul>
+            </li>
+            <li class="nav-item nav-dropdown">
+                <span class="nav-link nav-dropdown-toggle {% if '/planning/' in request.path or '/kitchen/' in request.path or '/delivery/' in request.path or '/purchases/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Producción</span>
+                <ul class="nav-dropdown-menu">
+                    <li><a href="{% url 'planning:lista' %}" class="{% if '/planning/' in request.path %}active{% endif %}">Planificación</a></li>
+                    <li><a href="{% url 'kitchen:lista' %}" class="{% if '/kitchen/' in request.path %}active{% endif %}">Cocina</a></li>
+                    <li><a href="{% url 'delivery:lista' %}" class="{% if '/delivery/' in request.path %}active{% endif %}">Entregas</a></li>
+                    <li><a href="{% url 'purchases:lista' %}" class="{% if '/purchases/' in request.path %}active{% endif %}">Compras</a></li>
+                </ul>
+            </li>
+            <li class="nav-item nav-dropdown">
+                <span class="nav-link nav-dropdown-toggle {% if '/billing/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Finanzas</span>
+                <ul class="nav-dropdown-menu">
+                    <li><a href="{% url 'billing:factura_lista' %}" class="{% if '/billing/' in request.path and 'dashboard' not in request.path %}active{% endif %}">Facturación</a></li>
+                    <li><a href="{% url 'billing:dashboard' %}" class="{% if '/billing/dashboard/' in request.path %}active{% endif %}">Cobranza</a></li>
+                </ul>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'admin:index' %}" class="nav-link" target="_blank">Admin</a>
+            </li>
         </ul>
         <div class="navbar-user">
             {% if user.is_authenticated %}

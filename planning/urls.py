@@ -4,10 +4,12 @@ from . import views
 app_name = 'planning'
 
 urlpatterns = [
-    path('', views.PlanificacionDietaListView.as_view(), name='lista'),
-    path('crear/', views.PlanificacionDietaCreateView.as_view(), name='crear'),
-    path('<int:pk>/editar/', views.PlanificacionDietaUpdateView.as_view(), name='editar'),
-    path('<int:pk>/eliminar/', views.PlanificacionDietaDeleteView.as_view(), name='eliminar'),
+    path('', views.PlanificacionMenuListView.as_view(), name='lista'),
+    path('resumen/', views.resumen_por_fecha, name='resumen'),
+    path('clientes-por-fecha/', views.clientes_reciben_fecha, name='clientes_por_fecha'),
+    path('crear/', views.PlanificacionMenuCreateView.as_view(), name='crear'),
+    path('<int:pk>/editar/', views.PlanificacionMenuUpdateView.as_view(), name='editar'),
+    path('<int:pk>/eliminar/', views.PlanificacionMenuDeleteView.as_view(), name='eliminar'),
     path('calendario/', views.calendario_planificacion, name='calendario'),
     path('calendario/<int:year>/<int:month>/', views.calendario_planificacion, name='calendario_mes'),
 ]

@@ -15,6 +15,7 @@
 <div class="container">
     <h1>Lista de Detalles de Cocina</h1>
     
+    <div class="table-responsive">
     <table>
         <thead>
             <tr>
@@ -27,7 +28,8 @@
                 <tr>
                     <td>{{ detalle.fecha|date:"d/m/Y" }}</td>
                     <td>
-                        <a href="{% url 'kitchen:detalle_fecha' detalle.fecha|date:'Y-m-d' %}">Ver Detalle</a>
+                        <a href="{% url 'kitchen:detalle_fecha' detalle.fecha|date:'Y-m-d' %}">Ver</a> |
+                        <a href="{% url 'kitchen:editar_notas' detalle.pk %}">Editar notas</a>
                     </td>
                 </tr>
             {% empty %}
@@ -37,5 +39,6 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endblock %}

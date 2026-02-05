@@ -12,15 +12,24 @@
     .btn { display: inline-block; padding: 10px 20px; background-color: #7CB342; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
     .btn:hover { background-color: #689F38; }
     .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
     .help-text { font-size: 12px; color: #666; margin-top: 4px; }
+    .recetas-section { margin-top: 30px; padding-top: 20px; border-top: 2px solid #7CB342; }
+    .recetas-section h2 { margin-bottom: 15px; }
+    .formset-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .formset-table th, .formset-table td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+    .formset-table th { background-color: #e8f5e9; }
+    .formset-table input, .formset-table select { width: 100%; padding: 6px; }
+    .formset-table .delete { width: 50px; text-align: center; }
+    .formset-table .orden-col { width: 80px; }
+    .btn-add-row { margin-top: 10px; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
     <h1>{% if object %}Editar{% else %}Nueva{% endif %} Dieta</h1>
-    <p class="help-text">Para asignar recetas a la dieta, edite desde el Admin o use la vista de detalle.</p>
-    
+
     <form method="post">
         {% csrf_token %}
         {% for field in form %}
@@ -31,10 +40,93 @@
                 {% if field.errors %}<div style="color: #c62828; font-size: 12px;">{{ field.errors }}</div>{% endif %}
             </div>
         {% endfor %}
-        <div>
+
+        {% if formset %}
+        <div class="recetas-section">
+            <h2>Comidas de la dieta (por momento del día)</h2>
+            <p class="help-text">Puede usar tantos momentos del día como necesite (Desayuno, Media mañana, Comida, Merienda, Cena) y añadir varias recetas por momento: bebidas, frutas, postres, etc. Ej.: Media mañana = té + galleta + cereal (3 filas con el mismo momento, orden 1, 2, 3). Use «Añadir otra fila» si necesita más.</p>
+            {{ formset.management_form }}
+            <table class="formset-table" id="formset-table">
+                <thead>
+                    <tr>
+                        <th>Momento / Tipo de comida</th>
+                        <th>Receta</th>
+                        <th class="orden-col">Orden</th>
+                        <th class="delete">Eliminar</th>
+                    </tr>
+                </thead>
+                <tbody id="formset-body">
+                    {% for f in formset %}
+                    <tr class="formset-row">
+                        <td>
+                            {{ f.tipo_comida }}
+                            {% if f.tipo_comida.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.tipo_comida.errors }}</div>{% endif %}
+                        </td>
+                        <td>
+                            {{ f.id }}
+                            {{ f.receta }}
+                            {% if f.receta.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.receta.errors }}</div>{% endif %}
+                        </td>
+                        <td>
+                            {{ f.orden }}
+                            {% if f.orden.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.orden.errors }}</div>{% endif %}
+                        </td>
+                        <td class="delete">
+                            {% if f.DELETE %}{{ f.DELETE }}{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button type="button" class="btn btn-add-row" id="add-row">+ Añadir otra fila (momento/receta)</button>
+        </div>
+        {% endif %}
+
+        <div style="margin-top: 25px;">
             <button type="submit" class="btn">Guardar</button>
             <a href="{% url 'diets:lista' %}" class="btn btn-secondary">Cancelar</a>
         </div>
     </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if formset %}
+<script>
+(function() {
+    var prefix = '{{ formset.prefix }}';
+    var tbody = document.getElementById('formset-body');
+    var addBtn = document.getElementById('add-row');
+    if (!tbody || !addBtn) return;
+    addBtn.addEventListener('click', function() {
+        var totalInput = document.getElementById('id_' + prefix + '-TOTAL_FORMS');
+        var total = parseInt(totalInput.value, 10);
+        var rows = tbody.querySelectorAll('.formset-row');
+        var lastRow = rows[rows.length - 1];
+        if (!lastRow) return;
+        var newRow = lastRow.cloneNode(true);
+        function replaceIndex(str, oldIdx, newIdx) {
+            if (!str) return str;
+            return String(str).split('-' + oldIdx + '-').join('-' + newIdx + '-')
+                .split('_' + oldIdx + '_').join('_' + newIdx + '_');
+        }
+        newRow.querySelectorAll('input, select').forEach(function(inp) {
+            if (inp.name) inp.name = replaceIndex(inp.name, total - 1, total);
+            if (inp.id) inp.id = replaceIndex(inp.id, total - 1, total);
+        });
+        newRow.querySelectorAll('label').forEach(function(lab) {
+            if (lab.htmlFor) lab.htmlFor = replaceIndex(lab.htmlFor, total - 1, total);
+        });
+        newRow.querySelectorAll('input[type="text"], input[type="number"]').forEach(function(el) {
+            el.value = el.name && el.name.indexOf('orden') !== -1 ? '1' : '';
+        });
+        newRow.querySelectorAll('select').forEach(function(el) { el.selectedIndex = 0; });
+        newRow.querySelectorAll('input[type="checkbox"]').forEach(function(el) { el.checked = false; });
+        newRow.querySelectorAll('[class*="errorlist"], [style*="c62828"]').forEach(function(el) { el.remove(); });
+        tbody.appendChild(newRow);
+        totalInput.value = total + 1;
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}

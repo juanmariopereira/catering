@@ -78,7 +78,7 @@
                         {% if planificaciones_dia %}
                             {% for planificacion in planificaciones_dia %}
                                 <div class="planificacion-item">
-                                    {{ planificacion.contrato.cliente.nombre }} - {{ planificacion.dieta.nombre }}
+                                    <a href="{% url 'planning:editar' planificacion.pk %}">{{ planificacion.plan.nombre }}</a>
                                 </div>
                             {% endfor %}
                         {% endif %}

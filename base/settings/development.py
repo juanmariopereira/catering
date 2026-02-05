@@ -64,7 +64,7 @@ LOGGING = {
         },
         'django.db.backends': {
             'handlers': ['console'],
-            'level': 'DEBUG',  # Ver queries SQL en desarrollo
+            'level': 'ERROR',  # Ver queries SQL en desarrollo
             'propagate': False,
         },
     },

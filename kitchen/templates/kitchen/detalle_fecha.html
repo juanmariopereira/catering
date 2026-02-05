@@ -7,8 +7,14 @@
     .fecha-navegacion {
         margin: 20px 0;
         display: flex;
+        flex-wrap: wrap;
         justify-content: space-between;
         align-items: center;
+        gap: 12px;
+    }
+    @media (max-width: 480px) {
+        .fecha-navegacion { flex-direction: column; }
+        .fecha-actual { order: -1; width: 100%; text-align: center; }
     }
     .fecha-navegacion a {
         padding: 8px 16px;
@@ -50,6 +56,17 @@
     }
     .ingredientes h3 { font-size: 16px; color: #333; margin-bottom: 10px; }
     .ingrediente-item { padding: 5px 0; color: #666; }
+    .clientes-raciones {
+        margin-top: 12px;
+        padding: 10px 14px;
+        background-color: #f0f7ed;
+        border-radius: 4px;
+        border-left: 3px solid #7CB342;
+    }
+    .clientes-raciones h4 { margin: 0 0 8px 0; font-size: 14px; color: #333; }
+    .cliente-item { padding: 4px 0; font-size: 0.95rem; }
+    .cliente-item.sustituta { color: #856404; font-weight: 600; }
+    .cliente-item.sustituta::before { content: "↳ "; }
     .notas {
         margin-top: 20px;
         padding: 15px;
@@ -74,6 +91,11 @@
         <a href="{% url 'kitchen:detalle_fecha' fecha_siguiente %}">Día Siguiente →</a>
     </div>
 
+    <p style="margin-bottom: 15px;">
+        <a href="{% url 'kitchen:editar_notas' detalle_cocina.pk %}" style="padding: 8px 16px; background-color: {{ brand_color }}; color: white; text-decoration: none; border-radius: 4px;">Editar notas para el cocinero</a>
+    </p>
+    <p style="color: #666; font-size: 0.95rem; margin-bottom: 20px;">Este reporte refleja las raciones por receta y las sustituciones definidas en planificación (platos diferentes por cliente). Así la producción sabe cuántos platos preparar y para qué cliente va cada variante.</p>
+
     {% if recetas_info %}
         <div class="recetas-lista">
             {% for item in recetas_info %}
@@ -88,6 +110,17 @@
                     
                     {% if item.receta.descripcion %}
                         <div class="receta-descripcion">{{ item.receta.descripcion }}</div>
+                    {% endif %}
+
+                    {% if item.planificaciones %}
+                    <div class="clientes-raciones">
+                        <h4>{{ item.cantidad }} {{ item.cantidad|pluralize:"ración,raciones" }} — Para:</h4>
+                        {% for p in item.planificaciones %}
+                        <div class="cliente-item {% if p.es_sustituta %}sustituta{% endif %}">
+                            {{ p.contrato.cliente.nombre }}{% if p.es_sustituta %} (plato diferente: en lugar de «{{ p.receta_original_nombre|default:'' }}»){% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
                     {% endif %}
 
                     <div class="ingredientes">
@@ -108,7 +141,11 @@
 
         {% if detalle_cocina.notas %}
             <div class="notas">
-                <strong>Notas:</strong> {{ detalle_cocina.notas }}
+                <strong>Notas para el cocinero:</strong> {{ detalle_cocina.notas }}
+            </div>
+        {% else %}
+            <div class="notas" style="background-color: #f5f5f5; border-left-color: #999;">
+                <strong>Notas:</strong> Sin notas. <a href="{% url 'kitchen:editar_notas' detalle_cocina.pk %}">Agregar notas</a>
             </div>
         {% endif %}
     {% else %}

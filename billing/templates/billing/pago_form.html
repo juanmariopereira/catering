@@ -71,7 +71,11 @@
         
         <div>
             <button type="submit" class="btn">Registrar Pago</button>
+            {% if object %}
+            <a href="{% url 'billing:factura_detalle' object.factura_id %}" class="btn btn-secondary">Cancelar</a>
+            {% else %}
             <a href="{% url 'billing:factura_lista' %}" class="btn btn-secondary">Cancelar</a>
+            {% endif %}
         </div>
     </form>
 </div>

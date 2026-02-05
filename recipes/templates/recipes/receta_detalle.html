@@ -1,0 +1,71 @@
+{% extends 'base/base.html' %}
+
+{% block title %}{{ receta.nombre }} - {{ catering_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .meta { color: #666; margin-bottom: 20px; }
+    .meta span { margin-right: 15px; }
+    .descripcion { margin: 20px 0; padding: 15px; background-color: #f9f9f9; border-radius: 4px; }
+    .ingredientes-section { margin-top: 25px; }
+    .ingredientes-section h2 { margin-bottom: 15px; border-bottom: 2px solid #7CB342; padding-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #7CB342; color: white; }
+    tr:hover { background-color: #f5f5f5; }
+    .actions { margin-top: 25px; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: #7CB342; color: white; text-decoration: none; border-radius: 4px; margin-right: 10px; }
+    .btn:hover { background-color: #689F38; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>{{ receta.nombre }}</h1>
+    <div class="meta">
+        <span><strong>Categoría:</strong> {{ receta.get_categoria_display }}</span>
+        <span><strong>Estado:</strong> {% if receta.activa %}Activa{% else %}Inactiva{% endif %}</span>
+    </div>
+
+    {% if receta.descripcion %}
+    <div class="descripcion">
+        <strong>Descripción:</strong><br>
+        {{ receta.descripcion }}
+    </div>
+    {% endif %}
+
+    <div class="ingredientes-section">
+        <h2>Ingredientes</h2>
+        <p>Cada ingrediente con su cantidad y unidad de medida:</p>
+        {% if receta.receta_ingredientes.all %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Ingrediente</th>
+                    <th>Cantidad</th>
+                    <th>Unidad de medida</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ri in receta.receta_ingredientes.all %}
+                <tr>
+                    <td>{{ ri.ingrediente.nombre }}</td>
+                    <td>{{ ri.cantidad }}</td>
+                    <td>{{ ri.unidad_medida }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color: #999;">Esta receta aún no tiene ingredientes. Edítala para agregar la lista de ingredientes y cantidades.</p>
+        {% endif %}
+    </div>
+
+    <div class="actions">
+        <a href="{% url 'recipes:editar' receta.pk %}" class="btn">Editar receta e ingredientes</a>
+        <a href="{% url 'recipes:lista' %}" class="btn btn-secondary">Volver a lista</a>
+    </div>
+</div>
+{% endblock %}

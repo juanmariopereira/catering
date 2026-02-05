@@ -119,7 +119,13 @@ class Contrato(models.Model):
         self.save()
 
     def esta_activo(self):
-        """Verifica si el contrato está activo"""
-        return self.estado == 'activo' and (
-            self.fecha_fin is None or self.fecha_fin >= timezone.now().date()
+        """Verifica si el contrato está activo (hoy)"""
+        return self.activo_en_fecha(timezone.now().date())
+
+    def activo_en_fecha(self, fecha):
+        """Verifica si el contrato estaba activo en una fecha dada (para planificación)"""
+        return (
+            self.estado == 'activo'
+            and self.fecha_inicio <= fecha
+            and (self.fecha_fin is None or self.fecha_fin >= fecha)
         )

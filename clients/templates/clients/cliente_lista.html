@@ -38,6 +38,7 @@
         </form>
     </div>
     
+    <div class="table-responsive">
     <table>
         <thead>
             <tr>
@@ -56,6 +57,7 @@
                     <td>{{ cliente.telefono }}</td>
                     <td><span class="badge badge-{% if cliente.activo %}activo{% else %}inactivo{% endif %}">{% if cliente.activo %}Activo{% else %}Inactivo{% endif %}</span></td>
                     <td>
+                        <a href="{% url 'clients:detalle' cliente.pk %}">Ver</a> |
                         <a href="{% url 'clients:editar' cliente.pk %}">Editar</a> |
                         <a href="{% url 'clients:eliminar' cliente.pk %}">Eliminar</a>
                     </td>
@@ -65,5 +67,6 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endblock %}

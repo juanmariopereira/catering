@@ -1,6 +1,8 @@
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views.generic import ListView, CreateView, UpdateView
-from django.urls import reverse_lazy
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
+from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Q, Sum, F
@@ -10,7 +12,7 @@ from .utils import obtener_facturas_vencidas
 from contracts.models import Contrato
 
 
-class FacturaListView(ListView):
+class FacturaListView(LoginRequiredMixin, ListView):
     """Vista para listar facturas"""
     model = Factura
     template_name = 'billing/factura_lista.html'
@@ -51,7 +53,7 @@ class FacturaListView(ListView):
         return queryset.order_by('-fecha_emision', '-numero_factura')
 
 
-class FacturaCreateView(CreateView):
+class FacturaCreateView(LoginRequiredMixin, CreateView):
     """Vista para crear una nueva factura"""
     model = Factura
     template_name = 'billing/factura_form.html'
@@ -68,12 +70,44 @@ class FacturaCreateView(CreateView):
         return context
 
 
-class PagoCreateView(CreateView):
+class FacturaDetailView(LoginRequiredMixin, DetailView):
+    model = Factura
+    template_name = 'billing/factura_detalle.html'
+    context_object_name = 'factura'
+
+
+class FacturaUpdateView(LoginRequiredMixin, UpdateView):
+    model = Factura
+    template_name = 'billing/factura_form.html'
+    fields = ['contrato', 'fecha_emision', 'fecha_vencimiento', 'monto', 'periodo_desde', 'periodo_hasta', 'notas']
+
+    def get_success_url(self):
+        return reverse('billing:factura_detalle', args=[self.object.pk])
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Factura actualizada exitosamente.')
+        return super().form_valid(form)
+
+
+class FacturaDeleteView(LoginRequiredMixin, DeleteView):
+    model = Factura
+    template_name = 'billing/factura_confirm_delete.html'
+    success_url = reverse_lazy('billing:factura_lista')
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Factura eliminada exitosamente.')
+        return super().form_valid(form)
+
+
+class PagoCreateView(LoginRequiredMixin, CreateView):
     """Vista para registrar un pago"""
     model = Pago
     template_name = 'billing/pago_form.html'
     fields = ['factura', 'fecha_pago', 'monto', 'metodo_pago', 'referencia', 'notas']
-    success_url = reverse_lazy('billing:factura_lista')
+
+    def get_success_url(self):
+        factura_id = self.object.factura_id
+        return reverse('billing:factura_detalle', args=[factura_id])
 
     def form_valid(self, form):
         pago = form.save()
@@ -88,6 +122,46 @@ class PagoCreateView(CreateView):
         return context
 
 
+class PagoListView(LoginRequiredMixin, ListView):
+    model = Pago
+    template_name = 'billing/pago_lista.html'
+    context_object_name = 'pagos'
+    paginate_by = 50
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('factura', 'factura__contrato__cliente')
+        factura_id = self.request.GET.get('factura')
+        if factura_id:
+            qs = qs.filter(factura_id=factura_id)
+        return qs.order_by('-fecha_pago', '-fecha_creacion')
+
+
+class PagoUpdateView(LoginRequiredMixin, UpdateView):
+    model = Pago
+    template_name = 'billing/pago_form.html'
+    fields = ['factura', 'fecha_pago', 'monto', 'metodo_pago', 'referencia', 'notas']
+
+    def get_success_url(self):
+        return reverse('billing:factura_detalle', args=[self.object.factura_id])
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Pago actualizado exitosamente.')
+        return super().form_valid(form)
+
+
+class PagoDeleteView(LoginRequiredMixin, DeleteView):
+    model = Pago
+    template_name = 'billing/pago_confirm_delete.html'
+
+    def get_success_url(self):
+        return reverse('billing:factura_detalle', args=[self.object.factura_id])
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Pago eliminado exitosamente.')
+        return super().form_valid(form)
+
+
+@login_required
 def dashboard_cobranza(request):
     """Dashboard de cobranza con estadísticas y alertas"""
     hoy = timezone.now().date()
@@ -132,6 +206,7 @@ def dashboard_cobranza(request):
     return render(request, 'billing/dashboard.html', context)
 
 
+@login_required
 def reporte_cobranza(request):
     """Vista para generar reportes de cobranza"""
     # Obtener parámetros de filtro

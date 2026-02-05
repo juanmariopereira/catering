@@ -24,38 +24,8 @@ class DetalleCocina(models.Model):
     def obtener_recetas_por_fecha(cls, fecha):
         """
         Obtiene todas las recetas a preparar para una fecha específica,
-        agrupadas por receta con la cantidad total
+        agrupadas por receta con la cantidad total.
+        Usa PlanificacionMenu (fecha + plan) y PlanificacionClienteSustituta.
         """
-        from planning.models import PlanificacionDieta
-        from diets.models import DietaReceta
-        from collections import defaultdict
-
-        # Obtener todas las planificaciones para esta fecha
-        planificaciones = PlanificacionDieta.objects.filter(
-            fecha=fecha,
-            estado__in=['pendiente', 'en_preparacion']
-        )
-
-        # Agrupar recetas y contar cantidad
-        recetas_dict = defaultdict(int)
-        recetas_info = {}
-
-        for planificacion in planificaciones:
-            # Obtener recetas de la dieta
-            dieta_recetas = DietaReceta.objects.filter(dieta=planificacion.dieta)
-            
-            for dieta_receta in dieta_recetas:
-                receta = dieta_receta.receta
-                recetas_dict[receta.id] += 1
-                
-                if receta.id not in recetas_info:
-                    recetas_info[receta.id] = {
-                        'receta': receta,
-                        'cantidad': 0,
-                        'planificaciones': []
-                    }
-                
-                recetas_info[receta.id]['cantidad'] = recetas_dict[receta.id]
-                recetas_info[receta.id]['planificaciones'].append(planificacion)
-
-        return list(recetas_info.values())
+        from planning.utils import recetas_a_preparar_por_fecha
+        return recetas_a_preparar_por_fecha(fecha)

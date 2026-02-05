@@ -2,17 +2,44 @@ from django.db import models
 from django.core.validators import MinValueValidator
 
 
-class Dieta(models.Model):
-    """Modelo para gestionar dietas (conjuntos de recetas)"""
-    nombre = models.CharField(max_length=200, verbose_name="Nombre")
-    descripcion = models.TextField(blank=True, null=True, verbose_name="Descripción")
-    plan = models.ForeignKey(
-        'plans.Plan',
-        on_delete=models.SET_NULL,
+class TipoComida(models.Model):
+    """
+    Momento del día en que se consume una comida (desayuno, media mañana, comida, etc.).
+    Cada merienda/comida puede tener varias recetas (ej. media mañana = té + galleta + cereal).
+    """
+    nombre = models.CharField(max_length=80, unique=True, verbose_name="Nombre")
+    orden = models.PositiveIntegerField(
+        default=1,
+        validators=[MinValueValidator(1)],
+        verbose_name="Orden",
+        help_text="Orden del momento en el día (1 = desayuno, 2 = media mañana, ...)"
+    )
+    descripcion = models.CharField(
+        max_length=200,
         blank=True,
         null=True,
+        verbose_name="Descripción"
+    )
+
+    class Meta:
+        verbose_name = "Tipo de comida / Momento"
+        verbose_name_plural = "Tipos de comida / Momentos"
+        ordering = ['orden', 'nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
+class Dieta(models.Model):
+    """Modelo para gestionar dietas (conjuntos de recetas). Una dieta puede asociarse a varios planes."""
+    nombre = models.CharField(max_length=200, verbose_name="Nombre")
+    descripcion = models.TextField(blank=True, null=True, verbose_name="Descripción")
+    planes = models.ManyToManyField(
+        'plans.Plan',
         related_name='dietas',
-        verbose_name="Plan asociado"
+        blank=True,
+        verbose_name="Planes asociados",
+        help_text="Planes para los que puede usarse esta dieta (ej. Calórico, Adelgazamiento)"
     )
     activa = models.BooleanField(default=True, verbose_name="Activa")
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
@@ -35,12 +62,21 @@ class Dieta(models.Model):
 
 
 class DietaReceta(models.Model):
-    """Modelo intermedio para la relación many-to-many entre Dieta y Receta con orden"""
+    """
+    Receta asignada a una dieta en un momento del día (comida).
+    Cada momento puede tener varias recetas (ej. media mañana = té + galleta + cereal).
+    """
     dieta = models.ForeignKey(
         Dieta,
         on_delete=models.CASCADE,
         related_name='dieta_recetas',
         verbose_name="Dieta"
+    )
+    tipo_comida = models.ForeignKey(
+        TipoComida,
+        on_delete=models.PROTECT,
+        related_name='dieta_recetas',
+        verbose_name="Momento / Tipo de comida"
     )
     receta = models.ForeignKey(
         'recipes.Receta',
@@ -52,14 +88,14 @@ class DietaReceta(models.Model):
         default=1,
         validators=[MinValueValidator(1)],
         verbose_name="Orden",
-        help_text="Orden de la receta en la dieta (para secuencia de días)"
+        help_text="Orden de la receta dentro de ese momento (ej. 1º té, 2º galleta, 3º cereal)"
     )
 
     class Meta:
         verbose_name = "Receta de Dieta"
         verbose_name_plural = "Recetas de Dietas"
-        unique_together = ['dieta', 'receta']
-        ordering = ['dieta', 'orden', 'receta']
+        unique_together = ['dieta', 'tipo_comida', 'receta']
+        ordering = ['dieta', 'tipo_comida', 'orden', 'receta']
 
     def __str__(self):
-        return f"{self.dieta.nombre} - {self.receta.nombre} (Orden: {self.orden})"
+        return f"{self.dieta.nombre} - {self.tipo_comida.nombre}: {self.receta.nombre} (#{self.orden})"

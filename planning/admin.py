@@ -1,6 +1,33 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import PlanificacionDieta
+from .models import (
+    PlanificacionMenu,
+    PlanificacionMenuReceta,
+    PlanificacionClienteSustituta,
+    PlanificacionDieta,
+)
+
+
+class PlanificacionMenuRecetaInline(admin.TabularInline):
+    model = PlanificacionMenuReceta
+    extra = 2
+    autocomplete_fields = ['receta']
+    raw_id_fields = ['tipo_comida']
+
+
+@admin.register(PlanificacionMenu)
+class PlanificacionMenuAdmin(admin.ModelAdmin):
+    list_display = ['fecha', 'plan', 'fecha_creacion']
+    list_filter = ['fecha', 'plan']
+    date_hierarchy = 'fecha'
+    inlines = [PlanificacionMenuRecetaInline]
+    readonly_fields = ['fecha_creacion', 'fecha_actualizacion']
+
+
+@admin.register(PlanificacionClienteSustituta)
+class PlanificacionClienteSustitutaAdmin(admin.ModelAdmin):
+    list_display = ['fecha', 'contrato', 'tipo_comida', 'receta_original', 'receta_sustituta']
+    list_filter = ['fecha', 'tipo_comida']
 
 
 @admin.register(PlanificacionDieta)

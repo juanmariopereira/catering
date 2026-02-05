@@ -14,6 +14,14 @@
     .btn-secondary { background-color: #6c757d; }
     .btn-secondary:hover { background-color: #5a6268; }
     .help-text { font-size: 12px; color: #666; margin-top: 4px; }
+    .ingredientes-section { margin-top: 30px; padding-top: 20px; border-top: 2px solid #7CB342; }
+    .ingredientes-section h2 { margin-bottom: 15px; }
+    .formset-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .formset-table th, .formset-table td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+    .formset-table th { background-color: #e8f5e9; }
+    .formset-table input, .formset-table select, .formset-table textarea { width: 100%; padding: 6px; }
+    .formset-table .delete { width: 50px; text-align: center; }
+    .formset-table textarea { min-height: 50px; }
 </style>
 {% endblock %}
 
@@ -31,8 +39,47 @@
                 {% if field.errors %}<div style="color: #c62828; font-size: 12px;">{{ field.errors }}</div>{% endif %}
             </div>
         {% endfor %}
-        <div>
+
+        {% if formset %}
+        <div class="ingredientes-section">
+            <h2>Ingredientes que no le gustan</h2>
+            <p class="help-text">Agregue ingredientes que el cliente no debe recibir. Opcional: motivo. Marque "Eliminar" para quitar.</p>
+            {{ formset.management_form }}
+            <table class="formset-table">
+                <thead>
+                    <tr>
+                        <th>Ingrediente</th>
+                        <th>Motivo (opcional)</th>
+                        <th class="delete">Eliminar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in formset %}
+                    <tr>
+                        <td>
+                            {{ f.id }}
+                            {{ f.ingrediente }}
+                            {% if f.ingrediente.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.ingrediente.errors }}</div>{% endif %}
+                        </td>
+                        <td>
+                            {{ f.motivo }}
+                            {% if f.motivo.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.motivo.errors }}</div>{% endif %}
+                        </td>
+                        <td class="delete">
+                            {% if f.DELETE %}{{ f.DELETE }}{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <div style="margin-top: 25px;">
             <button type="submit" class="btn">Guardar</button>
+            {% if object %}
+            <a href="{% url 'clients:detalle' object.pk %}" class="btn btn-secondary">Ver detalle</a>
+            {% endif %}
             <a href="{% url 'clients:lista' %}" class="btn btn-secondary">Cancelar</a>
         </div>
     </form>

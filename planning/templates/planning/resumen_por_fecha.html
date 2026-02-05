@@ -1,0 +1,101 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Resumen por fecha - {{ catering_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .fecha-navegacion { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .fecha-navegacion a { padding: 8px 16px; background-color: {{ brand_color }}; color: white; text-decoration: none; border-radius: 4px; }
+    .fecha-navegacion a:hover { background-color: {{ brand_color_hover }}; }
+    .fecha-actual { font-size: 1.2rem; font-weight: bold; }
+    .resumen-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    .resumen-table th, .resumen-table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    .resumen-table th { background-color: {{ brand_color }}; color: white; }
+    .resumen-table tr:hover { background-color: #f5f5f5; }
+    .cantidad { font-weight: bold; }
+    .clientes-lista { font-size: 0.9rem; color: #555; margin-top: 4px; }
+    .dietas-lista { font-size: 0.85rem; color: #666; margin-top: 4px; }
+    .actions { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border-radius: 4px; }
+    .btn:hover { background-color: {{ brand_color_hover }}; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Planificación del día</h1>
+    <p>Punto de partida para quien planifica las comidas: vea cuántos clientes hay por plan, cree o edite los menús y revise avisos (ingredientes no deseados). Así facilita la producción en cocina y tiene el contexto de los contratos activos.</p>
+
+    <div class="fecha-navegacion">
+        <a href="{% url 'planning:resumen' %}?fecha={{ fecha_anterior|date:'Y-m-d' }}">← Día anterior</a>
+        <span class="fecha-actual">{{ fecha|date:"l, d F Y" }}</span>
+        <a href="{% url 'planning:resumen' %}?fecha={{ fecha_siguiente|date:'Y-m-d' }}">Día siguiente →</a>
+        <form method="get" style="display: flex; gap: 8px; align-items: center;">
+            <label for="fecha">Ir a fecha:</label>
+            <input type="date" name="fecha" id="fecha" value="{{ fecha|date:'Y-m-d' }}">
+            <button type="submit" class="btn">Ver</button>
+        </form>
+    </div>
+
+    <div class="resumen-rapido" style="display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; padding: 16px; background: #f0f7ed; border-radius: 8px; border-left: 4px solid #7CB342;">
+        <span><strong>{{ total_clientes }}</strong> clientes reciben menú</span>
+        <span><strong>{{ menus_creados }}</strong> menús definidos</span>
+        {% if avisos_pendientes > 0 %}
+        <span style="color: #856404;"><strong>{{ avisos_pendientes }}</strong> avisos (ingredientes no deseados) — <a href="{% url 'planning:clientes_por_fecha' %}?fecha={{ fecha|date:'Y-m-d' }}">revisar</a></span>
+        {% else %}
+        <span style="color: #2e7d32;">Sin avisos pendientes</span>
+        {% endif %}
+    </div>
+
+    <div class="actions">
+        <a href="{% url 'planning:clientes_por_fecha' %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn">Lista de clientes que reciben</a>
+        <a href="{% url 'planning:lista' %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn">Ver menús de esta fecha</a>
+        <a href="{% url 'planning:crear' %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn">Nuevo menú</a>
+        <a href="{% url 'kitchen:detalle_fecha' fecha|date:'Y-m-d' %}" class="btn btn-secondary">Reporte cocina</a>
+        <a href="{% url 'planning:lista' %}" class="btn btn-secondary">Lista de menús</a>
+    </div>
+
+    <div class="table-responsive">
+    <table class="resumen-table" style="min-width: 600px;">
+        <thead>
+            <tr>
+                <th>Plan</th>
+                <th>Cantidad de clientes</th>
+                <th>Clientes</th>
+                <th>Menú</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in resumen %}
+            <tr>
+                <td>{{ r.plan.nombre }}</td>
+                <td class="cantidad">{{ r.cantidad }}</td>
+                <td>
+                    {% if r.contratos %}
+                    <div class="clientes-lista">
+                        {% for c in r.contratos %}
+                        {{ c.cliente.nombre }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+                <td>
+                    {% if r.planificacion_menu %}
+                    <a href="{% url 'planning:editar' r.planificacion_menu.pk %}">Editar menú</a>
+                    {% else %}
+                    <a href="{% url 'planning:crear' %}?fecha={{ fecha|date:'Y-m-d' }}&plan={{ r.plan.id }}">Crear menú</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">No hay planes activos.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

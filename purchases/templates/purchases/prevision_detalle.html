@@ -27,9 +27,11 @@
     <h1>Previsión de Compra</h1>
     
     <div class="actions">
+        <a href="{% url 'purchases:lista' %}" class="btn">← Previsiones</a>
+        <a href="{% url 'purchases:editar' prevision.pk %}" class="btn">Editar</a>
         <a href="{% url 'purchases:exportar_excel' prevision.id %}" class="btn">Exportar a Excel</a>
         <a href="{% url 'purchases:exportar_pdf' prevision.id %}" class="btn">Exportar a PDF</a>
-        <a href="{% url 'purchases:lista' %}" class="btn">Volver</a>
+        <a href="{% url 'purchases:eliminar' prevision.pk %}" class="btn" style="background-color:#F44336;">Eliminar</a>
     </div>
     
     <p><strong>Período:</strong> {{ prevision.fecha_desde|date:"d/m/Y" }} - {{ prevision.fecha_hasta|date:"d/m/Y" }}</p>
@@ -39,6 +41,7 @@
         <p><strong>Notas:</strong> {{ prevision.notas }}</p>
     {% endif %}
     
+    <div class="table-responsive">
     <table>
         <thead>
             <tr>
@@ -61,5 +64,6 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endblock %}

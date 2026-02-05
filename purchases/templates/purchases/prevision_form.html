@@ -1,6 +1,6 @@
 {% extends 'base/base.html' %}
 
-{% block title %}Nueva Previsión de Compra - {{ catering_name }}{% endblock %}
+{% block title %}{% if object %}Editar{% else %}Nueva{% endif %} Previsión de Compra - {{ catering_name }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -34,7 +34,7 @@
 
 {% block content %}
 <div class="container">
-    <h1>Nueva Previsión de Compra</h1>
+    <h1>{% if object %}Editar{% else %}Nueva{% endif %} Previsión de Compra</h1>
     
     <form method="post">
         {% csrf_token %}
@@ -55,8 +55,12 @@
         </div>
         
         <div>
-            <button type="submit" class="btn">Crear Previsión</button>
+            <button type="submit" class="btn">{% if object %}Guardar{% else %}Crear Previsión{% endif %}</button>
+            {% if object %}
+            <a href="{% url 'purchases:detalle' object.pk %}" class="btn btn-secondary">Cancelar</a>
+            {% else %}
             <a href="{% url 'purchases:lista' %}" class="btn btn-secondary">Cancelar</a>
+            {% endif %}
         </div>
     </form>
 </div>

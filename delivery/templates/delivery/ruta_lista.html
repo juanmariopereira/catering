@@ -14,7 +14,12 @@
 {% block content %}
 <div class="container">
     <h1>Lista de Rutas de Entrega</h1>
-    
+
+    <div style="margin-bottom: 20px;">
+        <a href="{% url 'delivery:ruta_crear' %}" style="display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border-radius: 4px;">Nueva Ruta</a>
+    </div>
+
+    <div class="table-responsive">
     <table>
         <thead>
             <tr>
@@ -33,7 +38,9 @@
                     <td>{{ ruta.ruta_clientes.count }}</td>
                     <td>{% if ruta.activa %}Activa{% else %}Inactiva{% endif %}</td>
                     <td>
-                        <a href="{% url 'delivery:ruta_imprimible' ruta.id %}">Ver Ruta</a>
+                        <a href="{% url 'delivery:ruta_imprimible' ruta.id %}">Imprimir</a> |
+                        <a href="{% url 'delivery:ruta_editar' ruta.id %}">Editar</a> |
+                        <a href="{% url 'delivery:ruta_eliminar' ruta.id %}">Eliminar</a>
                     </td>
                 </tr>
             {% empty %}
@@ -43,5 +50,6 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endblock %}

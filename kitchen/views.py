@@ -1,11 +1,15 @@
 from django.shortcuts import render, get_object_or_404
-from django.views.generic import ListView, DetailView
+from django.views.generic import ListView, UpdateView
+from django.urls import reverse
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.utils import timezone
 from datetime import date, timedelta
 from .models import DetalleCocina
 
 
-class DetalleCocinaListView(ListView):
+class DetalleCocinaListView(LoginRequiredMixin, ListView):
     """Vista para listar detalles de cocina por fecha"""
     model = DetalleCocina
     template_name = 'kitchen/detalle_lista.html'
@@ -27,6 +31,23 @@ class DetalleCocinaListView(ListView):
         return queryset.order_by('-fecha')
 
 
+class DetalleCocinaUpdateView(LoginRequiredMixin, UpdateView):
+    """Vista para editar solo las notas del detalle de cocina."""
+    model = DetalleCocina
+    template_name = 'kitchen/detalle_cocina_form.html'
+    fields = ['notas']
+    context_object_name = 'detalle_cocina'
+
+    def get_success_url(self):
+        fecha_str = self.object.fecha.strftime('%Y-%m-%d')
+        return reverse('kitchen:detalle_fecha', args=[fecha_str])
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Notas guardadas.')
+        return super().form_valid(form)
+
+
+@login_required
 def detalle_cocina_fecha(request, fecha_str=None):
     """
     Vista para mostrar el detalle de platos a elaborar en una fecha específica

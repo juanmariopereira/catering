@@ -45,6 +45,7 @@
         </form>
     </div>
     
+    <div class="table-responsive">
     <table>
         <thead>
             <tr>
@@ -63,6 +64,7 @@
                     <td>{{ receta.receta_ingredientes.count }}</td>
                     <td><span class="badge badge-{% if receta.activa %}activa{% else %}inactiva{% endif %}">{% if receta.activa %}Activa{% else %}Inactiva{% endif %}</span></td>
                     <td>
+                        <a href="{% url 'recipes:detalle' receta.pk %}">Ver</a> |
                         <a href="{% url 'recipes:editar' receta.pk %}">Editar</a> |
                         <a href="{% url 'recipes:eliminar' receta.pk %}">Eliminar</a>
                     </td>
@@ -72,5 +74,6 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endblock %}

@@ -1,0 +1,36 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Editar notas - {{ detalle_cocina.fecha }} - {{ catering_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    form { margin-top: 20px; }
+    .form-group { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+    textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; min-height: 120px; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    .btn:hover { background-color: {{ brand_color_hover }}; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Notas para el cocinero</h1>
+    <p><strong>Fecha:</strong> {{ detalle_cocina.fecha|date:"d/m/Y" }}</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="{{ form.notas.id_for_label }}">{{ form.notas.label }}</label>
+            {{ form.notas }}
+            {% if form.notas.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.notas.errors }}</div>{% endif %}
+        </div>
+        <div>
+            <button type="submit" class="btn">Guardar</button>
+            <a href="{% url 'kitchen:detalle_fecha' detalle_cocina.fecha|date:'Y-m-d' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

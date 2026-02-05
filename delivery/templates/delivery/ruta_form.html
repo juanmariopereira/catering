@@ -1,0 +1,86 @@
+{% extends 'base/base.html' %}
+
+{% block title %}{% if object %}Editar{% else %}Nueva{% endif %} Ruta - {{ catering_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    form { margin-top: 20px; }
+    .form-group { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+    input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+    textarea { min-height: 80px; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    .btn:hover { background-color: {{ brand_color_hover }}; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    .clientes-section { margin-top: 30px; padding-top: 20px; border-top: 2px solid {{ brand_color }}; }
+    .clientes-section h2 { margin-bottom: 15px; }
+    .formset-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .formset-table th, .formset-table td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+    .formset-table th { background-color: #e8f5e9; }
+    .formset-table input, .formset-table select { width: 100%; padding: 6px; }
+    .formset-table .delete { width: 50px; text-align: center; }
+    .formset-table .delete input { width: auto; }
+    .orden-col { width: 100px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>{% if object %}Editar{% else %}Nueva{% endif %} Ruta de Entrega</h1>
+
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div style="color: #c62828; font-size: 12px;">{{ field.errors }}</div>{% endif %}
+            </div>
+        {% endfor %}
+
+        {% if formset %}
+        <div class="clientes-section">
+            <h2>Clientes en la ruta (orden de entrega)</h2>
+            <p>Seleccione el contrato y el orden de entrega (1, 2, 3...). Marque "Eliminar" para quitar un cliente de la ruta.</p>
+            {{ formset.management_form }}
+            <table class="formset-table">
+                <thead>
+                    <tr>
+                        <th>Contrato (Cliente)</th>
+                        <th class="orden-col">Orden</th>
+                        <th class="delete">Eliminar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in formset %}
+                    <tr class="formset-row">
+                        <td>
+                            {{ f.id }}
+                            {{ f.contrato }}
+                            {% if f.contrato.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.contrato.errors }}</div>{% endif %}
+                        </td>
+                        <td>
+                            {{ f.orden_entrega }}
+                            {% if f.orden_entrega.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.orden_entrega.errors }}</div>{% endif %}
+                        </td>
+                        <td class="delete">
+                            {% if f.DELETE %}{{ f.DELETE }}{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <div style="margin-top: 25px;">
+            <button type="submit" class="btn">Guardar</button>
+            {% if object %}
+                <a href="{% url 'delivery:ruta_imprimible' object.pk %}" class="btn btn-secondary">Ver imprimible</a>
+            {% endif %}
+            <a href="{% url 'delivery:lista' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

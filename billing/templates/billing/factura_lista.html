@@ -42,6 +42,7 @@
         <a href="{% url 'billing:reporte' %}" class="btn">Reporte</a>
     </div>
     
+    <div class="table-responsive">
     <table>
         <thead>
             <tr>
@@ -57,7 +58,7 @@
         <tbody>
             {% for factura in facturas %}
                 <tr>
-                    <td>{{ factura.numero_factura }}</td>
+                    <td><a href="{% url 'billing:factura_detalle' factura.pk %}">{{ factura.numero_factura }}</a></td>
                     <td>{{ factura.contrato.cliente.nombre }}</td>
                     <td>{{ factura.fecha_emision|date:"d/m/Y" }}</td>
                     <td>{{ factura.fecha_vencimiento|date:"d/m/Y" }}</td>
@@ -68,6 +69,7 @@
                         </span>
                     </td>
                     <td>
+                        <a href="{% url 'billing:factura_detalle' factura.pk %}">Ver</a>
                         <a href="{% url 'billing:pago_crear' %}?factura={{ factura.id }}">Pagar</a>
                     </td>
                 </tr>
@@ -78,5 +80,6 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endblock %}
