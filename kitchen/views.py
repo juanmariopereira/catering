@@ -40,6 +40,7 @@ class DetalleCocinaListView(LoginRequiredMixin, ListView):
         if 'page' in get_copy:
             get_copy.pop('page')
         context['query_string'] = get_copy.urlencode()
+        context['hoy'] = timezone.now().date()
         return context
 
 

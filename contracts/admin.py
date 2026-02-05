@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Contrato, PausaContrato, q_filtro_estado
+from .models import Contrato, PausaContrato, ExtensionVigencia, q_filtro_estado
 
 
 class EstadoContratoListFilter(admin.SimpleListFilter):
@@ -108,4 +108,14 @@ class PausaContratoAdmin(admin.ModelAdmin):
     list_filter = ['fecha_inicio', 'fecha_fin']
     search_fields = ['contrato__cliente__nombre', 'motivo']
     date_hierarchy = 'fecha_inicio'
+    autocomplete_fields = ['contrato']
+
+
+@admin.register(ExtensionVigencia)
+class ExtensionVigenciaAdmin(admin.ModelAdmin):
+    list_display = ['contrato', 'dias_agregados', 'motivo', 'fecha_extension']
+    list_filter = ['fecha_extension']
+    search_fields = ['contrato__cliente__nombre', 'motivo']
+    date_hierarchy = 'fecha_extension'
+    readonly_fields = ['fecha_extension']
     autocomplete_fields = ['contrato']

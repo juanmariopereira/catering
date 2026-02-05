@@ -3,7 +3,7 @@ from datetime import date, timedelta
 
 from django import forms
 
-from .models import Contrato, PausaContrato
+from .models import Contrato, PausaContrato, ExtensionVigencia
 
 
 # Días laborables por defecto (lunes a viernes)
@@ -104,3 +104,24 @@ class ContratoForm(forms.ModelForm):
             if fecha_fin:
                 cleaned['fecha_fin'] = fecha_fin
         return cleaned
+
+
+class DiasExtraForm(forms.ModelForm):
+    """Formulario para dar días extra de catering (extender vigencia del contrato y cobro)."""
+    class Meta:
+        model = ExtensionVigencia
+        fields = ['dias_agregados', 'motivo']
+        widgets = {
+            'dias_agregados': forms.NumberInput(attrs={'min': 1, 'max': 365, 'placeholder': 'Ej. 7'}),
+            'motivo': forms.TextInput(attrs={'placeholder': 'Ej. cortesía, compensación por demora...'}),
+        }
+        help_texts = {
+            'dias_agregados': 'Número de días que se agregan a la vigencia del contrato y al último cobro.',
+            'motivo': 'Razón de la extensión (obligatorio para registro).',
+        }
+
+    def clean_dias_agregados(self):
+        val = self.cleaned_data.get('dias_agregados')
+        if val is not None and (val < 1 or val > 365):
+            raise forms.ValidationError('Debe ser entre 1 y 365 días.')
+        return val

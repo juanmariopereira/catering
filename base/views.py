@@ -21,6 +21,7 @@ from purchases.models import PrevisionCompra
 from clients.models import Cliente
 from contracts.models import Contrato, q_filtro_estado
 from recipes.models import Receta
+from delivery.utils import contratos_con_entrega_en_fecha
 
 
 @login_required
@@ -54,12 +55,23 @@ def dashboard(request):
     clientes_activos = Cliente.objects.filter(activo=True).count()
     contratos_activos = Contrato.objects.filter(q_filtro_estado('activo')).count()
 
-    # Menús planificados próxima semana
-    proxima_semana = hoy + timedelta(days=7)
-    planificaciones_proxima_semana = PlanificacionMenu.objects.filter(
-        fecha__gte=hoy,
-        fecha__lte=proxima_semana,
-    ).count()
+    # Días futuros a partir de la fecha actual (próximos 60) con menú para todos los planes que tienen entrega ese día
+    # Solo se consideran fechas >= hoy; se cuenta cada día donde todos los planes con entrega tienen menú
+    dias_menu_completo = 0
+    d = hoy
+    max_dias = 60
+    while (d - hoy).days < max_dias:
+        planes_con_entrega = set(
+            contratos_con_entrega_en_fecha(d).values_list('plan_id', flat=True).distinct()
+        )
+        if planes_con_entrega:
+            menus_plan_ids = set(
+                PlanificacionMenu.objects.filter(fecha=d, plan_id__in=planes_con_entrega)
+                .values_list('plan_id', flat=True)
+            )
+            if planes_con_entrega <= menus_plan_ids:
+                dias_menu_completo += 1
+        d += timedelta(days=1)
 
     # Entregas (paradas) del día
     total_entregas_hoy = RutaCliente.objects.filter(ruta__fecha=hoy).count()
@@ -85,7 +97,7 @@ def dashboard(request):
         'previsiones_recientes': previsiones_recientes,
         'clientes_activos': clientes_activos,
         'contratos_activos': contratos_activos,
-        'planificaciones_proxima_semana': planificaciones_proxima_semana,
+        'dias_menu_completo': dias_menu_completo,
         'menus_hoy_lista': menus_hoy.select_related('plan')[:5],
         'total_entregas_hoy': total_entregas_hoy,
         'recetas_activas': recetas_activas,

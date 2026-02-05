@@ -1,4 +1,5 @@
 {% extends 'base/base.html' %}
+{% load prevision_filters %}
 
 {% block title %}Dashboard - {{ catering_name }}{% endblock %}
 
@@ -107,44 +108,44 @@
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-label">Menús planificados hoy</div>
-            <div class="stat-value">{{ total_planificaciones_hoy }}</div>
+            <div class="stat-value">{{ total_planificaciones_hoy|separador_miles }}</div>
         </div>
         <div class="stat-card {% if cobros_vencidos > 0 %}danger{% endif %}">
             <div class="stat-label">Cobros pendientes</div>
-            <div class="stat-value">{{ cobros_pendientes }}</div>
-            {% if cobros_vencidos > 0 %}<small style="color: #c62828;">{{ cobros_vencidos }} vencidos</small>{% endif %}
+            <div class="stat-value">{{ cobros_pendientes|separador_miles }}</div>
+            {% if cobros_vencidos > 0 %}<small style="color: #c62828;">{{ cobros_vencidos|separador_miles }} vencidos</small>{% endif %}
         </div>
         <div class="stat-card">
             <div class="stat-label">Monto por cobrar</div>
-            <div class="stat-value">Bs. {{ monto_pendiente|floatformat:0 }}</div>
+            <div class="stat-value">Bs. {{ monto_pendiente|separador_miles:0 }}</div>
+        </div>
+        <div class="stat-card warning">
+            <div class="stat-label">Días futuros con menú para todos los planes (a partir de hoy)</div>
+            <div class="stat-value">{{ dias_menu_completo|separador_miles }}</div>
         </div>
         <div class="stat-card">
             <div class="stat-label">Rutas del día</div>
-            <div class="stat-value">{{ total_rutas_hoy }}</div>
+            <div class="stat-value">{{ total_rutas_hoy|separador_miles }}</div>
         </div>
         <div class="stat-card info">
             <div class="stat-label">Clientes activos</div>
-            <div class="stat-value">{{ clientes_activos }}</div>
+            <div class="stat-value">{{ clientes_activos|separador_miles }}</div>
         </div>
         <div class="stat-card info">
             <div class="stat-label">Contratos activos</div>
-            <div class="stat-value">{{ contratos_activos }}</div>
-        </div>
-        <div class="stat-card warning">
-            <div class="stat-label">Planif. próxima semana</div>
-            <div class="stat-value">{{ planificaciones_proxima_semana }}</div>
+            <div class="stat-value">{{ contratos_activos|separador_miles }}</div>
         </div>
         <div class="stat-card info">
             <div class="stat-label">Entregas hoy</div>
-            <div class="stat-value">{{ total_entregas_hoy }}</div>
+            <div class="stat-value">{{ total_entregas_hoy|separador_miles }}</div>
         </div>
         <div class="stat-card">
             <div class="stat-label">Recetas activas</div>
-            <div class="stat-value">{{ recetas_activas }}</div>
+            <div class="stat-value">{{ recetas_activas|separador_miles }}</div>
         </div>
         <div class="stat-card">
             <div class="stat-label">Cobrado este mes</div>
-            <div class="stat-value">Bs. {{ cobrado_mes|floatformat:0 }}</div>
+            <div class="stat-value">Bs. {{ cobrado_mes|separador_miles:0 }}</div>
         </div>
     </div>
 
@@ -182,7 +183,7 @@
                     {% for ruta in rutas_hoy %}
                         <li>
                             <strong>{{ ruta.entregador.nombre }}</strong><br>
-                            {{ ruta.ruta_clientes.count }} entregas
+                            {{ ruta.ruta_clientes.count|separador_miles }} entregas
                         </li>
                     {% endfor %}
                 </ul>

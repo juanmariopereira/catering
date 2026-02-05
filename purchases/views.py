@@ -165,3 +165,21 @@ def exportar_pdf(request, prevision_id):
         'items_por_tipo': agrupar_items_prevision_por_tipo(items_qs),
     }
     return render(request, 'purchases/prevision_pdf.html', context)
+
+
+@login_required
+def prevision_checklist_imprimible(request, prevision_id):
+    """
+    Reporte imprimible tipo checklist para la previsión de compra.
+    Muestra los ítems agrupados por tipo con casilla para marcar al comprar.
+    """
+    from purchases.utils import agrupar_items_prevision_por_tipo
+    prevision = get_object_or_404(PrevisionCompra, id=prevision_id)
+    items_qs = prevision.items.select_related(
+        'ingrediente', 'ingrediente__tipo_ingrediente', 'unidad_medida'
+    ).order_by('ingrediente__nombre')
+    context = {
+        'prevision': prevision,
+        'items_por_tipo': agrupar_items_prevision_por_tipo(items_qs),
+    }
+    return render(request, 'purchases/prevision_checklist_imprimible.html', context)

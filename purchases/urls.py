@@ -11,4 +11,5 @@ urlpatterns = [
     path('<int:pk>/eliminar/', views.PrevisionCompraDeleteView.as_view(), name='eliminar'),
     path('<int:prevision_id>/excel/', views.exportar_excel, name='exportar_excel'),
     path('<int:prevision_id>/pdf/', views.exportar_pdf, name='exportar_pdf'),
+    path('<int:prevision_id>/checklist/', views.prevision_checklist_imprimible, name='checklist_imprimible'),
 ]

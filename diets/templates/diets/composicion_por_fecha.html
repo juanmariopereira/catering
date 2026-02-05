@@ -15,22 +15,62 @@
 {% block extra_css %}
 <style>
     .filtros { margin-bottom: 20px; padding: 14px; background: #f9f9f9; border-radius: 8px; border: 1px solid #eee; }
-    .filtros .fila { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 10px; }
+    .filtros .fila { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 10px; }
     .filtros .fila:last-child { margin-bottom: 0; }
-    .filtros label { font-size: 0.9rem; color: #555; margin: 0 4px 0 0; min-width: 50px; height: 38px; display: inline-flex; align-items: center; }
-    .filtros input[type="date"], .filtros select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; height: 38px; box-sizing: border-box; min-width: 120px; vertical-align: middle; }
+    .filtros .grupo { display: inline-flex; align-items: center; gap: 8px; }
+    .filtros .grupo label { font-size: 0.9rem; color: #555; margin: 0; white-space: nowrap; }
+    .filtros .grupo input[type="date"],
+    .filtros .grupo select {
+        padding: 8px 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        height: 38px;
+        box-sizing: border-box;
+        min-width: 120px;
+        font-size: 0.95rem;
+    }
+    .filtros .btn {
+        height: 38px;
+        padding: 0 20px;
+        line-height: 38px;
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
     .btn { display: inline-block; padding: 10px 20px; background-color: #7CB342; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; font-size: 1rem; }
     .btn:hover { background-color: #689F38; }
     .aviso-feriado { margin-bottom: 12px; padding: 10px 14px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; color: #856404; }
     .bloque-contrato { margin-bottom: 24px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-    .bloque-contrato h3 { margin: 0; padding: 12px 16px; background: #7CB342; color: white; font-size: 1rem; }
+    .bloque-contrato h3 {
+        margin: 0;
+        padding: 12px 16px;
+        background: #7CB342;
+        color: white;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
     .bloque-contrato .plan { padding: 6px 16px; background: #e8f5e9; color: #2e7d32; font-size: 0.9rem; }
     .bloque-contrato table { width: 100%; border-collapse: collapse; margin: 0; }
     .bloque-contrato th, .bloque-contrato td { padding: 10px 16px; text-align: left; border-bottom: 1px solid #eee; }
     .bloque-contrato th { background: #f5f5f5; font-weight: 600; width: 140px; }
     .bloque-contrato tr:last-child td { border-bottom: none; }
     .sustituta { color: #1976d2; font-style: italic; }
-    .codigo-entrega { font-weight: normal; font-size: 0.85em; opacity: 0.95; margin-left: 8px; background: rgba(255,255,255,0.25); padding: 2px 8px; border-radius: 4px; }
+    .codigo-entrega {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: #fff;
+        background: #1565c0;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 6px;
+    }
     .sin-codigo { font-style: italic; color: #888; font-size: 0.9em; }
     .sin-menu { padding: 14px 16px; color: #666; font-style: italic; }
     .vacio { padding: 20px; text-align: center; color: #666; background: #f9f9f9; border-radius: 8px; }
@@ -43,29 +83,37 @@
 
     <form method="get" action="{% url 'diets:composicion_por_fecha' %}" class="filtros">
         <div class="fila">
-            <label for="fecha">Fecha</label>
-            <input type="date" name="fecha" id="fecha" value="{{ fecha|date:'Y-m-d' }}">
-            <label for="cliente">Cliente</label>
-            <select name="cliente" id="cliente">
-                <option value="">Todos</option>
-                {% for c in clientes_fecha %}
-                <option value="{{ c.pk }}" {% if filtro_cliente == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>
-                {% endfor %}
-            </select>
-            <label for="plan">Plan</label>
-            <select name="plan" id="plan">
-                <option value="">Todos</option>
-                {% for p in planes_fecha %}
-                <option value="{{ p.pk }}" {% if filtro_plan == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
-                {% endfor %}
-            </select>
-            <label for="comida">Comida</label>
-            <select name="comida" id="comida">
-                <option value="">Todas</option>
-                {% for tc in tipos_comida %}
-                <option value="{{ tc.pk }}" {% if filtro_comida == tc.pk|stringformat:"s" %}selected{% endif %}>{{ tc.nombre }}</option>
-                {% endfor %}
-            </select>
+            <div class="grupo">
+                <label for="fecha">Fecha</label>
+                <input type="date" name="fecha" id="fecha" value="{{ fecha|date:'Y-m-d' }}">
+            </div>
+            <div class="grupo">
+                <label for="cliente">Cliente</label>
+                <select name="cliente" id="cliente">
+                    <option value="">Todos</option>
+                    {% for c in clientes_fecha %}
+                    <option value="{{ c.pk }}" {% if filtro_cliente == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="grupo">
+                <label for="plan">Plan</label>
+                <select name="plan" id="plan">
+                    <option value="">Todos</option>
+                    {% for p in planes_fecha %}
+                    <option value="{{ p.pk }}" {% if filtro_plan == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="grupo">
+                <label for="comida">Comida</label>
+                <select name="comida" id="comida">
+                    <option value="">Todas</option>
+                    {% for tc in tipos_comida %}
+                    <option value="{{ tc.pk }}" {% if filtro_comida == tc.pk|stringformat:"s" %}selected{% endif %}>{{ tc.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             <button type="submit" class="btn">Filtrar</button>
         </div>
     </form>

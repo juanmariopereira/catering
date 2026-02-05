@@ -23,6 +23,8 @@
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
     th { background-color: #7CB342; color: white; }
     tr:hover { background-color: #f5f5f5; }
+    tr.fila-hoy { background-color: #e8f5e9; }
+    tr.fila-hoy:hover { background-color: #c8e6c9; }
     .pagination { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 0.875rem; }
     .pagination a, .pagination span { padding: 5px 10px; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; color: #333; background: #fff; }
     .pagination a:hover { background: #e8f5e9; color: #2e7d32; }
@@ -53,7 +55,7 @@
         </thead>
         <tbody>
             {% for detalle in detalles %}
-                <tr>
+                <tr class="{% if detalle.fecha == hoy %}fila-hoy{% endif %}">
                     <td>{{ detalle.fecha|date:"d/m/Y" }}</td>
                     <td class="table-actions">
                         <a href="{% url 'kitchen:detalle_fecha' detalle.fecha|date:'Y-m-d' %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
@@ -68,6 +70,11 @@
         </tbody>
     </table>
     </div>
+    {% if page_obj %}
+    <p class="pagination-info" style="margin-top: 12px; font-size: 0.875rem; color: #555;">
+        Mostrando {{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ page_obj.paginator.count }} registro{{ page_obj.paginator.count|pluralize }}.
+    </p>
+    {% endif %}
     {% if page_obj.has_other_pages %}
     <nav class="pagination" aria-label="Paginación">
         {% if page_obj.has_previous %}

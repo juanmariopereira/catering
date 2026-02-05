@@ -57,6 +57,9 @@
         <a href="{% url 'contracts:editar' contrato.pk %}" class="btn btn-primary">Editar contrato</a>
         <a href="{% url 'contracts:eliminar' contrato.pk %}" class="btn btn-danger">Eliminar</a>
         <a href="{% url 'billing:cobro_crear' %}?contrato={{ contrato.pk }}" class="btn btn-secondary">Nuevo cobro</a>
+        {% if contrato.estado != 'cancelado' %}
+        <a href="{% url 'contracts:dias_extra' contrato.pk %}" class="btn btn-secondary">Dar días extra</a>
+        {% endif %}
         {% if contrato.estado == 'activo' or contrato.estado == 'pre_renovacion' %}
         <a href="{% url 'planning:clientes_por_fecha' %}" class="btn btn-secondary">Planificación</a>
         {% endif %}

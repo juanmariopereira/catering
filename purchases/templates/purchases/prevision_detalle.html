@@ -42,6 +42,7 @@
         <a href="{% url 'purchases:editar' prevision.pk %}" class="btn">Editar</a>
         <a href="{% url 'purchases:exportar_excel' prevision.id %}" class="btn">Exportar a Excel</a>
         <a href="{% url 'purchases:exportar_pdf' prevision.id %}" class="btn">Exportar a PDF</a>
+        <a href="{% url 'purchases:checklist_imprimible' prevision.id %}" class="btn" target="_blank">Checklist imprimible</a>
         <a href="{% url 'purchases:eliminar' prevision.pk %}" class="btn" style="background-color:#F44336;">Eliminar</a>
     </div>
     

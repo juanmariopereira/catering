@@ -432,17 +432,17 @@
                     <li><a href="{% url 'recipes:ingrediente_lista' %}" class="{% if 'ingredientes' in request.path %}active{% endif %}">Ingredientes</a></li>
                     <li><a href="{% url 'recipes:unidad_medida_lista' %}" class="{% if 'unidades-medida' in request.path %}active{% endif %}">Unidades de medida</a></li>
                     <li><a href="{% url 'recipes:tipo_receta_lista' %}" class="{% if 'tipos-receta' in request.path %}active{% endif %}">Tipos de receta</a></li>
-                    <li><a href="{% url 'diets:lista' %}" class="{% if '/diets/' in request.path and 'composicion' not in request.path %}active{% endif %}">Dietas</a></li>
-                    <li><a href="{% url 'diets:composicion_por_fecha' %}" class="{% if 'composicion-por-fecha' in request.path %}active{% endif %}">Composición por fecha</a></li>
+                    <li><a href="{% url 'diets:lista' %}" class="{% if '/diets/' in request.path %}active{% endif %}">Dietas</a></li>
                     <li><a href="{% url 'routes:entregador_lista' %}" class="{% if '/routes/' in request.path %}active{% endif %}">Entregadores</a></li>
                     <li><a href="{% url 'feriado_lista' %}" class="{% if '/feriados/' in request.path %}active{% endif %}">Feriados</a></li>
                 </ul>
             </li>
             <li class="nav-item nav-dropdown">
-                <span class="nav-link nav-dropdown-toggle {% if '/planning/' in request.path or '/kitchen/' in request.path or '/delivery/' in request.path or '/purchases/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Producción</span>
+                <span class="nav-link nav-dropdown-toggle {% if '/planning/' in request.path or '/kitchen/' in request.path or '/delivery/' in request.path or '/purchases/' in request.path or 'composicion-por-fecha' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Producción</span>
                 <ul class="nav-dropdown-menu">
                     <li><a href="{% url 'planning:lista' %}" class="{% if '/planning/' in request.path %}active{% endif %}">Planificación</a></li>
                     <li><a href="{% url 'kitchen:lista' %}" class="{% if '/kitchen/' in request.path %}active{% endif %}">Cocina</a></li>
+                    <li><a href="{% url 'diets:composicion_por_fecha' %}" class="{% if 'composicion-por-fecha' in request.path %}active{% endif %}">Composición por fecha</a></li>
                     <li><a href="{% url 'delivery:lista' %}" class="{% if '/delivery/' in request.path %}active{% endif %}">Entregas</a></li>
                     <li><a href="{% url 'purchases:lista' %}" class="{% if '/purchases/' in request.path %}active{% endif %}">Compras</a></li>
                 </ul>

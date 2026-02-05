@@ -58,6 +58,7 @@
                         <a href="{% url 'purchases:editar' prevision.id %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
                         <a href="{% url 'purchases:exportar_excel' prevision.id %}" title="Exportar a Excel" aria-label="Exportar a Excel"><span aria-hidden="true">📊</span></a>
                         <a href="{% url 'purchases:exportar_pdf' prevision.id %}" title="Exportar a PDF" aria-label="Exportar a PDF"><span aria-hidden="true">📄</span></a>
+                        <a href="{% url 'purchases:checklist_imprimible' prevision.id %}" title="Checklist imprimible" aria-label="Checklist imprimible" target="_blank"><span aria-hidden="true">☑</span></a>
                         <a href="{% url 'purchases:eliminar' prevision.id %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
                     </td>
                 </tr>

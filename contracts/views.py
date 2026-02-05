@@ -1,5 +1,5 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView, FormView
 from django.urls import reverse_lazy, reverse
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
@@ -11,11 +11,11 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 
-from .models import Contrato, PausaContrato, q_filtro_estado
-from .forms import ContratoForm, PausaContratoForm
+from .models import Contrato, PausaContrato, ExtensionVigencia, q_filtro_estado
+from .forms import ContratoForm, PausaContratoForm, DiasExtraForm
 from plans.models import Plan
 from clients.models import Cliente
-from billing.models import Cobro
+from billing.models import Cobro, _dias_vencimiento_por_frecuencia
 
 
 def _parse_sort(sort_param):
@@ -317,6 +317,52 @@ class ContratoDetailView(LoginRequiredMixin, DetailView):
             .order_by('-periodo_hasta', '-numero_cobro')
         )
         return context
+
+
+class ContratoDiasExtraView(LoginRequiredMixin, FormView):
+    """Vista para dar días extra de catering: extiende vigencia del contrato y del último cobro."""
+    form_class = DiasExtraForm
+    template_name = 'contracts/dias_extra_form.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        self.contrato = get_object_or_404(Contrato, pk=kwargs['pk'])
+        if self.contrato.estado == 'cancelado':
+            messages.error(request, 'No se pueden dar días extra a un contrato cancelado.')
+            return redirect('contracts:detalle', pk=self.contrato.pk)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['contrato'] = self.contrato
+        return context
+
+    def form_valid(self, form):
+        from django.db import transaction
+        dias_agregados = form.cleaned_data['dias_agregados']
+        motivo = form.cleaned_data['motivo'].strip()
+        hoy = timezone.now().date()
+        contrato = self.contrato
+        ultimo_cobro = contrato.cobros.order_by('-periodo_hasta').first()
+        base_fin = contrato.fecha_fin or (ultimo_cobro.periodo_hasta if ultimo_cobro else hoy)
+        nueva_fecha_fin = base_fin + timedelta(days=dias_agregados)
+        with transaction.atomic():
+            Contrato.objects.filter(pk=contrato.pk).update(fecha_fin=nueva_fecha_fin)
+            if ultimo_cobro:
+                ultimo_cobro.periodo_hasta = nueva_fecha_fin
+                ultimo_cobro.fecha_vencimiento = nueva_fecha_fin + timedelta(
+                    days=_dias_vencimiento_por_frecuencia(contrato.frecuencia_pago)
+                )
+                ultimo_cobro.save(update_fields=['periodo_hasta', 'fecha_vencimiento'])
+            ExtensionVigencia.objects.create(
+                contrato=contrato,
+                dias_agregados=dias_agregados,
+                motivo=motivo,
+            )
+        messages.success(
+            self.request,
+            f'Se agregaron {dias_agregados} día(s) de catering. Vigencia del contrato y del cobro extendida. Motivo: {motivo}.',
+        )
+        return redirect('contracts:detalle', pk=contrato.pk)
 
 
 class ContratoUpdateView(LoginRequiredMixin, UpdateView):

@@ -1,0 +1,79 @@
+{% load prevision_filters %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checklist Previsión de Compra - {{ prevision }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 20px; background: #fff; color: #333; font-size: 14px; }
+        .no-print { margin-bottom: 16px; }
+        .no-print .btn { display: inline-block; padding: 10px 20px; background: #FF9800; color: #fff; text-decoration: none; border-radius: 4px; margin-right: 8px; }
+        .no-print .btn:hover { background: #F57C00; }
+        .header { text-align: center; border-bottom: 3px solid #FF9800; padding-bottom: 16px; margin-bottom: 24px; }
+        .header h1 { color: #E65100; margin: 0 0 8px 0; font-size: 1.5rem; }
+        .header .periodo { font-size: 1rem; color: #555; }
+        .grupo { margin-bottom: 20px; }
+        .grupo h2 { margin: 0 0 8px 0; padding: 6px 0; color: #E65100; font-size: 1.1rem; border-bottom: 1px solid #ddd; }
+        .checklist-table { width: 100%; border-collapse: collapse; }
+        .checklist-table th, .checklist-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #eee; vertical-align: middle; }
+        .checklist-table th { background: #fff8e1; color: #E65100; font-weight: 600; font-size: 0.9rem; }
+        .checklist-table .col-check { width: 36px; text-align: center; }
+        .checklist-table .checkbox-cell { font-size: 1.2rem; line-height: 1; }
+        .checklist-table .col-ingrediente { font-weight: 500; }
+        .checklist-table .col-cantidad { white-space: nowrap; }
+        .checklist-table .col-unidad { white-space: nowrap; color: #666; }
+        .checklist-table .col-medida { font-size: 0.9rem; color: #666; }
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none !important; }
+            .header { padding-bottom: 12px; margin-bottom: 16px; }
+            .checklist-table th, .checklist-table td { padding: 6px 8px; }
+            @page { margin: 1.2cm; size: A4; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <a href="javascript:window.print()" class="btn">🖨️ Imprimir</a>
+        <a href="{% url 'purchases:detalle' prevision.pk %}" class="btn">← Volver a la previsión</a>
+    </div>
+
+    <div class="header">
+        <h1>Checklist — Previsión de Compra</h1>
+        <p class="periodo"><strong>Período:</strong> {{ prevision.fecha_desde|date:"d/m/Y" }} — {{ prevision.fecha_hasta|date:"d/m/Y" }}</p>
+        <p class="periodo" style="margin-top: 4px;"><strong>Generado:</strong> {{ prevision.fecha_generacion|date:"d/m/Y H:i" }}</p>
+    </div>
+
+    {% for grupo in items_por_tipo %}
+    <div class="grupo">
+        <h2>{{ grupo.tipo_nombre }}</h2>
+        <table class="checklist-table">
+            <thead>
+                <tr>
+                    <th class="col-check">✓</th>
+                    <th class="col-ingrediente">Ingrediente</th>
+                    <th class="col-cantidad">Cantidad</th>
+                    <th class="col-unidad">Unidad</th>
+                    <th class="col-medida">Medida/un</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in grupo.items %}
+                <tr>
+                    <td class="col-check checkbox-cell">☐</td>
+                    <td class="col-ingrediente">{{ item.ingrediente.nombre }}</td>
+                    <td class="col-cantidad">{{ item.cantidad_total|prevision_cantidad_display:item.unidad_medida }}</td>
+                    <td class="col-unidad">{{ item.cantidad_total|prevision_unidad_display:item.unidad_medida }}</td>
+                    <td class="col-medida">{{ item|prevision_medida_por_unidad_display|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% empty %}
+    <p>No hay ítems en esta previsión.</p>
+    {% endfor %}
+</body>
+</html>

@@ -387,6 +387,40 @@ class PausaContrato(models.Model):
             raise ValidationError("La pausa no puede empezar antes de la fecha inicio del contrato.")
 
 
+class ExtensionVigencia(models.Model):
+    """
+    Registro de días extra de catering: extiende la vigencia del contrato
+    y del último cobro, con motivo para auditoría.
+    """
+    contrato = models.ForeignKey(
+        Contrato,
+        on_delete=models.CASCADE,
+        related_name='extensiones_vigencia',
+        verbose_name="Contrato",
+    )
+    fecha_extension = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha de extensión",
+    )
+    dias_agregados = models.PositiveIntegerField(
+        verbose_name="Días agregados",
+        help_text="Número de días extra de catering.",
+    )
+    motivo = models.CharField(
+        max_length=255,
+        verbose_name="Motivo",
+        help_text="Razón de la extensión (ej. cortesía, compensación, etc.).",
+    )
+
+    class Meta:
+        verbose_name = "Extensión de vigencia"
+        verbose_name_plural = "Extensiones de vigencia"
+        ordering = ['-fecha_extension']
+
+    def __str__(self):
+        return f"{self.contrato} — +{self.dias_agregados} días ({self.fecha_extension.date()})"
+
+
 def recalcular_fecha_fin_por_feriado(fecha, delta):
     """
     Ajusta fecha_fin de los contratos cuando cambia el calendario de feriados.

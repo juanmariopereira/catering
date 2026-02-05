@@ -264,15 +264,18 @@ def recetas_a_preparar_por_fecha(fecha) -> List[Dict[str, Any]]:
                     'receta_original_nombre': receta_original_nombre,
                 })
     recetas_objs = {r.id: r for r in Receta.objects.filter(id__in=recetas_dict.keys())} if recetas_dict else {}
-    return [
-        {
+    resultado = []
+    for receta_id in recetas_dict:
+        if not recetas_objs.get(receta_id) or not getattr(recetas_objs[receta_id], 'producido_en_cocina', True):
+            continue
+        planifs = planificaciones_por_receta[receta_id]
+        planifs_ordenadas = sorted(planifs, key=lambda p: (p['contrato'].cliente.nombre or '').lower())
+        resultado.append({
             'receta': recetas_objs[receta_id],
             'cantidad': recetas_dict[receta_id],
-            'planificaciones': planificaciones_por_receta[receta_id],
-        }
-        for receta_id in recetas_dict
-        if recetas_objs.get(receta_id) and getattr(recetas_objs[receta_id], 'producido_en_cocina', True)
-    ]
+            'planificaciones': planifs_ordenadas,
+        })
+    return resultado
 
 
 def resumen_cocina_por_momento(fecha) -> List[Dict[str, Any]]:

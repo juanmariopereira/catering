@@ -1,35 +1,9 @@
 """
-Filtros para mostrar cantidades en previsión de compra:
-- ≥ 1000 g → mostrar en kg
-- ≥ 1000 ml → mostrar en L
+Filtros para formatear números con punto como separador de miles (formato español).
 """
 from django import template
 
-from purchases.utils import (
-    prevision_cantidad_display as _cantidad_display,
-    prevision_unidad_display as _unidad_display,
-    prevision_medida_por_unidad_item_display as _medida_por_unidad_item_display,
-)
-
 register = template.Library()
-
-
-@register.filter
-def prevision_cantidad_display(cantidad, unidad_medida):
-    """Cantidad para mostrar: gramo ≥ 1000 → kg; ml ≥ 1000 → L."""
-    return _cantidad_display(cantidad, unidad_medida)
-
-
-@register.filter
-def prevision_unidad_display(cantidad, unidad_medida):
-    """Unidad para mostrar: gramo ≥ 1000 → "kg"; ml ≥ 1000 → "L"."""
-    return _unidad_display(cantidad, unidad_medida)
-
-
-@register.filter
-def prevision_medida_por_unidad_display(item):
-    """Si la unidad es 'un', devuelve la medida por unidad del ingrediente (ej. 50 g/un)."""
-    return _medida_por_unidad_item_display(item)
 
 
 def _parte_entera_con_puntos(n_int):
@@ -65,6 +39,7 @@ def separador_miles(value, arg=None):
         resto = round(n - entero, decimales)
         s_decimal = f"{resto:.{decimales}f}".split('.', 1)[-1]
         return _parte_entera_con_puntos(entero) + ',' + s_decimal
+    # Sin argumento: entero si es entero, sino 2 decimales
     if n == int(n):
         return _parte_entera_con_puntos(int(n))
     entero = int(n)

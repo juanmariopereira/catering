@@ -188,6 +188,15 @@
                 {% endfor %}
             </tbody>
         </table>
+        {% if detalle_cocina.notas %}
+        <div class="notas">
+            <strong>Notas para el cocinero:</strong> {{ detalle_cocina.notas }}
+        </div>
+        {% else %}
+        <div class="notas" style="background-color: #f5f5f5; border-left-color: #999;">
+            <strong>Notas:</strong> Sin notas. <a href="{% url 'kitchen:editar_notas' detalle_cocina.pk %}">Agregar notas</a>
+        </div>
+        {% endif %}
     </section>
     {% endif %}
 
@@ -240,16 +249,6 @@
                 </div>
             {% endfor %}
         </div>
-
-        {% if detalle_cocina.notas %}
-            <div class="notas">
-                <strong>Notas para el cocinero:</strong> {{ detalle_cocina.notas }}
-            </div>
-        {% else %}
-            <div class="notas" style="background-color: #f5f5f5; border-left-color: #999;">
-                <strong>Notas:</strong> Sin notas. <a href="{% url 'kitchen:editar_notas' detalle_cocina.pk %}">Agregar notas</a>
-            </div>
-        {% endif %}
         </div>
         </section>
     {% else %}

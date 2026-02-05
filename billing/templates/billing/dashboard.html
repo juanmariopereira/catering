@@ -1,4 +1,5 @@
 {% extends 'base/base.html' %}
+{% load prevision_filters %}
 
 {% block title %}Dashboard de Cobranza - {{ catering_name }}{% endblock %}
 
@@ -115,35 +116,35 @@
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-label">Total cobros</div>
-            <div class="stat-value">{{ total_cobros }}</div>
+            <div class="stat-value">{{ total_cobros|separador_miles }}</div>
         </div>
         <div class="stat-card warning">
             <div class="stat-label">Pendientes</div>
-            <div class="stat-value">{{ cobros_pendientes }}</div>
+            <div class="stat-value">{{ cobros_pendientes|separador_miles }}</div>
         </div>
         <div class="stat-card success">
             <div class="stat-label">Pagados</div>
-            <div class="stat-value">{{ cobros_pagados }}</div>
+            <div class="stat-value">{{ cobros_pagados|separador_miles }}</div>
         </div>
         <div class="stat-card">
             <div class="stat-label">Vencidos</div>
-            <div class="stat-value">{{ cobros_vencidos }}</div>
+            <div class="stat-value">{{ cobros_vencidos|separador_miles }}</div>
         </div>
         <div class="stat-card warning">
             <div class="stat-label">Por cobrar</div>
-            <div class="stat-value">Bs. {{ monto_total_pendiente|floatformat:0 }}</div>
+            <div class="stat-value">Bs. {{ monto_total_pendiente|separador_miles:0 }}</div>
         </div>
         <div class="stat-card success">
             <div class="stat-label">Total cobrado</div>
-            <div class="stat-value">Bs. {{ monto_total_pagado|floatformat:0 }}</div>
+            <div class="stat-value">Bs. {{ monto_total_pagado|separador_miles:0 }}</div>
         </div>
         <div class="stat-card info">
             <div class="stat-label">Cobrado este mes</div>
-            <div class="stat-value">Bs. {{ cobrado_este_mes|floatformat:0 }}</div>
+            <div class="stat-value">Bs. {{ cobrado_este_mes|separador_miles:0 }}</div>
         </div>
         <div class="stat-card info">
             <div class="stat-label">Contratos activos</div>
-            <div class="stat-value">{{ contratos_activos }}</div>
+            <div class="stat-value">{{ contratos_activos|separador_miles }}</div>
         </div>
     </div>
 
@@ -167,7 +168,7 @@
             <tr>
                 <td>{{ pago.fecha_pago|date:"d/m/Y" }}</td>
                 <td><a href="{% url 'clients:detalle' pago.cobro.contrato.cliente_id %}">{{ pago.cobro.contrato.cliente.nombre }}</a></td>
-                <td>Bs. {{ pago.monto|floatformat:2 }}</td>
+                <td>Bs. {{ pago.monto|separador_miles:2 }}</td>
                 <td>{{ pago.get_metodo_pago_display }}</td>
                 <td><a href="{% url 'billing:cobro_detalle' pago.cobro_id %}">{{ pago.cobro.numero_cobro|default:pago.cobro_id }}</a></td>
             </tr>
@@ -198,7 +199,7 @@
             <tr>
                 <td><a href="{% url 'billing:cobro_detalle' cobro.pk %}">{{ cobro.numero_cobro|default:cobro.id }}</a></td>
                 <td><a href="{% url 'clients:detalle' cobro.contrato.cliente_id %}">{{ cobro.contrato.cliente.nombre }}</a></td>
-                <td>Bs. {{ cobro.monto|floatformat:2 }}</td>
+                <td>Bs. {{ cobro.monto|separador_miles:2 }}</td>
                 <td>{{ cobro.fecha_vencimiento|date:"d/m/Y" }}</td>
                 <td class="table-actions">
                     <a href="{% url 'billing:cobro_detalle' cobro.pk %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
@@ -232,7 +233,7 @@
             <tr>
                 <td><a href="{% url 'billing:cobro_detalle' cobro.pk %}">{{ cobro.numero_cobro|default:cobro.id }}</a></td>
                 <td><a href="{% url 'clients:detalle' cobro.contrato.cliente_id %}">{{ cobro.contrato.cliente.nombre }}</a></td>
-                <td>Bs. {{ cobro.monto|floatformat:2 }}</td>
+                <td>Bs. {{ cobro.monto|separador_miles:2 }}</td>
                 <td>{{ cobro.fecha_vencimiento|date:"d/m/Y" }}</td>
                 <td class="table-actions">
                     <a href="{% url 'billing:cobro_detalle' cobro.pk %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
