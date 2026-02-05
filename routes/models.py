@@ -66,7 +66,7 @@ class RutaCliente(models.Model):
         unique=True,
         blank=True,
         verbose_name="Código de entrega",
-        help_text="Identificador único de esta entrega (ruta imprimible y reporte cocina)"
+        help_text="Identificador único corto (4 caracteres por defecto; crece si hay colisión)"
     )
     ruta = models.ForeignKey(
         Ruta,
@@ -103,11 +103,13 @@ class RutaCliente(models.Model):
         super().save(*args, **kwargs)
 
     def _generar_codigo_unico(self):
-        for _ in range(10):
-            codigo = uuid.uuid4().hex[:10].upper()
-            if not RutaCliente.objects.filter(codigo_entrega=codigo).exists():
-                return codigo
-        return uuid.uuid4().hex[:10].upper()
+        """Código corto: empieza en 4 caracteres y crece solo si hay colisión."""
+        for length in range(4, 13):
+            for _ in range(100):
+                codigo = uuid.uuid4().hex[:length].upper()
+                if not RutaCliente.objects.filter(codigo_entrega=codigo).exists():
+                    return codigo
+        return uuid.uuid4().hex[:12].upper()
 
     def __str__(self):
         return f"{self.ruta} - {self.contrato.cliente.nombre} (Orden: {self.orden_entrega})"

@@ -14,121 +14,250 @@
 
 {% block extra_css %}
 <style>
+    .dashboard-cobranza h1 { margin-bottom: 8px; }
+    .quick-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 24px;
+        padding: 14px 0;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    .quick-actions .btn {
+        display: inline-block;
+        padding: 10px 18px;
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+    .quick-actions .btn-primary { background-color: #F44336; }
+    .quick-actions .btn-primary:hover { background-color: #D32F2F; }
+    .quick-actions .btn-success { background-color: #2e7d32; }
+    .quick-actions .btn-success:hover { background-color: #1b5e20; }
+    .quick-actions .btn-secondary { background-color: #5c6bc0; }
+    .quick-actions .btn-secondary:hover { background-color: #3949ab; }
+    .quick-actions .btn-outline { background-color: #fff; color: #333; border: 1px solid #ddd; }
+    .quick-actions .btn-outline:hover { background-color: #f5f5f5; }
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 14px;
         margin: 20px 0;
     }
     .stat-card {
-        background-color: #f9f9f9;
-        padding: 20px;
+        background-color: #fff;
+        padding: 16px;
         border-radius: 8px;
         border-left: 4px solid #F44336;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
-    .stat-label { font-size: 14px; color: #666; margin-bottom: 5px; }
-    .stat-value { font-size: 24px; font-weight: bold; color: #333; }
-    .alertas { margin-top: 30px; }
-    .alerta-section { margin-bottom: 30px; }
-    .alerta-title { font-size: 18px; font-weight: bold; color: #F44336; margin-bottom: 10px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-    th { background-color: #F44336; color: white; }
-    tr:hover { background-color: #f5f5f5; }
+    .stat-card.success { border-left-color: #2e7d32; }
+    .stat-card.warning { border-left-color: #ff9800; }
+    .stat-card.info { border-left-color: #2196F3; }
+    .stat-label { font-size: 12px; color: #666; margin-bottom: 4px; text-transform: uppercase; }
+    .stat-value { font-size: 1.4rem; font-weight: bold; color: #333; }
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #333;
+        margin: 24px 0 12px 0;
+        padding-bottom: 6px;
+        border-bottom: 2px solid #F44336;
+    }
+    .section-title .link-mas {
+        font-size: 0.85rem;
+        font-weight: normal;
+        margin-left: 10px;
+    }
+    .dashboard-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .dashboard-table th, .dashboard-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
+    .dashboard-table th { background-color: #F44336; color: white; font-weight: 600; }
+    .dashboard-table tbody tr:hover { background-color: #fafafa; }
+    .dashboard-table .btn-cobrar { padding: 4px 10px; font-size: 0.8rem; background: #2e7d32; color: white; text-decoration: none; border-radius: 4px; }
+    .dashboard-table .btn-cobrar:hover { background: #1b5e20; color: white; }
+    .links-utiles {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-top: 24px;
+    }
+    .links-utiles a {
+        display: block;
+        padding: 12px 16px;
+        background: #f5f5f5;
+        border-radius: 6px;
+        color: #333;
+        text-decoration: none;
+        border-left: 3px solid #5c6bc0;
+    }
+    .links-utiles a:hover { background: #e8eaf6; color: #1a237e; }
+    .sin-datos { color: #999; font-style: italic; padding: 16px; text-align: center; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container dashboard-cobranza">
     <h1>Dashboard de Cobranza</h1>
-    
+    <p style="color: #666; margin-top: 0;">Resumen de facturación, cobros y accesos rápidos.</p>
+
+    <div class="quick-actions">
+        <a href="{% url 'billing:factura_crear' %}" class="btn btn-primary">Nueva factura</a>
+        <a href="{% url 'billing:pago_crear' %}" class="btn btn-success">Registrar pago</a>
+        <a href="{% url 'billing:factura_lista' %}" class="btn btn-secondary">Ver facturas</a>
+        <a href="{% url 'billing:pago_lista' %}" class="btn btn-secondary">Ver pagos</a>
+        <a href="{% url 'billing:reporte' %}" class="btn btn-outline">Reporte cobranza</a>
+        <a href="{% url 'clients:lista' %}" class="btn btn-outline">Clientes</a>
+        <a href="{% url 'contracts:lista' %}" class="btn btn-outline">Contratos</a>
+    </div>
+
     <div class="stats-grid">
         <div class="stat-card">
-            <div class="stat-label">Total Facturas</div>
+            <div class="stat-label">Total facturas</div>
             <div class="stat-value">{{ total_facturas }}</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Facturas Pendientes</div>
+        <div class="stat-card warning">
+            <div class="stat-label">Pendientes</div>
             <div class="stat-value">{{ facturas_pendientes }}</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Facturas Pagadas</div>
+        <div class="stat-card success">
+            <div class="stat-label">Pagadas</div>
             <div class="stat-value">{{ facturas_pagadas }}</div>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Facturas Vencidas</div>
+            <div class="stat-label">Vencidas</div>
             <div class="stat-value">{{ facturas_vencidas }}</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Monto Pendiente</div>
-            <div class="stat-value">${{ monto_total_pendiente|floatformat:2 }}</div>
+        <div class="stat-card warning">
+            <div class="stat-label">Por cobrar</div>
+            <div class="stat-value">${{ monto_total_pendiente|floatformat:0 }}</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Monto Pagado</div>
-            <div class="stat-value">${{ monto_total_pagado|floatformat:2 }}</div>
+        <div class="stat-card success">
+            <div class="stat-label">Total cobrado</div>
+            <div class="stat-value">${{ monto_total_pagado|floatformat:0 }}</div>
+        </div>
+        <div class="stat-card info">
+            <div class="stat-label">Cobrado este mes</div>
+            <div class="stat-value">${{ cobrado_este_mes|floatformat:0 }}</div>
+        </div>
+        <div class="stat-card info">
+            <div class="stat-label">Contratos activos</div>
+            <div class="stat-value">{{ contratos_activos }}</div>
         </div>
     </div>
 
-    <div class="alertas">
-        {% if facturas_vencidas_lista %}
-            <div class="alerta-section">
-                <div class="alerta-title">⚠️ Facturas Vencidas</div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Número</th>
-                            <th>Cliente</th>
-                            <th>Monto</th>
-                            <th>Fecha Vencimiento</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for factura in facturas_vencidas_lista %}
-                            <tr>
-                                <td>{{ factura.numero_factura }}</td>
-                                <td>{{ factura.contrato.cliente.nombre }}</td>
-                                <td>${{ factura.monto|floatformat:2 }}</td>
-                                <td>{{ factura.fecha_vencimiento|date:"d/m/Y" }}</td>
-                                <td>
-                                    <a href="{% url 'billing:factura_lista' %}?factura={{ factura.id }}">Ver</a>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% endif %}
+    <h2 class="section-title">
+        Últimos pagos
+        <a href="{% url 'billing:pago_lista' %}" class="link-mas">Ver todos</a>
+    </h2>
+    {% if ultimos_pagos %}
+    <table class="dashboard-table">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Monto</th>
+                <th>Método</th>
+                <th>Factura</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pago in ultimos_pagos %}
+            <tr>
+                <td>{{ pago.fecha_pago|date:"d/m/Y" }}</td>
+                <td><a href="{% url 'clients:detalle' pago.factura.contrato.cliente_id %}">{{ pago.factura.contrato.cliente.nombre }}</a></td>
+                <td>${{ pago.monto|floatformat:2 }}</td>
+                <td>{{ pago.get_metodo_pago_display }}</td>
+                <td><a href="{% url 'billing:factura_detalle' pago.factura_id %}">{{ pago.factura.numero_factura|default:pago.factura_id }}</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="sin-datos">No hay pagos registrados.</p>
+    {% endif %}
 
-        {% if facturas_proximas_vencer %}
-            <div class="alerta-section">
-                <div class="alerta-title">📅 Próximas a Vencer (7 días)</div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Número</th>
-                            <th>Cliente</th>
-                            <th>Monto</th>
-                            <th>Fecha Vencimiento</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for factura in facturas_proximas_vencer %}
-                            <tr>
-                                <td>{{ factura.numero_factura }}</td>
-                                <td>{{ factura.contrato.cliente.nombre }}</td>
-                                <td>${{ factura.monto|floatformat:2 }}</td>
-                                <td>{{ factura.fecha_vencimiento|date:"d/m/Y" }}</td>
-                                <td>
-                                    <a href="{% url 'billing:factura_lista' %}?factura={{ factura.id }}">Ver</a>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% endif %}
+    <h2 class="section-title">
+        Facturas vencidas
+        <a href="{% url 'billing:factura_lista' %}?estado=vencida" class="link-mas">Ver todas</a>
+    </h2>
+    {% if facturas_vencidas_lista %}
+    <table class="dashboard-table">
+        <thead>
+            <tr>
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Monto</th>
+                <th>Vencimiento</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for factura in facturas_vencidas_lista %}
+            <tr>
+                <td><a href="{% url 'billing:factura_detalle' factura.pk %}">{{ factura.numero_factura|default:factura.id }}</a></td>
+                <td><a href="{% url 'clients:detalle' factura.contrato.cliente_id %}">{{ factura.contrato.cliente.nombre }}</a></td>
+                <td>${{ factura.monto|floatformat:2 }}</td>
+                <td>{{ factura.fecha_vencimiento|date:"d/m/Y" }}</td>
+                <td>
+                    <a href="{% url 'billing:factura_detalle' factura.pk %}">Ver</a>
+                    <span style="margin: 0 6px;">|</span>
+                    <a href="{% url 'billing:pago_crear' %}?factura={{ factura.pk }}" class="btn-cobrar">Cobrar</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="sin-datos">No hay facturas vencidas.</p>
+    {% endif %}
+
+    <h2 class="section-title">
+        Próximas a vencer (7 días)
+        <a href="{% url 'billing:factura_lista' %}?estado=pendiente" class="link-mas">Ver pendientes</a>
+    </h2>
+    {% if facturas_proximas_vencer %}
+    <table class="dashboard-table">
+        <thead>
+            <tr>
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Monto</th>
+                <th>Vencimiento</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for factura in facturas_proximas_vencer %}
+            <tr>
+                <td><a href="{% url 'billing:factura_detalle' factura.pk %}">{{ factura.numero_factura|default:factura.id }}</a></td>
+                <td><a href="{% url 'clients:detalle' factura.contrato.cliente_id %}">{{ factura.contrato.cliente.nombre }}</a></td>
+                <td>${{ factura.monto|floatformat:2 }}</td>
+                <td>{{ factura.fecha_vencimiento|date:"d/m/Y" }}</td>
+                <td>
+                    <a href="{% url 'billing:factura_detalle' factura.pk %}">Ver</a>
+                    <span style="margin: 0 6px;">|</span>
+                    <a href="{% url 'billing:pago_crear' %}?factura={{ factura.pk }}" class="btn-cobrar">Cobrar</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="sin-datos">No hay facturas que venzan en los próximos 7 días.</p>
+    {% endif %}
+
+    <h2 class="section-title">Accesos útiles</h2>
+    <div class="links-utiles">
+        <a href="{% url 'billing:factura_lista' %}?estado=pendiente">Facturas pendientes de cobro</a>
+        <a href="{% url 'billing:factura_lista' %}?estado=vencida">Facturas vencidas</a>
+        <a href="{% url 'billing:factura_crear' %}">Crear nueva factura</a>
+        <a href="{% url 'billing:pago_crear' %}">Registrar un pago</a>
+        <a href="{% url 'billing:reporte' %}">Reporte por período / cliente</a>
+        <a href="{% url 'clients:lista' %}">Lista de clientes</a>
+        <a href="{% url 'contracts:lista' %}?estado=activo">Contratos activos</a>
+        <a href="{% url 'dashboard' %}">Dashboard principal</a>
     </div>
 </div>
 {% endblock %}

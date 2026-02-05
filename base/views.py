@@ -8,11 +8,12 @@ from django.db.models import Sum
 from datetime import date, timedelta, datetime
 
 from planning.models import PlanificacionMenu
-from billing.models import Factura
-from routes.models import Ruta
+from billing.models import Factura, Pago
+from routes.models import Ruta, RutaCliente
 from purchases.models import PrevisionCompra
 from clients.models import Cliente
 from contracts.models import Contrato
+from recipes.models import Receta
 
 
 @login_required
@@ -53,6 +54,19 @@ def dashboard(request):
         fecha__lte=proxima_semana,
     ).count()
 
+    # Entregas (paradas) del día
+    total_entregas_hoy = RutaCliente.objects.filter(ruta__fecha=hoy).count()
+
+    # Recetas activas en catálogo
+    recetas_activas = Receta.objects.filter(activa=True).count()
+
+    # Cobrado este mes
+    inicio_mes = hoy.replace(day=1)
+    cobrado_mes = Pago.objects.filter(
+        fecha_pago__gte=inicio_mes,
+        fecha_pago__lte=hoy,
+    ).aggregate(total=Sum('monto'))['total'] or 0
+
     context = {
         'hoy': hoy,
         'total_planificaciones_hoy': total_planificaciones_hoy,
@@ -66,6 +80,9 @@ def dashboard(request):
         'contratos_activos': contratos_activos,
         'planificaciones_proxima_semana': planificaciones_proxima_semana,
         'menus_hoy_lista': menus_hoy.select_related('plan')[:5],
+        'total_entregas_hoy': total_entregas_hoy,
+        'recetas_activas': recetas_activas,
+        'cobrado_mes': cobrado_mes,
     }
 
     return render(request, 'base/dashboard.html', context)

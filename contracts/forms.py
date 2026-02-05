@@ -22,7 +22,8 @@ class ContratoForm(forms.ModelForm):
         model = Contrato
         fields = [
             'cliente', 'plan', 'fecha_inicio', 'fecha_fin', 'precio', 'frecuencia_pago',
-            'direccion_entrega', 'link_maps', 'horario_entrega', 'dias_entrega', 'estado', 'notas',
+            'direccion_entrega', 'link_maps', 'horario_entrega', 'dias_entrega', 'notas_entregador',
+            'estado', 'notas',
         ]
         widgets = {
             'fecha_inicio': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),

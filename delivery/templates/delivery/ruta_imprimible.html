@@ -4,100 +4,91 @@
 
 {% block extra_css %}
 <style>
-    .header {
+    .ruta-print .header {
         text-align: center;
-        border-bottom: 3px solid #2196F3;
-        padding-bottom: 20px;
-        margin-bottom: 30px;
-    }
-    .header h1 { margin: 0; color: #2196F3; }
-    .info-ruta {
-        display: flex;
-        justify-content: space-around;
-        margin: 20px 0;
-        padding: 15px;
-        background-color: #f5f5f5;
-        border-radius: 4px;
-    }
-    .info-item { text-align: center; }
-    .info-label { font-size: 12px; color: #666; text-transform: uppercase; }
-    .info-value { font-size: 18px; font-weight: bold; color: #333; margin-top: 5px; }
-    .clientes-lista { margin-top: 30px; }
-    .cliente-item {
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        padding: 15px;
-        margin-bottom: 15px;
-        page-break-inside: avoid;
-    }
-    .cliente-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        border-bottom: 2px solid #2196F3;
+        padding-bottom: 6px;
         margin-bottom: 10px;
     }
-    .orden-entrega {
+    .ruta-print .header h1 { margin: 0; font-size: 1.25rem; color: #2196F3; }
+    .ruta-print .info-ruta {
+        display: flex;
+        justify-content: space-around;
+        margin: 0 0 8px 0;
+        padding: 6px 8px;
+        background-color: #f5f5f5;
+        border-radius: 3px;
+        font-size: 0.8rem;
+    }
+    .ruta-print .info-item { text-align: center; }
+    .ruta-print .info-label { font-size: 0.65rem; color: #666; text-transform: uppercase; }
+    .ruta-print .info-value { font-size: 0.9rem; font-weight: bold; color: #333; margin-top: 2px; }
+    .ruta-print .clientes-lista { margin-top: 8px; }
+    .ruta-print .cliente-item {
+        border-bottom: 1px solid #e0e0e0;
+        padding: 3px 6px 4px 6px;
+        margin-bottom: 2px;
+        page-break-inside: avoid;
+        font-size: 0.75rem;
+        line-height: 1.25;
+    }
+    .ruta-print .cliente-item:last-child { border-bottom: none; }
+    .ruta-print .cliente-fila {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .ruta-print .orden-entrega {
+        flex-shrink: 0;
         background-color: #2196F3;
         color: white;
-        padding: 5px 15px;
-        border-radius: 20px;
+        padding: 1px 6px;
+        border-radius: 3px;
         font-weight: bold;
-        font-size: 18px;
+        font-size: 0.7rem;
     }
-    .codigo-entrega {
-        display: inline-block;
-        margin-right: 10px;
-        padding: 4px 10px;
+    .ruta-print .codigo-entrega {
+        flex-shrink: 0;
+        padding: 1px 4px;
         background-color: #2196F3;
         color: white;
-        font-size: 14px;
+        font-size: 0.7rem;
         font-weight: 600;
-        border-radius: 4px;
-        letter-spacing: 0.05em;
+        border-radius: 2px;
     }
-    .cliente-nombre { font-size: 20px; font-weight: bold; color: #333; }
-    .direccion {
-        margin-top: 10px;
-        padding: 10px;
-        background-color: #f9f9f9;
-        border-left: 4px solid #2196F3;
-        border-radius: 4px;
-    }
-    .direccion-label { font-weight: bold; color: #666; margin-bottom: 5px; }
-    .direccion-texto { color: #333; }
-    .notas {
-        margin-top: 10px;
-        padding: 10px;
-        background-color: #fff3cd;
-        border-left: 4px solid #ffc107;
-        border-radius: 4px;
-        font-size: 14px;
-    }
-    .sin-clientes { text-align: center; padding: 40px; color: #999; font-size: 18px; }
+    .ruta-print .cliente-nombre { font-size: 0.8rem; font-weight: bold; color: #333; }
+    .ruta-print .direccion-wrap { margin-top: 2px; padding-left: 8px; border-left: 2px solid #2196F3; }
+    .ruta-print .direccion-label { font-size: 0.65rem; color: #666; }
+    .ruta-print .direccion-texto { font-size: 0.7rem; color: #333; }
+    .ruta-print .notas { margin-top: 2px; padding: 2px 4px; font-size: 0.65rem; background: #fff3cd; border-left: 2px solid #ffc107; }
+    .ruta-print .notas-entregador { margin-top: 2px; padding: 2px 4px; font-size: 0.65rem; color: #1565c0; border-left: 2px solid #2196F3; }
+    .ruta-print .sin-clientes { text-align: center; padding: 16px; color: #999; font-size: 0.9rem; }
     @media print {
-        .cliente-item { page-break-inside: avoid; }
+        .ruta-print { font-size: 10px; }
+        .ruta-print .cliente-item { page-break-inside: avoid; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container ruta-print">
     <div class="header">
         <h1>Ruta de Entrega</h1>
     </div>
 
     <div class="info-ruta">
         <div class="info-item">
-            <div class="info-label">Fecha</div>
-            <div class="info-value">{{ ruta.fecha|date:"d/m/Y" }}</div>
+            <span class="info-label">Fecha</span>
+            <span class="info-value">{{ ruta.fecha|date:"d/m/Y" }}</span>
         </div>
         <div class="info-item">
-            <div class="info-label">Entregador</div>
-            <div class="info-value">{{ ruta.entregador.nombre }}</div>
+            <span class="info-label">Entregador</span>
+            <span class="info-value">{{ ruta.entregador.nombre }}</span>
         </div>
         <div class="info-item">
-            <div class="info-label">Total Clientes</div>
-            <div class="info-value">{{ ruta_clientes.count }}</div>
+            <span class="info-label">Total</span>
+            <span class="info-value">{{ ruta_clientes.count }}</span>
         </div>
     </div>
 
@@ -105,41 +96,27 @@
         <div class="clientes-lista">
             {% for ruta_cliente in ruta_clientes %}
                 <div class="cliente-item">
-                    <div class="cliente-header">
-                        <div class="orden-entrega">#{{ ruta_cliente.orden_entrega }}</div>
-                        <div>
-                            <span class="codigo-entrega" title="Código de entrega">{{ ruta_cliente.codigo_entrega }}</span>
-                            <span class="cliente-nombre">{% if ruta_cliente.contrato.cliente.telefono %}{{ ruta_cliente.contrato.cliente.nombre }} · {{ ruta_cliente.contrato.cliente.telefono }}{% else %}{{ ruta_cliente.contrato.cliente.nombre }}{% endif %}</span>
-                        </div>
+                    <div class="cliente-fila">
+                        <span class="orden-entrega">#{{ ruta_cliente.orden_entrega }}</span>
+                        <span class="codigo-entrega" title="Código de entrega">{{ ruta_cliente.codigo_entrega }}</span>
+                        <span class="cliente-nombre">{% if ruta_cliente.contrato.cliente.telefono %}{{ ruta_cliente.contrato.cliente.nombre }} · {{ ruta_cliente.contrato.cliente.telefono }}{% else %}{{ ruta_cliente.contrato.cliente.nombre }}{% endif %}</span>
                     </div>
-
-                    <div class="direccion">
-                        <div class="direccion-label">Dirección de Entrega:</div>
-                        <div class="direccion-texto">
+                    <div class="direccion-wrap">
+                        <span class="direccion-label">Dir. </span>
+                        <span class="direccion-texto">
                             {% if ruta_cliente.direccion_entrega and ruta_cliente.direccion_entrega.calle %}
-                                {{ ruta_cliente.direccion_entrega.calle }}{% if ruta_cliente.direccion_entrega.numero %} #{{ ruta_cliente.direccion_entrega.numero }}{% endif %}<br>
-                                {% if ruta_cliente.direccion_entrega.colonia %}{{ ruta_cliente.direccion_entrega.colonia }}<br>{% endif %}
-                                {% if ruta_cliente.direccion_entrega.ciudad %}
-                                    {{ ruta_cliente.direccion_entrega.ciudad }}{% if ruta_cliente.direccion_entrega.codigo_postal %} C.P. {{ ruta_cliente.direccion_entrega.codigo_postal }}{% endif %}
-                                {% endif %}
+                                {{ ruta_cliente.direccion_entrega.calle }}{% if ruta_cliente.direccion_entrega.numero %} #{{ ruta_cliente.direccion_entrega.numero }}{% endif %}{% if ruta_cliente.direccion_entrega.colonia %}, {{ ruta_cliente.direccion_entrega.colonia }}{% endif %}{% if ruta_cliente.direccion_entrega.ciudad %} — {{ ruta_cliente.direccion_entrega.ciudad }}{% if ruta_cliente.direccion_entrega.codigo_postal %} C.P. {{ ruta_cliente.direccion_entrega.codigo_postal }}{% endif %}{% endif %}
                             {% else %}
-                                {{ ruta_cliente.contrato.direccion_entrega|linebreaksbr|default:"—" }}
+                                {{ ruta_cliente.contrato.direccion_entrega|default:"—" }}
                             {% endif %}
-                            {% if ruta_cliente.contrato.link_maps %}
-                                <br><a href="{{ ruta_cliente.contrato.link_maps }}" target="_blank" rel="noopener noreferrer">Ver en Google Maps</a>
-                            {% endif %}
-                        </div>
+                            {% if ruta_cliente.contrato.horario_entrega %} · {{ ruta_cliente.contrato.horario_entrega|time:"H:i" }}{% endif %}
+                        </span>
                     </div>
-
-                    {% if ruta_cliente.contrato.horario_entrega %}
-                        <div class="direccion" style="margin-top: 10px;">
-                            <div class="direccion-label">Horario de Entrega:</div>
-                            <div class="direccion-texto">{{ ruta_cliente.contrato.horario_entrega|time:"H:i" }}</div>
-                        </div>
+                    {% if ruta_cliente.contrato.notas_entregador %}
+                    <div class="notas-entregador">Nota: {{ ruta_cliente.contrato.notas_entregador }}</div>
                     {% endif %}
-
-                    {% if ruta.notas %}
-                        <div class="notas"><strong>Notas:</strong> {{ ruta.notas }}</div>
+                    {% if ruta.notas and forloop.first %}
+                        <div class="notas">{{ ruta.notas }}</div>
                     {% endif %}
                 </div>
             {% endfor %}

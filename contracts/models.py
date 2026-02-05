@@ -80,6 +80,12 @@ class Contrato(models.Model):
         verbose_name="Días de entrega",
         help_text="Días de la semana en que se entrega el servicio (lunes, martes, …)"
     )
+    notas_entregador = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Notas para el entregador",
+        help_text="Indicaciones opcionales para quien realiza la entrega (ej. timbre, dejar en conserjería)"
+    )
     estado = models.CharField(
         max_length=20,
         choices=ESTADO_CHOICES,

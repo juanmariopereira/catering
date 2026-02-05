@@ -12,22 +12,43 @@
 
 {% block extra_css %}
 <style>
-    .actions { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .btn { display: inline-block; padding: 10px 20px; background-color: #7CB342; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
+    .actions { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn { display: inline-block; padding: 6px 14px; background-color: #7CB342; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; font-size: 0.9rem; }
     .btn:hover { background-color: #689F38; }
     .btn-secondary { background-color: #6c757d; }
     .btn-secondary:hover { background-color: #5a6268; }
-    .search-form { display: flex; gap: 10px; margin-bottom: 20px; }
-    .search-form input, .search-form select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-    th { background-color: #7CB342; color: white; }
-    tr:hover { background-color: #f5f5f5; }
-    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .search-form { display: flex; gap: 8px; margin-bottom: 0; }
+    .search-form input, .search-form select { padding: 5px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.875rem; }
+    .cliente-list-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.8125rem; }
+    .cliente-list-table th, .cliente-list-table td { padding: 4px 8px; text-align: left; border-bottom: 1px solid #e0e0e0; vertical-align: middle; }
+    .cliente-list-table th { background-color: #7CB342; color: white; font-weight: 600; white-space: nowrap; }
+    .cliente-list-table tbody tr:hover { background-color: #f5f5f5; }
+    .cliente-list-table .badge { padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; font-weight: 600; }
     .badge-activo { background-color: #4CAF50; color: white; }
     .badge-inactivo { background-color: #9e9e9e; color: white; }
     .th-sortable a { color: white; text-decoration: underline; }
     .th-sortable a:hover { color: #e8f5e9; }
+    .cliente-list-table td a { font-size: 0.8125rem; }
+    .cliente-list-table .direccion-cell { max-width: 200px; font-size: 0.75rem; color: #555; }
+    .pagination {
+        margin-top: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.875rem;
+    }
+    .pagination a, .pagination span {
+        padding: 5px 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        text-decoration: none;
+        color: #333;
+        background: #fff;
+    }
+    .pagination a:hover { background: #e8f5e9; color: #2e7d32; }
+    .pagination .current { background: #7CB342; color: white; border-color: #7CB342; }
+    .pagination .disabled { color: #999; cursor: not-allowed; }
 </style>
 {% endblock %}
 
@@ -46,10 +67,21 @@
             </select>
             <button type="submit" class="btn btn-secondary">Filtrar</button>
         </form>
+        <form method="get" class="search-form per-page-form" style="margin-bottom: 0;">
+            {% if request.GET.q %}<input type="hidden" name="q" value="{{ request.GET.q }}">{% endif %}
+            {% if request.GET.activo %}<input type="hidden" name="activo" value="{{ request.GET.activo }}">{% endif %}
+            {% if order_current %}<input type="hidden" name="order" value="{{ order_current }}">{% endif %}
+            <label for="per_page">Mostrar:</label>
+            <select name="per_page" id="per_page" onchange="this.form.submit()">
+                {% for n in per_page_options %}
+                <option value="{{ n }}" {% if per_page_current == n %}selected{% endif %}>{{ n }}</option>
+                {% endfor %}
+            </select>
+        </form>
     </div>
     
     <div class="table-responsive">
-    <table>
+    <table class="cliente-list-table">
         <thead>
             <tr>
                 <th class="th-sortable">
@@ -61,6 +93,7 @@
                     {% if order_current == 'email' %} ↑{% elif order_current == '-email' %} ↓{% endif %}
                 </th>
                 <th>Teléfono</th>
+                <th>Dirección</th>
                 <th class="th-sortable">
                     <a href="{% url 'clients:lista' %}{% if query_base %}?{{ query_base }}&order={% else %}?order={% endif %}{% if order_current == 'estado' %}-estado{% else %}estado{% endif %}">Estado</a>
                     {% if order_current == 'estado' %} ↑{% elif order_current == '-estado' %} ↓{% endif %}
@@ -78,6 +111,7 @@
                     <td>{{ cliente.nombre }}</td>
                     <td>{{ cliente.email }}</td>
                     <td>{{ cliente.telefono }}</td>
+                    <td class="direccion-cell">{% if cliente.direccion %}{{ cliente.direccion|truncatewords:12 }}{% else %}—{% endif %}</td>
                     <td><span class="badge badge-{% if cliente.activo %}activo{% else %}inactivo{% endif %}">{% if cliente.activo %}Activo{% else %}Inactivo{% endif %}</span></td>
                     <td>{% if cliente.ultimo_contrato_fecha %}{{ cliente.ultimo_contrato_fecha|date:"d/m/Y" }}{% else %}—{% endif %}</td>
                     <td>
@@ -87,10 +121,30 @@
                     </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="6">No hay clientes.</td></tr>
+                <tr><td colspan="7">No hay clientes.</td></tr>
             {% endfor %}
         </tbody>
     </table>
     </div>
+
+    {% if page_obj.has_other_pages %}
+    <nav class="pagination" aria-label="Paginación">
+        {% if page_obj.has_previous %}
+            <a href="?{% if query_base %}{{ query_base }}&{% endif %}order={{ order_current }}&page=1">« Primera</a>
+            <a href="?{% if query_base %}{{ query_base }}&{% endif %}order={{ order_current }}&page={{ page_obj.previous_page_number }}">‹ Anterior</a>
+        {% else %}
+            <span class="disabled">« Primera</span>
+            <span class="disabled">‹ Anterior</span>
+        {% endif %}
+        <span class="current">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+            <a href="?{% if query_base %}{{ query_base }}&{% endif %}order={{ order_current }}&page={{ page_obj.next_page_number }}">Siguiente ›</a>
+            <a href="?{% if query_base %}{{ query_base }}&{% endif %}order={{ order_current }}&page={{ page_obj.paginator.num_pages }}">Última »</a>
+        {% else %}
+            <span class="disabled">Siguiente ›</span>
+            <span class="disabled">Última »</span>
+        {% endif %}
+    </nav>
+    {% endif %}
 </div>
 {% endblock %}

@@ -23,6 +23,7 @@ class ClienteListView(LoginRequiredMixin, ListView):
     template_name = 'clients/cliente_lista.html'
     context_object_name = 'clientes'
     paginate_by = 30
+    PER_PAGE_OPTIONS = (30, 50, 100, 500)
 
     ORDER_FIELDS = {
         'nombre': 'nombre',
@@ -57,6 +58,16 @@ class ClienteListView(LoginRequiredMixin, ListView):
             queryset = queryset.order_by('nombre')
         return queryset
 
+    def get_paginate_by(self, queryset):
+        per = self.request.GET.get('per_page')
+        try:
+            n = int(per) if per else None
+            if n is not None and n in self.PER_PAGE_OPTIONS:
+                return n
+        except (ValueError, TypeError):
+            pass
+        return self.paginate_by
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         get = self.request.GET.copy()
@@ -64,6 +75,8 @@ class ClienteListView(LoginRequiredMixin, ListView):
         get.pop('page', None)
         context['query_base'] = get.urlencode()
         context['order_current'] = (self.request.GET.get('order') or 'nombre').strip()
+        context['per_page_current'] = self.get_paginate_by(self.get_queryset())
+        context['per_page_options'] = self.PER_PAGE_OPTIONS
         return context
 
 
@@ -82,6 +95,34 @@ class ClienteDetailView(LoginRequiredMixin, DetailView):
     model = Cliente
     template_name = 'clients/cliente_detalle.html'
     context_object_name = 'cliente'
+
+    def get_context_data(self, **kwargs):
+        from django.db.models import Q
+        from contracts.models import Contrato
+        from billing.models import Factura
+        context = super().get_context_data(**kwargs)
+        cliente = self.object
+        # Contratos del cliente y de sus dependientes (activos e inactivos)
+        contratos_todos = (
+            Contrato.objects.filter(
+                Q(cliente=cliente) | Q(cliente__titular=cliente)
+            )
+            .select_related('cliente', 'plan')
+            .order_by('-fecha_creacion')
+        )
+        # Primera factura pendiente o vencida por contrato (para botón Cobrar)
+        factura_pendiente_por_contrato = {}
+        if contratos_todos:
+            ids = [c.pk for c in contratos_todos]
+            for f in Factura.objects.filter(
+                contrato_id__in=ids,
+                estado__in=['pendiente', 'vencida']
+            ).order_by('contrato_id', 'periodo_desde'):
+                if f.contrato_id not in factura_pendiente_por_contrato:
+                    factura_pendiente_por_contrato[f.contrato_id] = f
+        context['contratos_todos'] = contratos_todos
+        context['factura_pendiente_por_contrato'] = factura_pendiente_por_contrato
+        return context
 
 
 class ClienteUpdateView(LoginRequiredMixin, UpdateView):
@@ -125,6 +166,18 @@ class ClienteDeleteView(LoginRequiredMixin, DeleteView):
     model = Cliente
     template_name = 'clients/cliente_confirm_delete.html'
     success_url = reverse_lazy('clients:lista')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from contracts.models import Contrato
+        cliente = self.object
+        context['contratos_activos'] = Contrato.objects.filter(
+            cliente=cliente, estado='activo'
+        ).select_related('plan').order_by('-fecha_creacion')
+        context['dependientes_con_contratos_activos'] = Cliente.objects.filter(
+            titular=cliente
+        ).filter(contratos__estado='activo').distinct()
+        return context
 
     def form_valid(self, form):
         messages.success(self.request, 'Cliente eliminado exitosamente.')

@@ -71,6 +71,10 @@
             <dd>{% if contrato.dias_entrega %}{{ contrato.dias_entrega|join:", " }}{% else %}—{% endif %}</dd>
             <dt>Horario entrega</dt>
             <dd>{% if contrato.horario_entrega %}{{ contrato.horario_entrega|time:"H:i" }}{% else %}—{% endif %}</dd>
+            {% if contrato.notas_entregador %}
+            <dt>Notas para el entregador</dt>
+            <dd>{{ contrato.notas_entregador }}</dd>
+            {% endif %}
             {% if contrato.notas %}
             <dt>Notas</dt>
             <dd>{{ contrato.notas }}</dd>

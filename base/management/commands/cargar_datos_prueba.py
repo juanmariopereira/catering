@@ -1,17 +1,55 @@
 """
 Comando para cargar datos de prueba en todas las tablas del sistema de catering.
-Uso: python manage.py cargar_datos_prueba
-Opcional: python manage.py cargar_datos_prueba --flush  (borra datos existentes antes)
+Solo para desarrollo: en producción (DEBUG=False) el comando se niega a ejecutarse.
+Los datos de prueba no se cargan en migraciones; solo bajo demanda con este comando.
+
+Uso en desarrollo:
+  python manage.py cargar_datos_prueba
+  python manage.py cargar_datos_prueba --flush   (borra datos existentes antes)
 """
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.core.management.base import BaseCommand
+from django.conf import settings
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 
+def _cargar_recetas_bebidas_postres_frutas(Receta, TipoReceta, tipo_receta_objs):
+    """Crea 50 recetas de catálogo: bebidas, postres y frutas (solo bajo demanda)."""
+    bebidas = [
+        'Agua', 'Café', 'Té verde', 'Té negro', 'Infusión manzanilla',
+        'Zumo naranja', 'Zumo manzana', 'Batido fresa', 'Batido plátano',
+        'Limonada', 'Granizado limón', 'Horchata', 'Cacao', 'Cola',
+        'Tónica', 'Agua con gas', 'Té rojo',
+    ]
+    postres = [
+        'Flan', 'Natillas', 'Arroz con leche', 'Tarta de queso', 'Brownie',
+        'Mousse chocolate', 'Tiramisú', 'Crema catalana', 'Yogur natural',
+        'Helado vainilla', 'Tarta manzana', 'Bizcocho', 'Coulant',
+        'Tarta zanahoria', 'Pudín', 'Gelatina frutas', 'Macedonia',
+    ]
+    frutas = [
+        'Manzana', 'Pera', 'Plátano', 'Naranja', 'Mandarina', 'Uvas',
+        'Sandía', 'Melón', 'Kiwi', 'Fresas', 'Cerezas', 'Piña',
+        'Mango', 'Melocotón', 'Ciruela', 'Granada',
+    ]
+    for nombre in bebidas:
+        rec, created = Receta.objects.get_or_create(nombre=nombre, defaults={'activa': True})
+        if created and 'Bebida' in tipo_receta_objs:
+            rec.tipos_receta.add(tipo_receta_objs['Bebida'])
+    for nombre in postres:
+        rec, created = Receta.objects.get_or_create(nombre=nombre, defaults={'activa': True})
+        if created and 'Postre' in tipo_receta_objs:
+            rec.tipos_receta.add(tipo_receta_objs['Postre'])
+    for nombre in frutas:
+        rec, created = Receta.objects.get_or_create(nombre=nombre, defaults={'activa': True})
+        if created and 'Fruta' in tipo_receta_objs:
+            rec.tipos_receta.add(tipo_receta_objs['Fruta'])
+
+
 class Command(BaseCommand):
-    help = 'Carga datos de prueba en todas las tablas del catering.'
+    help = 'Carga datos de prueba en todas las tablas del catering (solo desarrollo).'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -20,8 +58,22 @@ class Command(BaseCommand):
             help='Eliminar datos existentes antes de cargar (opcional).',
         )
 
+    def _permite_ejecutar(self):
+        """Solo permitir en desarrollo (DEBUG=True) o si ALLOW_LOAD_TEST_DATA está activo."""
+        if getattr(settings, 'ALLOW_LOAD_TEST_DATA', False):
+            return True
+        if getattr(settings, 'DEBUG', False):
+            return True
+        return False
+
     @transaction.atomic
     def handle(self, *args, **options):
+        if not self._permite_ejecutar():
+            raise CommandError(
+                'Este comando es solo para desarrollo. No se ejecutará en producción '
+                '(DEBUG=False). Para permitirlo en otro entorno, defina ALLOW_LOAD_TEST_DATA=True '
+                'en su configuración.'
+            )
         if options['flush']:
             self._flush_data()
         self._load_data()
@@ -165,6 +217,9 @@ class Command(BaseCommand):
             rec.tipos_receta.set([tipo_receta_objs[k] for k in tipos_default])
             rec.momentos_dia.set([tipo_objs[k] for k in momentos_default])
             rec_objs[nombre] = rec
+
+        # 3b. Recetas catálogo: 50 bebidas, postres y frutas (solo bajo demanda con este comando)
+        _cargar_recetas_bebidas_postres_frutas(Receta, TipoReceta, tipo_receta_objs)
 
         # 4. RecetaIngrediente (algunas recetas con ingredientes; unidad = UnidadMedida por símbolo)
         def add_ri(receta_nombre, ingrediente_nombre, cantidad, unidad_simbolo):

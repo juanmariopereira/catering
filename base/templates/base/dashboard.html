@@ -134,6 +134,18 @@
             <div class="stat-label">Planif. próxima semana</div>
             <div class="stat-value">{{ planificaciones_proxima_semana }}</div>
         </div>
+        <div class="stat-card info">
+            <div class="stat-label">Entregas hoy</div>
+            <div class="stat-value">{{ total_entregas_hoy }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Recetas activas</div>
+            <div class="stat-value">{{ recetas_activas }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Cobrado este mes</div>
+            <div class="stat-value">${{ cobrado_mes|floatformat:0 }}</div>
+        </div>
     </div>
 
     <div class="quick-actions">

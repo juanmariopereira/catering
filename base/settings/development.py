@@ -81,6 +81,9 @@ CACHES = {
     }
 }
 
+# Permitir el comando cargar_datos_prueba (solo en desarrollo)
+ALLOW_LOAD_TEST_DATA = True
+
 # Configuración adicional para desarrollo
 INTERNAL_IPS = [
     '127.0.0.1',

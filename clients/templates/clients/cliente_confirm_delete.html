@@ -29,6 +29,31 @@
     <h1>Eliminar Cliente</h1>
     <p>¿Está seguro de que desea eliminar al cliente <strong>{{ object.nombre }}</strong>?</p>
     <p>Esta acción no se puede deshacer.</p>
+
+    {% if contratos_activos %}
+    <div class="aviso-contratos" style="margin: 20px 0; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+        <strong>Contratos activos de este cliente ({{ contratos_activos|length }}):</strong>
+        <ul style="margin: 10px 0 0 20px; padding: 0;">
+            {% for c in contratos_activos %}
+            <li>{{ c.plan.nombre }} — desde {{ c.fecha_inicio|date:"d/m/Y" }}{% if c.fecha_fin %} hasta {{ c.fecha_fin|date:"d/m/Y" }}{% endif %}</li>
+            {% endfor %}
+        </ul>
+        <p style="margin: 10px 0 0 0; font-size: 0.95rem;">Al eliminar el cliente también se eliminarán estos contratos.</p>
+    </div>
+    {% endif %}
+
+    {% if dependientes_con_contratos_activos %}
+    <div class="aviso-dependientes" style="margin: 20px 0; padding: 15px; background: #f8d7da; border-left: 4px solid #dc3545; border-radius: 4px;">
+        <strong>Dependientes de este cliente con contratos activos ({{ dependientes_con_contratos_activos|length }}):</strong>
+        <ul style="margin: 10px 0 0 20px; padding: 0;">
+            {% for dep in dependientes_con_contratos_activos %}
+            <li><a href="{% url 'clients:detalle' dep.pk %}">{{ dep.nombre }}</a></li>
+            {% endfor %}
+        </ul>
+        <p style="margin: 10px 0 0 0; font-size: 0.95rem;">Estos clientes tienen a «{{ object.nombre }}» como titular. Revise o cambie su titular antes de eliminar.</p>
+    </div>
+    {% endif %}
+
     <form method="post">
         {% csrf_token %}
         <button type="submit" class="btn btn-danger">Eliminar</button>

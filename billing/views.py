@@ -176,35 +176,51 @@ class PagoDeleteView(LoginRequiredMixin, DeleteView):
 
 @login_required
 def dashboard_cobranza(request):
-    """Dashboard de cobranza con estadísticas y alertas"""
+    """Dashboard de cobranza con estadísticas, alertas y accesos rápidos"""
     hoy = timezone.now().date()
-    
+    inicio_mes = hoy.replace(day=1)
+
     # Estadísticas generales
     total_facturas = Factura.objects.count()
     facturas_pendientes = Factura.objects.filter(estado='pendiente').count()
     facturas_pagadas = Factura.objects.filter(estado='pagada').count()
     facturas_vencidas = Factura.objects.filter(estado='vencida').count()
-    
+
     # Montos
     monto_total_pendiente = Factura.objects.filter(
         estado__in=['pendiente', 'vencida']
     ).aggregate(total=Sum('monto'))['total'] or 0
-    
+
     monto_total_pagado = Factura.objects.filter(
         estado='pagada'
     ).aggregate(total=Sum('monto'))['total'] or 0
-    
+
+    # Cobrado este mes
+    cobrado_este_mes = Pago.objects.filter(
+        fecha_pago__gte=inicio_mes,
+        fecha_pago__lte=hoy,
+    ).aggregate(total=Sum('monto'))['total'] or 0
+
+    # Últimos pagos (actividad reciente)
+    ultimos_pagos = (
+        Pago.objects.select_related('factura', 'factura__contrato', 'factura__contrato__cliente')
+        .order_by('-fecha_pago', '-fecha_creacion')[:12]
+    )
+
     # Facturas vencidas
     facturas_vencidas_lista = obtener_facturas_vencidas()[:10]
-    
+
     # Próximas a vencer (próximos 7 días)
     fecha_limite = hoy + timedelta(days=7)
     facturas_proximas_vencer = Factura.objects.filter(
         estado='pendiente',
         fecha_vencimiento__lte=fecha_limite,
-        fecha_vencimiento__gte=hoy
-    ).order_by('fecha_vencimiento')[:10]
-    
+        fecha_vencimiento__gte=hoy,
+    ).select_related('contrato', 'contrato__cliente').order_by('fecha_vencimiento')[:10]
+
+    # Contratos activos (para contexto / enlaces)
+    contratos_activos = Contrato.objects.filter(estado='activo').count()
+
     context = {
         'total_facturas': total_facturas,
         'facturas_pendientes': facturas_pendientes,
@@ -212,10 +228,13 @@ def dashboard_cobranza(request):
         'facturas_vencidas': facturas_vencidas,
         'monto_total_pendiente': monto_total_pendiente,
         'monto_total_pagado': monto_total_pagado,
+        'cobrado_este_mes': cobrado_este_mes,
+        'ultimos_pagos': ultimos_pagos,
         'facturas_vencidas_lista': facturas_vencidas_lista,
         'facturas_proximas_vencer': facturas_proximas_vencer,
+        'contratos_activos': contratos_activos,
     }
-    
+
     return render(request, 'billing/dashboard.html', context)
 
 
