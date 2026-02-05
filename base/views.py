@@ -1,12 +1,18 @@
 """
 Vistas principales del proyecto.
 """
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Sum
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.urls import reverse_lazy, reverse
 from datetime import date, timedelta, datetime
 
+from .models import Feriado
+from .forms import FeriadoForm
 from planning.models import PlanificacionMenu
 from billing.models import Factura, Pago
 from routes.models import Ruta, RutaCliente
@@ -91,3 +97,61 @@ def dashboard(request):
 def page_not_found(request, exception):
     """Vista 404 amigable: recurso o registro no encontrado."""
     return render(request, '404.html', status=404)
+
+
+# --- Gestión de Feriados ---
+
+class FeriadoListView(LoginRequiredMixin, ListView):
+    """Lista de feriados ordenados por fecha."""
+    model = Feriado
+    template_name = 'base/feriado_lista.html'
+    context_object_name = 'feriados'
+    paginate_by = 50
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        año = self.request.GET.get('año')
+        if año:
+            try:
+                y = int(año)
+                qs = qs.filter(fecha__year=y)
+            except ValueError:
+                pass
+        return qs.order_by('fecha')
+
+
+class FeriadoCreateView(LoginRequiredMixin, CreateView):
+    """Crear un nuevo feriado."""
+    model = Feriado
+    form_class = FeriadoForm
+    template_name = 'base/feriado_form.html'
+    success_url = reverse_lazy('feriado_lista')
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Feriado creado correctamente.')
+        return super().form_valid(form)
+
+
+class FeriadoUpdateView(LoginRequiredMixin, UpdateView):
+    """Editar un feriado."""
+    model = Feriado
+    form_class = FeriadoForm
+    template_name = 'base/feriado_form.html'
+    context_object_name = 'feriado'
+    success_url = reverse_lazy('feriado_lista')
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Feriado actualizado correctamente.')
+        return super().form_valid(form)
+
+
+class FeriadoDeleteView(LoginRequiredMixin, DeleteView):
+    """Eliminar un feriado."""
+    model = Feriado
+    template_name = 'base/feriado_confirm_delete.html'
+    context_object_name = 'feriado'
+    success_url = reverse_lazy('feriado_lista')
+
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, 'Feriado eliminado.')
+        return super().delete(request, *args, **kwargs)

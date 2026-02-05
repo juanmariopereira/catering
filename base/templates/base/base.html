@@ -334,7 +334,7 @@
                 <a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/dashboard/' or request.path == '/' %}active{% endif %}">Inicio</a>
             </li>
             <li class="nav-item nav-dropdown">
-                <span class="nav-link nav-dropdown-toggle {% if '/clients/' in request.path or '/plans/' in request.path or '/recipes/' in request.path or '/routes/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Catálogos</span>
+                <span class="nav-link nav-dropdown-toggle {% if '/clients/' in request.path or '/plans/' in request.path or '/recipes/' in request.path or '/routes/' in request.path or '/feriados/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Catálogos</span>
                 <ul class="nav-dropdown-menu">
                     <li><a href="{% url 'clients:lista' %}" class="{% if '/clients/' in request.path %}active{% endif %}">Clientes</a></li>
                     <li><a href="{% url 'plans:lista' %}" class="{% if '/plans/' in request.path %}active{% endif %}">Planes</a></li>
@@ -343,6 +343,7 @@
                     <li><a href="{% url 'recipes:unidad_medida_lista' %}" class="{% if 'unidades-medida' in request.path %}active{% endif %}">Unidades de medida</a></li>
                     <li><a href="{% url 'recipes:tipo_receta_lista' %}" class="{% if 'tipos-receta' in request.path %}active{% endif %}">Tipos de receta</a></li>
                     <li><a href="{% url 'routes:entregador_lista' %}" class="{% if '/routes/' in request.path %}active{% endif %}">Entregadores</a></li>
+                    <li><a href="{% url 'feriado_lista' %}" class="{% if '/feriados/' in request.path %}active{% endif %}">Feriados</a></li>
                 </ul>
             </li>
             <li class="nav-item nav-dropdown">

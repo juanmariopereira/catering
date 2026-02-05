@@ -143,12 +143,15 @@ def ruta_por_fecha_entregador(request, fecha_str, entregador_id):
     
     # Obtener clientes de la ruta ordenados por orden de entrega
     ruta_clientes = ruta.ruta_clientes.all().order_by('orden_entrega')
-    
+
+    from base.models import es_feriado, get_feriado
     context = {
         'ruta': ruta,
         'entregador': entregador,
         'fecha': fecha,
         'ruta_clientes': ruta_clientes,
+        'es_feriado': es_feriado(fecha),
+        'feriado': get_feriado(fecha),
     }
     
     return render(request, 'delivery/ruta_imprimible.html', context)

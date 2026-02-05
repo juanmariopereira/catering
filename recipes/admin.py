@@ -33,15 +33,15 @@ class RecetaIngredienteInline(admin.TabularInline):
 
 @admin.register(Receta)
 class RecetaAdmin(admin.ModelAdmin):
-    list_display = ['nombre', 'activa', 'fecha_creacion']
-    list_filter = ['activa', 'tipos_receta', 'momentos_dia', 'fecha_creacion']
+    list_display = ['nombre', 'activa', 'producido_en_cocina', 'fecha_creacion']
+    list_filter = ['activa', 'producido_en_cocina', 'tipos_receta', 'momentos_dia', 'fecha_creacion']
     search_fields = ['nombre', 'descripcion']
     readonly_fields = ['fecha_creacion', 'fecha_actualizacion']
     filter_horizontal = ['tipos_receta', 'momentos_dia']
     inlines = [RecetaIngredienteInline]
     fieldsets = (
         ('Información Básica', {
-            'fields': ('nombre', 'descripcion', 'tipos_receta', 'momentos_dia', 'activa')
+            'fields': ('nombre', 'descripcion', 'tipos_receta', 'momentos_dia', 'activa', 'producido_en_cocina')
         }),
         ('Información Nutricional', {
             'fields': ('info_nutricional',)

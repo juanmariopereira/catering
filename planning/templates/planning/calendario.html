@@ -50,7 +50,9 @@
         min-height: 100px;
     }
     .calendar-day.empty { background-color: #f5f5f5; }
+    .calendar-day.feriado { background-color: #fff8e1; }
     .day-number { font-weight: bold; margin-bottom: 5px; }
+    .feriado-badge { font-size: 10px; color: #f57c00; margin-top: 4px; }
     .planificacion-item {
         font-size: 11px;
         padding: 2px 5px;
@@ -82,8 +84,10 @@
         
         {% for dia_num in "1234567890123456789012345678901234567890" %}
             {% if forloop.counter <= ultimo_dia %}
-                <div class="calendar-day">
+                {% with feriado_nombre=feriados_por_dia|get_item:forloop.counter %}
+                <div class="calendar-day{% if feriado_nombre %} feriado{% endif %}">
                     <div class="day-number">{{ forloop.counter }}</div>
+                    {% if feriado_nombre %}<div class="feriado-badge">Feriado: {{ feriado_nombre }}</div>{% endif %}
                     {% with planificaciones_dia=planificaciones_por_dia|get_item:forloop.counter %}
                         {% if planificaciones_dia %}
                             {% for planificacion in planificaciones_dia %}
@@ -94,6 +98,7 @@
                         {% endif %}
                     {% endwith %}
                 </div>
+                {% endwith %}
             {% else %}
                 <div class="calendar-day empty"></div>
             {% endif %}

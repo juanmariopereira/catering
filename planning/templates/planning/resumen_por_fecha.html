@@ -38,6 +38,11 @@
     <h1>Planificación del día</h1>
     <p>Punto de partida para quien planifica las comidas: vea cuántos clientes hay por plan, cree o edite los menús y revise avisos (ingredientes no deseados). Así facilita la producción en cocina y tiene el contexto de los contratos activos.</p>
 
+    {% if es_feriado %}
+    <div class="aviso-feriado" style="padding: 12px; margin-bottom: 16px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
+        <strong>Feriado:</strong> {{ feriado.nombre }} — Sin entregas este día.
+    </div>
+    {% endif %}
     <div class="fecha-navegacion">
         <a href="{% url 'planning:resumen' %}?fecha={{ fecha_anterior|date:'Y-m-d' }}">← Día anterior</a>
         <span class="fecha-actual">{{ fecha|date:"l, d F Y" }}</span>

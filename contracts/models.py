@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.db import models
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.core.validators import MinValueValidator
 from django.utils import timezone
 
@@ -209,19 +209,21 @@ class PausaContrato(models.Model):
     def _dias_pausa(self, fecha_inicio, fecha_fin):
         """
         Número de días de entrega (según dias_entrega del contrato) entre
-        fecha_inicio y fecha_fin (inclusive). Si el contrato no tiene días
-        configurados, se usan días calendario.
+        fecha_inicio y fecha_fin (inclusive). No se cuentan los feriados.
+        Si el contrato no tiene días configurados, se usan días calendario.
         """
+        from base.models import feriados_en_rango
         contrato = getattr(self, 'contrato', None)
         if contrato is None and self.contrato_id:
             contrato = Contrato.objects.filter(pk=self.contrato_id).first()
         dias_entrega = list(contrato.dias_entrega) if contrato and contrato.dias_entrega else []
+        feriados = feriados_en_rango(fecha_inicio, fecha_fin)
         if not dias_entrega:
-            return (fecha_fin - fecha_inicio).days + 1
+            return (fecha_fin - fecha_inicio).days + 1 - len(feriados)
         count = 0
         d = fecha_inicio
         while d <= fecha_fin:
-            if self._WEEKDAY_NOMBRE[d.weekday()] in dias_entrega:
+            if d not in feriados and self._WEEKDAY_NOMBRE[d.weekday()] in dias_entrega:
                 count += 1
             d += timedelta(days=1)
         return count
@@ -266,3 +268,33 @@ class PausaContrato(models.Model):
             raise ValidationError("La pausa no puede empezar después de la fecha fin del contrato.")
         if self.contrato_id and self.fecha_inicio and self.fecha_inicio < self.contrato.fecha_inicio:
             raise ValidationError("La pausa no puede empezar antes de la fecha inicio del contrato.")
+
+
+def recalcular_fecha_fin_por_feriado(fecha, delta):
+    """
+    Ajusta fecha_fin de los contratos cuando cambia el calendario de feriados.
+    - delta=+1: se agregó un feriado; cada pausa que contiene esa fecha pierde
+      un día de entrega → se extiende fecha_fin en 1 día por cada tal pausa.
+    - delta=-1: se quitó un feriado; cada pausa que contiene esa fecha gana
+      un día de entrega → se acorta fecha_fin en 1 día por cada tal pausa.
+    """
+    if hasattr(fecha, 'date'):
+        fecha = fecha.date()
+    pausas_por_contrato = (
+        PausaContrato.objects.filter(
+            fecha_inicio__lte=fecha,
+            fecha_fin__gte=fecha,
+        )
+        .values('contrato_id')
+        .annotate(n=Count('id'))
+    )
+    for row in pausas_por_contrato:
+        contrato_id = row['contrato_id']
+        n = row['n']
+        if n == 0:
+            continue
+        contrato = Contrato.objects.filter(pk=contrato_id).first()
+        if contrato and contrato.fecha_fin is not None:
+            days_delta = delta * n
+            nueva_fin = contrato.fecha_fin + timedelta(days=days_delta)
+            Contrato.objects.filter(pk=contrato_id).update(fecha_fin=nueva_fin)

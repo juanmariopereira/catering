@@ -1,5 +1,13 @@
 from django.contrib import admin
-from .models import AIRequestLog
+from .models import AIRequestLog, Feriado
+
+
+@admin.register(Feriado)
+class FeriadoAdmin(admin.ModelAdmin):
+    list_display = ('fecha', 'nombre')
+    list_filter = ('fecha',)
+    search_fields = ('nombre',)
+    date_hierarchy = 'fecha'
 
 
 @admin.register(AIRequestLog)

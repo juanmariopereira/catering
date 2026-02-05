@@ -113,6 +113,11 @@ class Receta(models.Model):
         help_text="Información nutricional en formato JSON (calorías, proteínas, carbohidratos, etc.)"
     )
     activa = models.BooleanField(default=True, verbose_name="Activa")
+    producido_en_cocina = models.BooleanField(
+        default=True,
+        verbose_name="Es producido en cocina",
+        help_text="Si está marcado, la receta se incluye en el Resumen — Cantidades por comida del detalle de cocina."
+    )
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
     fecha_actualizacion = models.DateTimeField(auto_now=True, verbose_name="Fecha de actualización")
 

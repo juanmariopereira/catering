@@ -38,6 +38,7 @@
         <span><strong>Tipo de receta:</strong> {% for t in receta.tipos_receta.all %}{{ t.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</span>
         <span><strong>Momentos del día:</strong> {% for m in receta.momentos_dia.all %}{{ m.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</span>
         <span><strong>Estado:</strong> {% if receta.activa %}Activa{% else %}Inactiva{% endif %}</span>
+        <span><strong>Es producido en cocina:</strong> {% if receta.producido_en_cocina %}Sí{% else %}No{% endif %}</span>
     </div>
 
     {% if receta.descripcion %}

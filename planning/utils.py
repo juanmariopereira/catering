@@ -271,6 +271,7 @@ def recetas_a_preparar_por_fecha(fecha) -> List[Dict[str, Any]]:
             'planificaciones': planificaciones_por_receta[receta_id],
         }
         for receta_id in recetas_dict
+        if recetas_objs.get(receta_id) and getattr(recetas_objs[receta_id], 'producido_en_cocina', True)
     ]
 
 
@@ -324,8 +325,11 @@ def resumen_cocina_por_momento(fecha) -> List[Dict[str, Any]]:
         for receta_id, data in por_momento[tc_id].items():
             if data['cantidad'] <= 0:
                 continue
+            receta = recetas_objs.get(receta_id)
+            if not receta or not getattr(receta, 'producido_en_cocina', True):
+                continue
             items.append({
-                'receta': recetas_objs.get(receta_id),
+                'receta': receta,
                 'cantidad': data['cantidad'],
                 'sustituciones': data['sustituciones'],
             })

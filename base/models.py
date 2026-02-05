@@ -52,3 +52,48 @@ class AIRequestLog(models.Model):
 
     def __str__(self):
         return f"{self.accion} ({self.total_tokens} tokens) - {self.fecha_hora}"
+
+
+class Feriado(models.Model):
+    """
+    Feriado (día festivo): no hay entregas y no cuenta como día de entrega
+    en pausas de contrato, planificación, etc.
+    """
+    fecha = models.DateField(unique=True, verbose_name="Fecha", db_index=True)
+    nombre = models.CharField(max_length=255, verbose_name="Nombre")
+
+    class Meta:
+        ordering = ['fecha']
+        verbose_name = "Feriado"
+        verbose_name_plural = "Feriados"
+
+    def __str__(self):
+        return f"{self.nombre} ({self.fecha})"
+
+
+def es_feriado(fecha):
+    """Indica si la fecha dada es un feriado."""
+    if hasattr(fecha, 'date'):
+        fecha = fecha.date()
+    return Feriado.objects.filter(fecha=fecha).exists()
+
+
+def get_feriado(fecha):
+    """Devuelve el Feriado para la fecha, o None si no es feriado."""
+    if hasattr(fecha, 'date'):
+        fecha = fecha.date()
+    return Feriado.objects.filter(fecha=fecha).first()
+
+
+def feriados_en_rango(fecha_inicio, fecha_fin):
+    """Devuelve un set de fechas (date) que son feriados entre fecha_inicio y fecha_fin (inclusive)."""
+    if hasattr(fecha_inicio, 'date'):
+        fecha_inicio = fecha_inicio.date()
+    if hasattr(fecha_fin, 'date'):
+        fecha_fin = fecha_fin.date()
+    return set(
+        Feriado.objects.filter(
+            fecha__gte=fecha_inicio,
+            fecha__lte=fecha_fin
+        ).values_list('fecha', flat=True)
+    )

@@ -70,6 +70,7 @@
                 <th>Momentos día</th>
                 <th>Ingredientes</th>
                 <th>Estado</th>
+                <th>Cocina</th>
                 <th>Acciones</th>
             </tr>
         </thead>
@@ -81,6 +82,7 @@
                     <td>{% for m in receta.momentos_dia.all %}{{ m.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
                     <td>{{ receta.receta_ingredientes.count }}</td>
                     <td><span class="badge badge-{% if receta.activa %}activa{% else %}inactiva{% endif %}">{% if receta.activa %}Activa{% else %}Inactiva{% endif %}</span></td>
+                    <td>{% if receta.producido_en_cocina %}Sí{% else %}No{% endif %}</td>
                     <td>
                         <a href="{% url 'recipes:detalle' receta.pk %}">Ver</a> |
                         <a href="{% url 'recipes:editar' receta.pk %}">Editar</a> |
@@ -88,7 +90,7 @@
                     </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="6">No hay recetas.</td></tr>
+                <tr><td colspan="7">No hay recetas.</td></tr>
             {% endfor %}
         </tbody>
     </table>

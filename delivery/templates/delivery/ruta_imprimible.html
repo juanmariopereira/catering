@@ -76,7 +76,11 @@
     <div class="header">
         <h1>Ruta de Entrega</h1>
     </div>
-
+    {% if es_feriado %}
+    <div style="padding: 8px 12px; margin-bottom: 10px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; font-size: 0.9rem;">
+        <strong>Feriado:</strong> {{ feriado.nombre }} — Sin entregas este día.
+    </div>
+    {% endif %}
     <div class="info-ruta">
         <div class="info-item">
             <span class="info-label">Fecha</span>

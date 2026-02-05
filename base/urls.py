@@ -23,6 +23,10 @@ from base import views as base_views
 urlpatterns = [
     path('', RedirectView.as_view(url='/dashboard/', permanent=False)),
     path('dashboard/', base_views.dashboard, name='dashboard'),
+    path('feriados/', base_views.FeriadoListView.as_view(), name='feriado_lista'),
+    path('feriados/nuevo/', base_views.FeriadoCreateView.as_view(), name='feriado_crear'),
+    path('feriados/<int:pk>/editar/', base_views.FeriadoUpdateView.as_view(), name='feriado_editar'),
+    path('feriados/<int:pk>/eliminar/', base_views.FeriadoDeleteView.as_view(), name='feriado_eliminar'),
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
     path('clients/', include('clients.urls')),

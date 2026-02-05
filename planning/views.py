@@ -26,6 +26,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from contracts.models import Contrato, contratos_activos_en_fecha
+from base.models import es_feriado, get_feriado
 from diets.models import TipoComida
 from plans.models import Plan
 from recipes.models import Receta
@@ -113,6 +114,8 @@ def resumen_por_fecha(request):
         'total_clientes': sum(r['cantidad'] for r in resumen),
         'menus_creados': len([r for r in resumen if r['planificacion_menu']]),
         'avisos_pendientes': avisos_pendientes,
+        'es_feriado': es_feriado(fecha),
+        'feriado': get_feriado(fecha),
     }
     return render(request, 'planning/resumen_por_fecha.html', context)
 
@@ -162,6 +165,8 @@ def clientes_reciben_fecha(request):
         'filas': filas,
         'fecha_anterior': fecha_anterior,
         'fecha_siguiente': fecha_siguiente,
+        'es_feriado': es_feriado(fecha),
+        'feriado': get_feriado(fecha),
     }
     return render(request, 'planning/clientes_reciben_fecha.html', context)
 
@@ -447,6 +452,14 @@ def calendario_planificacion(request, year=None, month=None):
         if dia not in planificaciones_por_dia:
             planificaciones_por_dia[dia] = []
         planificaciones_por_dia[dia].append(planificacion)
+
+    # Feriados del mes (día -> nombre) para marcar en el calendario
+    from base.models import Feriado
+    feriados_mes = Feriado.objects.filter(
+        fecha__year=fecha.year,
+        fecha__month=fecha.month,
+    )
+    feriados_por_dia = {f.fecha.day: f.nombre for f in feriados_mes}
     
     # Calcular mes anterior y siguiente
     if fecha.month == 1:
@@ -460,6 +473,7 @@ def calendario_planificacion(request, year=None, month=None):
         'mes_siguiente': siguiente_mes,
         'ultimo_dia': ultimo_dia,
         'planificaciones_por_dia': planificaciones_por_dia,
+        'feriados_por_dia': feriados_por_dia,
     }
     
     return render(request, 'planning/calendario.html', context)

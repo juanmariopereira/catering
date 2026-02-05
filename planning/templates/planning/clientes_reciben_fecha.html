@@ -42,6 +42,11 @@
     <h1>Clientes que reciben menú</h1>
     <p>Lista de clientes por plan que recibirán sus comidas en la fecha indicada. Sirve para revisar avisos (ingredientes no deseados parametrizados) y definir sustituciones; así la producción en cocina recibe el reporte correcto y la gestión de contratos queda visible (vigencia).</p>
 
+    {% if es_feriado %}
+    <div class="aviso-feriado" style="padding: 12px; margin-bottom: 16px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
+        <strong>Feriado:</strong> {{ feriado.nombre }} — Sin entregas este día.
+    </div>
+    {% endif %}
     <div class="fecha-navegacion">
         <a href="{% url 'planning:clientes_por_fecha' %}?fecha={{ fecha_anterior|date:'Y-m-d' }}">← Día anterior</a>
         <span class="fecha-actual">{{ fecha|date:"l, d F Y" }}</span>

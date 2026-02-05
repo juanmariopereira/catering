@@ -102,6 +102,13 @@
                 {% if form.activa.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.activa.errors }}</div>{% endif %}
             </div>
         </div>
+        <div class="form-row form-row-2">
+            <div class="form-group checkbox-group">
+                <label for="{{ form.producido_en_cocina.id_for_label }}">{{ form.producido_en_cocina }} {{ form.producido_en_cocina.label }}</label>
+                {% if form.producido_en_cocina.help_text %}<div class="help-text">{{ form.producido_en_cocina.help_text }}</div>{% endif %}
+                {% if form.producido_en_cocina.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.producido_en_cocina.errors }}</div>{% endif %}
+            </div>
+        </div>
 
         {% if object %}
         <div class="ingredientes-section">

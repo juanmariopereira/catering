@@ -1,0 +1,77 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Feriados - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Feriados</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .actions { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
+    .btn:hover { background-color: {{ brand_color_hover }}; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    .filtro-año { display: flex; gap: 8px; align-items: center; }
+    .filtro-año input { width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: {{ brand_color }}; color: white; }
+    tr:hover { background-color: #f5f5f5; }
+    .empty-row { color: #999; text-align: center; padding: 24px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Feriados</h1>
+    <p>Días festivos en los que no hay entregas. Se usan para el cálculo de pausas de contrato, planificación y rutas de entrega.</p>
+
+    <div class="actions">
+        <a href="{% url 'feriado_crear' %}" class="btn">Nuevo feriado</a>
+        <form method="get" class="filtro-año">
+            <label for="año">Año:</label>
+            <input type="number" name="año" id="año" value="{{ request.GET.año }}" placeholder="Ej. 2025" min="2000" max="2100">
+            <button type="submit" class="btn btn-secondary">Filtrar</button>
+            {% if request.GET.año %}<a href="{% url 'feriado_lista' %}" class="btn btn-secondary">Ver todos</a>{% endif %}
+        </form>
+    </div>
+
+    <div class="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Nombre</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in feriados %}
+            <tr>
+                <td>{{ f.fecha|date:"d/m/Y" }}</td>
+                <td>{{ f.nombre }}</td>
+                <td>
+                    <a href="{% url 'feriado_editar' f.pk %}">Editar</a> |
+                    <a href="{% url 'feriado_eliminar' f.pk %}">Eliminar</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="empty-row">No hay feriados.{% if request.GET.año %} Pruebe otro año o <a href="{% url 'feriado_lista' %}">ver todos</a>.{% endif %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+
+    {% if is_paginated %}
+    <div class="pagination" style="margin-top: 20px;">
+        {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if request.GET.año %}&año={{ request.GET.año }}{% endif %}">Anterior</a>{% endif %}
+        <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if request.GET.año %}&año={{ request.GET.año }}{% endif %}">Siguiente</a>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

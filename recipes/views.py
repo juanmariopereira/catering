@@ -269,7 +269,7 @@ class RecetaDetailView(LoginRequiredMixin, DetailView):
 class RecetaCreateView(LoginRequiredMixin, CreateView):
     model = Receta
     template_name = 'recipes/receta_form.html'
-    fields = ['nombre', 'descripcion', 'tipos_receta', 'momentos_dia', 'info_nutricional', 'activa']
+    fields = ['nombre', 'descripcion', 'tipos_receta', 'momentos_dia', 'info_nutricional', 'activa', 'producido_en_cocina']
 
     def get_success_url(self):
         return reverse('recipes:editar', args=[self.object.pk])
@@ -282,7 +282,7 @@ class RecetaCreateView(LoginRequiredMixin, CreateView):
 class RecetaUpdateView(LoginRequiredMixin, UpdateView):
     model = Receta
     template_name = 'recipes/receta_form.html'
-    fields = ['nombre', 'descripcion', 'tipos_receta', 'momentos_dia', 'info_nutricional', 'activa']
+    fields = ['nombre', 'descripcion', 'tipos_receta', 'momentos_dia', 'info_nutricional', 'activa', 'producido_en_cocina']
 
     def get_success_url(self):
         return reverse('recipes:editar', args=[self.object.pk])
