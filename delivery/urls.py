@@ -5,6 +5,8 @@ app_name = 'delivery'
 
 urlpatterns = [
     path('', views.RutaListView.as_view(), name='lista'),
+    path('generar-rutas/', views.generar_rutas, name='generar_rutas'),
+    path('asignar-pendientes/', views.asignar_pendientes, name='asignar_pendientes'),
     path('ruta/crear/', views.RutaCreateView.as_view(), name='ruta_crear'),
     path('ruta/<int:pk>/editar/', views.RutaUpdateView.as_view(), name='ruta_editar'),
     path('ruta/<int:pk>/cargar-ultima/', views.ruta_cargar_ultima, name='ruta_cargar_ultima'),

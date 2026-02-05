@@ -97,6 +97,7 @@
                 {{ form.dias_entrega }}
                 {% if form.dias_entrega.help_text %}<div class="help-text">{{ form.dias_entrega.help_text }}</div>{% endif %}
                 {% if form.dias_entrega.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.dias_entrega.errors }}</div>{% endif %}
+                <p class="help-text" style="margin-top: 6px;">Si las rutas ya están creadas para fechas en las que este contrato tiene entrega, asígnalo desde <a href="{% url 'delivery:lista' %}">Producción &gt; Entregas</a> (filtrar por fecha y usar «Asignar contratos pendientes»).</p>
             </div>
         </div>
         <div class="form-row form-row-1">

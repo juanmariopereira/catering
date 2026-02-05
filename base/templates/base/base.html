@@ -113,6 +113,23 @@
             gap: 15px;
         }
         .navbar-user span { font-size: 0.9rem; color: #666; }
+        .banner-contratos-sin-ruta {
+            background: #fff3e0;
+            border-bottom: 2px solid #ff9800;
+            color: #e65100;
+            padding: 10px 24px;
+            text-align: center;
+            font-size: 0.95rem;
+        }
+        .banner-contratos-sin-ruta a {
+            font-weight: 600;
+            color: #e65100;
+            text-decoration: underline;
+            margin-left: 6px;
+        }
+        .banner-contratos-sin-ruta a:hover {
+            color: #bf360c;
+        }
         .btn-logout {
             padding: 8px 16px;
             background-color: transparent;
@@ -451,6 +468,13 @@
             {% endif %}
         </div>
     </nav>
+
+    {% if user.is_authenticated and contratos_sin_ruta_hoy_count and contratos_sin_ruta_hoy_count > 0 %}
+    <div class="banner-contratos-sin-ruta no-print" role="alert">
+        <strong>{{ contratos_sin_ruta_hoy_count }} contrato(s)</strong> con entrega hoy no están asignados a ninguna ruta.
+        <a href="{% url 'delivery:lista' %}?fecha={{ contratos_sin_ruta_hoy_fecha|date:'Y-m-d' }}">Asignar en Entregas</a>
+    </div>
+    {% endif %}
 
     <main class="main-content">
         <nav class="breadcrumb-nav" aria-label="Miga de pan">

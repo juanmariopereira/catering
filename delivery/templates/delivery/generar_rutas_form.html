@@ -1,0 +1,53 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Generar rutas para una fecha - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Producción</span>
+<span class="sep">/</span>
+<a href="{% url 'delivery:lista' %}">Entregas</a>
+<span class="sep">/</span>
+<span>Generar rutas</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-rutas { max-width: 480px; padding: 20px 0; }
+    .form-rutas .form-row { margin-bottom: 1rem; }
+    .form-rutas label { display: block; margin-bottom: 4px; font-weight: 600; color: #333; }
+    .form-rutas input[type="date"] { padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%; max-width: 220px; box-sizing: border-box; }
+    .form-rutas .help { font-size: 0.85rem; color: #666; margin-top: 4px; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: #2196F3; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; font-size: 1rem; }
+    .btn:hover { background-color: #1976D2; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    .form-actions { margin-top: 1.5rem; display: flex; gap: 10px; flex-wrap: wrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Generar rutas para una fecha</h1>
+
+    <p>Genera rutas para todos los entregadores activos. Opcionalmente copia la configuración desde una fecha anterior (mismo entregador → mismos clientes que sigan activos y con entrega ese día). Los contratos que queden sin asignar se reparten entre las rutas.</p>
+
+    <form method="post" action="{% url 'delivery:generar_rutas' %}" class="form-rutas">
+        {% csrf_token %}
+        <div class="form-row">
+            <label for="fecha">Fecha para la que generar rutas *</label>
+            <input type="date" name="fecha" id="fecha" required value="{{ request.POST.fecha }}">
+        </div>
+        <div class="form-row">
+            <label for="fecha_origen">Copiar desde fecha (opcional)</label>
+            <input type="date" name="fecha_origen" id="fecha_origen" value="{{ request.POST.fecha_origen }}">
+            <p class="help">Si indicas una fecha, se copiarán entregadores y clientes desde esa fecha. Los contratos que ya no apliquen se omiten; los nuevos se asignan a alguna ruta.</p>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn">Generar rutas</button>
+            <a href="{% url 'delivery:lista' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
