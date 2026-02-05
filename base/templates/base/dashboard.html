@@ -95,27 +95,56 @@
         padding-bottom: 8px;
     }
     .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 16px;
+    }
+    .quick-actions .action-tile {
         display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-    }
-    .quick-actions .btn {
-        display: inline-flex;
+        flex-direction: column;
         align-items: center;
-        padding: 12px 20px;
-        background-color: #7CB342;
-        color: white;
+        justify-content: center;
+        min-height: 100px;
+        padding: 16px 12px;
+        background: linear-gradient(145deg, #e8f5e9 0%, #f1f8e9 100%);
+        color: #2e7d32;
         text-decoration: none;
-        border-radius: 6px;
-        font-weight: 500;
-        font-size: 0.95rem;
-        transition: background-color 0.2s;
+        border-radius: 10px;
+        border: 1px solid #c8e6c9;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-align: center;
+        transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
     }
-    .quick-actions .btn:hover { background-color: #689F38; }
-    .quick-actions .btn-secondary {
-        background-color: #5c6bc0;
+    .quick-actions .action-tile:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(124, 179, 66, 0.25);
+        background: linear-gradient(145deg, #c8e6c9 0%, #dcedc8 100%);
+        color: #1b5e20;
     }
-    .quick-actions .btn-secondary:hover { background-color: #3949ab; }
+    .quick-actions .action-tile .action-icon {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        color: #388e3c;
+    }
+    .quick-actions .action-tile:hover .action-icon { color: #2e7d32; }
+    .quick-actions .action-tile.action-tile-secondary {
+        background: linear-gradient(145deg, #e8eaf6 0%, #e3f2fd 100%);
+        border-color: #c5cae9;
+        color: #3949ab;
+    }
+    .quick-actions .action-tile.action-tile-secondary:hover {
+        background: linear-gradient(145deg, #c5cae9 0%, #bbdefb 100%);
+        box-shadow: 0 4px 12px rgba(92, 107, 192, 0.25);
+        color: #283593;
+    }
+    .quick-actions .action-tile.action-tile-secondary .action-icon { color: #5c6bc0; }
+    .quick-actions .action-tile.action-tile-secondary:hover .action-icon { color: #3949ab; }
     .chart-card {
         background: white;
         border: 1px solid #e8f5e9;
@@ -187,13 +216,34 @@
     <div class="quick-actions-card">
         <h2>Acciones rápidas</h2>
         <div class="quick-actions">
-            <a href="{% url 'planning:crear' %}" class="btn">Nuevo menú</a>
-            <a href="{% url 'planning:calendario' %}" class="btn">Ver Calendario</a>
-            <a href="{% url 'kitchen:detalle_fecha' hoy|date:'Y-m-d' %}" class="btn">Detalle Cocina Hoy</a>
-            <a href="{% url 'delivery:lista' %}?fecha={{ hoy|date:'Y-m-d' }}" class="btn">Rutas de Hoy</a>
-            <a href="{% url 'purchases:crear' %}" class="btn">Nueva Previsión</a>
-            <a href="{% url 'billing:cobro_crear' %}" class="btn">Nuevo cobro</a>
-            <a href="{% url 'billing:dashboard' %}" class="btn btn-secondary">Dashboard Cobranza</a>
+            <a href="{% url 'planning:crear' %}" class="action-tile" title="Crear nuevo menú por fecha y plan">
+                <span class="action-icon" aria-hidden="true">📋</span>
+                <span>Nuevo menú</span>
+            </a>
+            <a href="{% url 'planning:calendario' %}" class="action-tile" title="Ver calendario de planificación">
+                <span class="action-icon" aria-hidden="true">📅</span>
+                <span>Ver Calendario</span>
+            </a>
+            <a href="{% url 'kitchen:detalle_fecha' hoy|date:'Y-m-d' %}" class="action-tile" title="Detalle de cocina para hoy">
+                <span class="action-icon" aria-hidden="true">🍳</span>
+                <span>Detalle Cocina Hoy</span>
+            </a>
+            <a href="{% url 'delivery:lista' %}?fecha={{ hoy|date:'Y-m-d' }}" class="action-tile" title="Rutas de entrega de hoy">
+                <span class="action-icon" aria-hidden="true">🚚</span>
+                <span>Rutas de Hoy</span>
+            </a>
+            <a href="{% url 'purchases:crear' %}" class="action-tile" title="Nueva previsión de compras">
+                <span class="action-icon" aria-hidden="true">📦</span>
+                <span>Nueva Previsión</span>
+            </a>
+            <a href="{% url 'billing:cobro_crear' %}" class="action-tile" title="Registrar nuevo cobro">
+                <span class="action-icon" aria-hidden="true">💰</span>
+                <span>Nuevo cobro</span>
+            </a>
+            <a href="{% url 'billing:dashboard' %}" class="action-tile action-tile-secondary" title="Dashboard de cobranza">
+                <span class="action-icon" aria-hidden="true">📊</span>
+                <span>Dashboard Cobranza</span>
+            </a>
         </div>
     </div>
 
