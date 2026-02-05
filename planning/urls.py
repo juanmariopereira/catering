@@ -8,6 +8,7 @@ urlpatterns = [
     path('sugerir-menu-ia/', views.sugerir_menu_ia_view, name='sugerir_menu_ia'),
     path('resumen/', views.resumen_por_fecha, name='resumen'),
     path('clientes-por-fecha/', views.clientes_reciben_fecha, name='clientes_por_fecha'),
+    path('contratos-sin-entregador/', views.contratos_sin_entregador_fecha, name='contratos_sin_entregador'),
     path('crear/', views.PlanificacionMenuCreateView.as_view(), name='crear'),
     path('<int:pk>/editar/', views.PlanificacionMenuUpdateView.as_view(), name='editar'),
     path('<int:pk>/eliminar/', views.PlanificacionMenuDeleteView.as_view(), name='eliminar'),

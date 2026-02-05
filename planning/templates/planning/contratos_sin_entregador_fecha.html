@@ -1,0 +1,64 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Contratos sin repartidor — {{ fecha|date:"d/m/Y" }} - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Producción</span>
+<span class="sep">/</span>
+<a href="{% url 'planning:lista' %}">Planificación</a>
+<span class="sep">/</span>
+<a href="{% url 'planning:clientes_por_fecha' %}?fecha={{ fecha|date:'Y-m-d' }}">Clientes que reciben</a>
+<span class="sep">/</span>
+<span>Sin repartidor — {{ fecha|date:"d/m/Y" }}</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .aviso-naranja { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 16px; margin-bottom: 20px; border-radius: 4px; }
+    .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border-radius: 4px; }
+    .btn-primary { background-color: #7CB342; }
+    .btn-primary:hover { background-color: #689F38; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #e8f5e9; font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Contratos sin repartidor asignado</h1>
+    <p>Estos contratos reciben menú el <strong>{{ fecha|date:"l d \d\e F \d\e Y" }}</strong> pero aún no están asignados a ninguna ruta de entrega.</p>
+    <p>
+        <a href="{% url 'delivery:lista' %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn btn-primary">Ir a Entregas / Rutas</a>
+        <a href="{% url 'planning:clientes_por_fecha' %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn btn-secondary">Volver a clientes que reciben</a>
+    </p>
+    {% if filas %}
+    <div class="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Plan</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in filas %}
+            <tr>
+                <td>{{ f.cliente.nombre }}</td>
+                <td>{{ f.plan.nombre }}</td>
+                <td><a href="{% url 'contracts:detalle' f.contrato.pk %}">Ver contrato</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="aviso-naranja">No hay contratos sin repartidor para esta fecha.</p>
+    {% endif %}
+</div>
+{% endblock %}

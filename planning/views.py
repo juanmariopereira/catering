@@ -27,6 +27,7 @@ from django.views.decorators.http import require_http_methods
 
 from contracts.models import Contrato, contratos_activos_en_fecha
 from base.models import es_feriado, get_feriado
+from routes.models import RutaCliente
 from diets.models import TipoComida
 from plans.models import Plan
 from recipes.models import Receta
@@ -142,6 +143,11 @@ def clientes_reciben_fecha(request):
     }
     contratos_fecha = contratos_activos_en_fecha(fecha).select_related('plan', 'cliente')
 
+    # Contratos que ya tienen repartidor (ruta) asignada para esta fecha
+    contrato_ids_con_ruta = set(
+        RutaCliente.objects.filter(ruta__fecha=fecha).values_list('contrato_id', flat=True)
+    )
+
     filas = []
     for c in contratos_fecha:
         menu = menus_por_plan.get(c.plan_id)
@@ -149,6 +155,7 @@ def clientes_reciben_fecha(request):
             continue
         conflictos = obtener_conflictos_menu_por_cliente(menu, c)
         tiene_aviso = len(conflictos) > 0
+        sin_entregador = c.id not in contrato_ids_con_ruta
         filas.append({
             'plan': c.plan,
             'contrato': c,
@@ -156,19 +163,63 @@ def clientes_reciben_fecha(request):
             'planificacion_menu': menu,
             'tiene_aviso': tiene_aviso,
             'conflictos_count': len(conflictos),
+            'sin_entregador': sin_entregador,
         })
 
+    cantidad_sin_entregador = sum(1 for f in filas if f['sin_entregador'])
     fecha_anterior = fecha - timedelta(days=1)
     fecha_siguiente = fecha + timedelta(days=1)
     context = {
         'fecha': fecha,
         'filas': filas,
+        'cantidad_sin_entregador': cantidad_sin_entregador,
         'fecha_anterior': fecha_anterior,
         'fecha_siguiente': fecha_siguiente,
         'es_feriado': es_feriado(fecha),
         'feriado': get_feriado(fecha),
     }
     return render(request, 'planning/clientes_reciben_fecha.html', context)
+
+
+@login_required
+def contratos_sin_entregador_fecha(request):
+    """
+    Detalle de contratos que reciben menú en la fecha pero no tienen repartidor asignado.
+    """
+    fecha_param = request.GET.get('fecha')
+    if fecha_param:
+        try:
+            fecha = date.fromisoformat(fecha_param)
+        except ValueError:
+            fecha = timezone.now().date()
+    else:
+        fecha = timezone.now().date()
+
+    menus_por_plan = {
+        pm.plan_id: pm
+        for pm in PlanificacionMenu.objects.filter(fecha=fecha).select_related('plan')
+    }
+    contratos_fecha = contratos_activos_en_fecha(fecha).select_related('plan', 'cliente')
+    contrato_ids_con_ruta = set(
+        RutaCliente.objects.filter(ruta__fecha=fecha).values_list('contrato_id', flat=True)
+    )
+    filas_sin_entregador = []
+    for c in contratos_fecha:
+        if c.plan_id not in menus_por_plan or c.id in contrato_ids_con_ruta:
+            continue
+        filas_sin_entregador.append({
+            'contrato': c,
+            'cliente': c.cliente,
+            'plan': c.plan,
+        })
+
+    context = {
+        'fecha': fecha,
+        'filas': filas_sin_entregador,
+        'es_feriado': es_feriado(fecha),
+        'feriado': get_feriado(fecha),
+    }
+    return render(request, 'planning/contratos_sin_entregador_fecha.html', context)
 
 
 @login_required

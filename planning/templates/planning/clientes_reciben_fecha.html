@@ -27,7 +27,12 @@
         display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;
         background-color: #fff3cd; color: #856404; border: 1px solid #ffc107;
     }
+    .aviso-sin-entregador {
+        display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;
+        background-color: #ff9800; color: #fff; border: 1px solid #e65100;
+    }
     .sin-aviso { color: #6c757d; font-size: 0.9rem; }
+    .bloque-sin-entregador { padding: 12px 16px; margin-bottom: 16px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; }
     table { width: 100%; border-collapse: collapse; margin-top: 16px; }
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
     th { background-color: {{ brand_color }}; color: white; }
@@ -58,6 +63,13 @@
         </form>
     </div>
 
+    {% if cantidad_sin_entregador > 0 %}
+    <div class="bloque-sin-entregador">
+        <strong>{{ cantidad_sin_entregador }}</strong> contrato(s) sin repartidor asignado para este día.
+        <a href="{% url 'planning:contratos_sin_entregador' %}?fecha={{ fecha|date:'Y-m-d' }}">Ver detalle</a>
+    </div>
+    {% endif %}
+
     <div class="actions">
         <a href="{% url 'planning:resumen' %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn">Resumen por plan</a>
         <a href="{% url 'planning:lista' %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn btn-secondary">Ver menús</a>
@@ -72,6 +84,7 @@
                 <th>Cliente</th>
                 <th>Vigencia contrato</th>
                 <th>Aviso</th>
+                <th>Repartidor</th>
                 <th>Acción</th>
             </tr>
         </thead>
@@ -89,6 +102,13 @@
                     {% endif %}
                 </td>
                 <td>
+                    {% if f.sin_entregador %}
+                    <span class="aviso-sin-entregador">Sin repartidor asignado para este día</span>
+                    {% else %}
+                    <span class="sin-aviso">—</span>
+                    {% endif %}
+                </td>
+                <td>
                     <a href="{% url 'planning:editar' f.planificacion_menu.pk %}#contrato-{{ f.contrato.id }}" class="accion-link">
                         {% if f.tiene_aviso %}Definir sustituciones{% else %}Ver menú{% endif %}
                     </a>
@@ -96,7 +116,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5">No hay clientes con menú planificado para esta fecha. Cree menús desde el <a href="{% url 'planning:resumen' %}?fecha={{ fecha|date:'Y-m-d' }}">resumen por plan</a>.</td>
+                <td colspan="6">No hay clientes con menú planificado para esta fecha. Cree menús desde el <a href="{% url 'planning:resumen' %}?fecha={{ fecha|date:'Y-m-d' }}">resumen por plan</a>.</td>
             </tr>
             {% endfor %}
         </tbody>

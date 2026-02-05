@@ -70,6 +70,12 @@
         <div class="clientes-section">
             <h2>Clientes en la ruta (orden de entrega)</h2>
             <p>Seleccione el contrato. Arrastre las filas para definir el orden de entrega. Marque "Eliminar" para quitar un cliente de la ruta.</p>
+            {% if object.entregador %}
+            <p style="margin-bottom: 12px;">
+                <a href="{% url 'delivery:ruta_cargar_ultima' object.pk %}" class="btn btn-secondary" id="btn-cargar-ultima">Cargar clientes de la última ruta de {{ object.entregador.nombre }}</a>
+                <span style="font-size: 0.9rem; color: #666;"> (solo contratos activos)</span>
+            </p>
+            {% endif %}
             {{ formset.management_form }}
             <table class="formset-table">
                 <thead>
@@ -93,8 +99,21 @@
                         </td>
                     </tr>
                     {% endfor %}
+                    <tr id="ruta-empty-form-row" style="display: none;">
+                        <td class="drag-cell"><span class="drag-handle" title="Arrastrar para reordenar">⋮⋮</span><span class="orden-input-wrap">{{ formset.empty_form.orden_entrega }}</span></td>
+                        <td>
+                            {{ formset.empty_form.id }}
+                            {{ formset.empty_form.contrato }}
+                        </td>
+                        <td class="delete">
+                            {% if formset.empty_form.DELETE %}{{ formset.empty_form.DELETE }}{% endif %}
+                        </td>
+                    </tr>
                 </tbody>
             </table>
+            <p style="margin-top: 10px;">
+                <button type="button" class="btn btn-secondary" id="ruta-add-row">Añadir fila</button>
+            </p>
         </div>
         {% endif %}
 
@@ -125,6 +144,86 @@
         animation: 150,
         handle: '.drag-handle',
         onEnd: renumberOrden
+    });
+})();
+
+(function() {
+    function getContratoSelects() {
+        return document.querySelectorAll('select[name$="-contrato"]');
+    }
+
+    function refreshUniqueContratoOptions() {
+        var selects = Array.prototype.slice.call(getContratoSelects());
+        var counts = {};
+        selects.forEach(function(sel) {
+            var v = (sel.value || '').trim();
+            if (!v) return;
+            counts[v] = (counts[v] || 0) + 1;
+        });
+
+        selects.forEach(function(sel) {
+            var myVal = (sel.value || '').trim();
+            Array.prototype.slice.call(sel.options).forEach(function(opt) {
+                var v = (opt.value || '').trim();
+                if (!v) { opt.disabled = false; return; } // placeholder siempre habilitado
+                var n = counts[v] || 0;
+                // Deshabilitar si está seleccionado en otra fila (o duplicado)
+                if (v === myVal) {
+                    opt.disabled = n > 1; // si está duplicado, también lo deshabilitamos para señalar el error
+                } else {
+                    opt.disabled = n > 0;
+                }
+            });
+        });
+    }
+
+    function initContratoSelects() {
+        var selects = getContratoSelects();
+        selects.forEach(function(sel) {
+            if (sel.dataset.contratoInit === '1') return;
+            sel.dataset.contratoInit = '1';
+            sel.addEventListener('change', refreshUniqueContratoOptions);
+        });
+        refreshUniqueContratoOptions();
+    }
+
+    window.initContratoSelectsRuta = initContratoSelects;
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initContratoSelects);
+    } else {
+        initContratoSelects();
+    }
+})();
+
+(function() {
+    var container = document.querySelector('.clientes-section');
+    if (!container) return;
+    var tbody = document.getElementById('ruta-formset-body');
+    var emptyRow = document.getElementById('ruta-empty-form-row');
+    var totalInput = container.querySelector('input[name$="-TOTAL_FORMS"]');
+    var addBtn = document.getElementById('ruta-add-row');
+    if (!tbody || !emptyRow || !totalInput || !addBtn) return;
+    if (addBtn.dataset.addRowListener === '1') return;
+    addBtn.dataset.addRowListener = '1';
+    addBtn.addEventListener('click', function() {
+        var total = parseInt(totalInput.value, 10);
+        var newRow = emptyRow.cloneNode(true);
+        newRow.id = '';
+        newRow.style.display = '';
+        newRow.classList.add('formset-row');
+        newRow.innerHTML = newRow.innerHTML.replace(/__prefix__/g, String(total));
+        newRow.querySelectorAll('input, select').forEach(function(el) {
+            if (el.type !== 'hidden' && el.name && el.name.indexOf('orden_entrega') !== -1) el.value = total + 1;
+            if (el.type === 'checkbox' && el.name && el.name.indexOf('DELETE') !== -1) el.checked = false;
+        });
+        // El select de contrato debe empezar vacío
+        var contratoSel = newRow.querySelector('select[name$="-contrato"]');
+        if (contratoSel) contratoSel.value = '';
+        var ordenInput = newRow.querySelector('input[name$="-orden_entrega"]');
+        if (ordenInput) ordenInput.value = total + 1;
+        tbody.insertBefore(newRow, emptyRow);
+        totalInput.value = total + 1;
+        if (window.initContratoSelectsRuta) window.initContratoSelectsRuta();
     });
 })();
 </script>
