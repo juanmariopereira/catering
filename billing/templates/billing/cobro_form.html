@@ -1,0 +1,76 @@
+{% extends 'base/base.html' %}
+
+{% block title %}{% if object %}Editar cobro{% else %}Nuevo cobro{% endif %} - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Finanzas</span>
+<span class="sep">/</span>
+<a href="{% url 'billing:cobro_lista' %}">Cobranza</a>
+<span class="sep">/</span>
+<span>{% if object %}Editar cobro{% else %}Nuevo cobro{% endif %}</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn { display: inline-block; padding: 10px 20px; background-color: #F44336; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    .btn:hover { background-color: #D32F2F; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>{% if object %}Editar cobro{% else %}Nuevo cobro{% endif %}</h1>
+    <p class="help-text">La fecha de vencimiento se calcula automáticamente según el período y la frecuencia del contrato si se deja vacía.</p>
+
+    <form method="post" class="form-layout">
+        {% csrf_token %}
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.contrato.id_for_label }}">Contrato:</label>
+                {{ form.contrato }}
+                {% if form.contrato.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.contrato.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.periodo_desde.id_for_label }}">Período desde:</label>
+                {{ form.periodo_desde }}
+                {% if form.periodo_desde.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.periodo_desde.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.periodo_hasta.id_for_label }}">Período hasta:</label>
+                {{ form.periodo_hasta }}
+                {% if form.periodo_hasta.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.periodo_hasta.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.monto.id_for_label }}">Monto:</label>
+                {{ form.monto }}
+                {% if form.monto.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.monto.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.fecha_vencimiento.id_for_label }}">Fecha de vencimiento (opcional):</label>
+                {{ form.fecha_vencimiento }}
+                {% if form.fecha_vencimiento.help_text %}<div class="help-text">{{ form.fecha_vencimiento.help_text }}</div>{% endif %}
+                {% if form.fecha_vencimiento.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.fecha_vencimiento.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.notas.id_for_label }}">Notas:</label>
+                {{ form.notas }}
+                {% if form.notas.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.notas.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn">Guardar</button>
+            <a href="{% url 'billing:cobro_lista' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

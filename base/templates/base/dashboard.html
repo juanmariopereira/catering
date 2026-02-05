@@ -109,10 +109,10 @@
             <div class="stat-label">Menús planificados hoy</div>
             <div class="stat-value">{{ total_planificaciones_hoy }}</div>
         </div>
-        <div class="stat-card {% if facturas_vencidas > 0 %}danger{% endif %}">
-            <div class="stat-label">Facturas pendientes</div>
-            <div class="stat-value">{{ facturas_pendientes }}</div>
-            {% if facturas_vencidas > 0 %}<small style="color: #c62828;">{{ facturas_vencidas }} vencidas</small>{% endif %}
+        <div class="stat-card {% if cobros_vencidos > 0 %}danger{% endif %}">
+            <div class="stat-label">Cobros pendientes</div>
+            <div class="stat-value">{{ cobros_pendientes }}</div>
+            {% if cobros_vencidos > 0 %}<small style="color: #c62828;">{{ cobros_vencidos }} vencidos</small>{% endif %}
         </div>
         <div class="stat-card">
             <div class="stat-label">Monto por cobrar</div>
@@ -154,7 +154,7 @@
         <a href="{% url 'kitchen:detalle_fecha' hoy|date:'Y-m-d' %}" class="btn">Detalle Cocina Hoy</a>
         <a href="{% url 'delivery:lista' %}?fecha={{ hoy|date:'Y-m-d' }}" class="btn">Rutas de Hoy</a>
         <a href="{% url 'purchases:crear' %}" class="btn">Nueva Previsión</a>
-        <a href="{% url 'billing:factura_crear' %}" class="btn">Nueva Factura</a>
+        <a href="{% url 'billing:cobro_crear' %}" class="btn">Nuevo cobro</a>
         <a href="{% url 'billing:dashboard' %}" class="btn btn-secondary">Dashboard Cobranza</a>
     </div>
 
@@ -199,8 +199,8 @@
                 <li><a href="{% url 'kitchen:lista' %}">Cocina</a> — Detalle de preparación</li>
                 <li><a href="{% url 'delivery:lista' %}">Entregas</a> — Rutas de entrega</li>
                 <li><a href="{% url 'purchases:lista' %}">Compras</a> — Previsiones</li>
-                <li><a href="{% url 'billing:factura_lista' %}">Facturación</a> — Facturas y pagos</li>
-                <li><a href="{% url 'billing:dashboard' %}">Cobranza</a> — Dashboard financiero</li>
+                <li><a href="{% url 'billing:cobro_lista' %}">Cobros</a> — Cobros y pagos</li>
+                <li><a href="{% url 'billing:dashboard' %}">Dashboard Cobranza</a> — Resumen financiero</li>
                 <li><a href="{% url 'feriado_lista' %}">Feriados</a> — Días sin entregas (pausas, planificación)</li>
             </ul>
         </div>

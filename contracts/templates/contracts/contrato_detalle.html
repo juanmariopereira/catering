@@ -39,6 +39,11 @@
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
     th { background-color: #e8f5e9; font-weight: 600; }
+    .badge-pendiente { background-color: #ffc107; color: #000; }
+    .badge-pagada { background-color: #4CAF50; color: white; }
+    .badge-vencida { background-color: #F44336; color: white; }
+    .cobros-pagos { font-size: 0.9rem; margin-top: 6px; }
+    .cobros-pagos li { margin: 4px 0; }
 </style>
 {% endblock %}
 
@@ -48,6 +53,7 @@
         <a href="{% url 'contracts:lista' %}" class="btn btn-secondary">← Contratos</a>
         <a href="{% url 'contracts:editar' contrato.pk %}" class="btn btn-primary">Editar contrato</a>
         <a href="{% url 'contracts:eliminar' contrato.pk %}" class="btn btn-danger">Eliminar</a>
+        <a href="{% url 'billing:cobro_crear' %}?contrato={{ contrato.pk }}" class="btn btn-secondary">Nuevo cobro</a>
         {% if contrato.estado == 'activo' %}
         <a href="{% url 'planning:clientes_por_fecha' %}" class="btn btn-secondary">Planificación</a>
         {% endif %}
@@ -103,6 +109,61 @@
         <p style="font-size: 0.85rem; color: #666; margin-top: 8px;">Puede copiar el mensaje y pegarlo en WhatsApp o su cliente de correo.</p>
     </div>
     {% endif %}
+
+    <div class="card">
+        <h2>Cobros del contrato</h2>
+        <p>Cobros vinculados a este contrato y sus pagos. Puede crear un nuevo cobro o registrar un pago desde aquí.</p>
+        <div class="actions" style="margin-top: 10px;">
+            <a href="{% url 'billing:cobro_crear' %}?contrato={{ contrato.pk }}" class="btn btn-primary">Nuevo cobro</a>
+            <a href="{% url 'billing:cobro_lista' %}?cliente={{ contrato.cliente_id }}" class="btn btn-secondary">Ver todos los cobros del cliente</a>
+        </div>
+        {% if cobros %}
+        <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Número</th>
+                    <th>Período</th>
+                    <th>Vencimiento</th>
+                    <th>Monto</th>
+                    <th>Estado</th>
+                    <th>Pagos</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cobro in cobros %}
+                <tr>
+                    <td><a href="{% url 'billing:cobro_detalle' cobro.pk %}">{{ cobro.numero_cobro|default:cobro.id }}</a></td>
+                    <td>{{ cobro.periodo_desde|date:"d/m/Y" }} – {{ cobro.periodo_hasta|date:"d/m/Y" }}</td>
+                    <td>{{ cobro.fecha_vencimiento|date:"d/m/Y" }}</td>
+                    <td>${{ cobro.monto|floatformat:2 }}</td>
+                    <td><span class="badge badge-{{ cobro.estado }}">{{ cobro.get_estado_display }}</span></td>
+                    <td>
+                        <ul class="cobros-pagos" style="list-style: none; padding: 0; margin: 0;">
+                            {% for pago in cobro.pagos.all %}
+                            <li>${{ pago.monto|floatformat:2 }} — {{ pago.fecha_pago|date:"d/m/Y" }} ({{ pago.get_metodo_pago_display }})</li>
+                            {% empty %}
+                            <li>—</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                    <td>
+                        <a href="{% url 'billing:cobro_detalle' cobro.pk %}">Ver</a>
+                        {% if cobro.estado != 'pagada' %}
+                        <span style="margin: 0 4px;">|</span>
+                        <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.pk }}">Registrar pago</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p>No hay cobros para este contrato.</p>
+        {% endif %}
+    </div>
 
     <div class="card">
         <h2>Pausas del contrato</h2>

@@ -54,6 +54,7 @@ class Contrato(models.Model):
     frecuencia_pago = models.CharField(
         max_length=20,
         choices=FRECUENCIA_PAGO_CHOICES,
+        default='mensual',
         verbose_name="Frecuencia de pago"
     )
     direccion_entrega = models.TextField(

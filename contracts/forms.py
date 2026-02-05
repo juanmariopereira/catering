@@ -93,6 +93,7 @@ class ContratoForm(forms.ModelForm):
         else:
             self.fields['dias_entrega'].initial = DIAS_ENTREGA_DEFAULT
             self.fields['fecha_inicio'].initial = None  # Vacía por defecto al crear
+            self.fields['frecuencia_pago'].initial = 'mensual'
 
     def clean(self):
         cleaned = super().clean()

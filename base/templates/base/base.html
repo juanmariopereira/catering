@@ -359,8 +359,8 @@
                 <span class="nav-link nav-dropdown-toggle {% if '/billing/' in request.path or '/contracts/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Finanzas</span>
                 <ul class="nav-dropdown-menu">
                     <li><a href="{% url 'contracts:lista' %}" class="{% if '/contracts/' in request.path %}active{% endif %}">Contratos</a></li>
-                    <li><a href="{% url 'billing:factura_lista' %}" class="{% if '/billing/' in request.path and 'dashboard' not in request.path %}active{% endif %}">Facturación</a></li>
-                    <li><a href="{% url 'billing:dashboard' %}" class="{% if '/billing/dashboard/' in request.path %}active{% endif %}">Cobranza</a></li>
+                    <li><a href="{% url 'billing:cobro_lista' %}" class="{% if '/billing/' in request.path and '/billing/dashboard/' not in request.path %}active{% endif %}">Cobros</a></li>
+                    <li><a href="{% url 'billing:dashboard' %}" class="{% if '/billing/dashboard/' in request.path %}active{% endif %}">Dashboard Cobranza</a></li>
                 </ul>
             </li>
             <li class="nav-item">

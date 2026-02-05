@@ -99,10 +99,9 @@ class ClienteDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         from django.db.models import Q
         from contracts.models import Contrato
-        from billing.models import Factura
+        from billing.models import Cobro
         context = super().get_context_data(**kwargs)
         cliente = self.object
-        # Contratos del cliente y de sus dependientes (activos e inactivos)
         contratos_todos = (
             Contrato.objects.filter(
                 Q(cliente=cliente) | Q(cliente__titular=cliente)
@@ -110,18 +109,17 @@ class ClienteDetailView(LoginRequiredMixin, DetailView):
             .select_related('cliente', 'plan')
             .order_by('-fecha_creacion')
         )
-        # Primera factura pendiente o vencida por contrato (para botón Cobrar)
-        factura_pendiente_por_contrato = {}
+        cobro_pendiente_por_contrato = {}
         if contratos_todos:
             ids = [c.pk for c in contratos_todos]
-            for f in Factura.objects.filter(
+            for c in Cobro.objects.filter(
                 contrato_id__in=ids,
                 estado__in=['pendiente', 'vencida']
             ).order_by('contrato_id', 'periodo_desde'):
-                if f.contrato_id not in factura_pendiente_por_contrato:
-                    factura_pendiente_por_contrato[f.contrato_id] = f
+                if c.contrato_id not in cobro_pendiente_por_contrato:
+                    cobro_pendiente_por_contrato[c.contrato_id] = c
         context['contratos_todos'] = contratos_todos
-        context['factura_pendiente_por_contrato'] = factura_pendiente_por_contrato
+        context['cobro_pendiente_por_contrato'] = cobro_pendiente_por_contrato
         return context
 
 

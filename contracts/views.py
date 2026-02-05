@@ -12,6 +12,7 @@ from .models import Contrato, PausaContrato
 from .forms import ContratoForm, PausaContratoForm
 from plans.models import Plan
 from clients.models import Cliente
+from billing.models import Cobro
 
 
 class ContratoListView(LoginRequiredMixin, ListView):
@@ -100,6 +101,11 @@ class ContratoDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['pausas'] = self.object.pausas.all().order_by('-fecha_inicio')
+        context['cobros'] = (
+            Cobro.objects.filter(contrato=self.object)
+            .prefetch_related('pagos')
+            .order_by('-periodo_hasta', '-numero_cobro')
+        )
         return context
 
 

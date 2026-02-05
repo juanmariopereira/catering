@@ -122,9 +122,9 @@
                     <td>${{ c.precio|floatformat:2 }}</td>
                     <td>
                         <a href="{% url 'contracts:detalle' c.pk %}">Ver</a>
-                        {% if c.pk in factura_pendiente_por_contrato %}
+                        {% if c.pk in cobro_pendiente_por_contrato %}
                         <span style="margin: 0 4px;">|</span>
-                        <a href="{% url 'billing:pago_crear' %}?factura={{ factura_pendiente_por_contrato|get_item_pk:c.pk }}" class="btn btn-cobrar">Cobrar</a>
+                        <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro_pendiente_por_contrato|get_item_pk:c.pk }}" class="btn btn-cobrar">Cobrar</a>
                         {% endif %}
                     </td>
                 </tr>

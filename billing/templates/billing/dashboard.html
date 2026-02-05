@@ -7,7 +7,7 @@
 <span class="sep">/</span>
 <span>Finanzas</span>
 <span class="sep">/</span>
-<a href="{% url 'billing:factura_lista' %}">Facturación</a>
+<a href="{% url 'billing:cobro_lista' %}">Cobranza</a>
 <span class="sep">/</span>
 <span>Cobranza</span>
 {% endblock %}
@@ -100,12 +100,12 @@
 {% block content %}
 <div class="container dashboard-cobranza">
     <h1>Dashboard de Cobranza</h1>
-    <p style="color: #666; margin-top: 0;">Resumen de facturación, cobros y accesos rápidos.</p>
+    <p style="color: #666; margin-top: 0;">Resumen de cobranza, cobros y accesos rápidos.</p>
 
     <div class="quick-actions">
-        <a href="{% url 'billing:factura_crear' %}" class="btn btn-primary">Nueva factura</a>
+        <a href="{% url 'billing:cobro_crear' %}" class="btn btn-primary">Nuevo cobro</a>
         <a href="{% url 'billing:pago_crear' %}" class="btn btn-success">Registrar pago</a>
-        <a href="{% url 'billing:factura_lista' %}" class="btn btn-secondary">Ver facturas</a>
+        <a href="{% url 'billing:cobro_lista' %}" class="btn btn-secondary">Ver cobros</a>
         <a href="{% url 'billing:pago_lista' %}" class="btn btn-secondary">Ver pagos</a>
         <a href="{% url 'billing:reporte' %}" class="btn btn-outline">Reporte cobranza</a>
         <a href="{% url 'clients:lista' %}" class="btn btn-outline">Clientes</a>
@@ -114,20 +114,20 @@
 
     <div class="stats-grid">
         <div class="stat-card">
-            <div class="stat-label">Total facturas</div>
-            <div class="stat-value">{{ total_facturas }}</div>
+            <div class="stat-label">Total cobros</div>
+            <div class="stat-value">{{ total_cobros }}</div>
         </div>
         <div class="stat-card warning">
             <div class="stat-label">Pendientes</div>
-            <div class="stat-value">{{ facturas_pendientes }}</div>
+            <div class="stat-value">{{ cobros_pendientes }}</div>
         </div>
         <div class="stat-card success">
-            <div class="stat-label">Pagadas</div>
-            <div class="stat-value">{{ facturas_pagadas }}</div>
+            <div class="stat-label">Pagados</div>
+            <div class="stat-value">{{ cobros_pagados }}</div>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Vencidas</div>
-            <div class="stat-value">{{ facturas_vencidas }}</div>
+            <div class="stat-label">Vencidos</div>
+            <div class="stat-value">{{ cobros_vencidos }}</div>
         </div>
         <div class="stat-card warning">
             <div class="stat-label">Por cobrar</div>
@@ -159,17 +159,17 @@
                 <th>Cliente</th>
                 <th>Monto</th>
                 <th>Método</th>
-                <th>Factura</th>
+                <th>Cobro</th>
             </tr>
         </thead>
         <tbody>
             {% for pago in ultimos_pagos %}
             <tr>
                 <td>{{ pago.fecha_pago|date:"d/m/Y" }}</td>
-                <td><a href="{% url 'clients:detalle' pago.factura.contrato.cliente_id %}">{{ pago.factura.contrato.cliente.nombre }}</a></td>
+                <td><a href="{% url 'clients:detalle' pago.cobro.contrato.cliente_id %}">{{ pago.cobro.contrato.cliente.nombre }}</a></td>
                 <td>${{ pago.monto|floatformat:2 }}</td>
                 <td>{{ pago.get_metodo_pago_display }}</td>
-                <td><a href="{% url 'billing:factura_detalle' pago.factura_id %}">{{ pago.factura.numero_factura|default:pago.factura_id }}</a></td>
+                <td><a href="{% url 'billing:cobro_detalle' pago.cobro_id %}">{{ pago.cobro.numero_cobro|default:pago.cobro_id }}</a></td>
             </tr>
             {% endfor %}
         </tbody>
@@ -179,10 +179,10 @@
     {% endif %}
 
     <h2 class="section-title">
-        Facturas vencidas
-        <a href="{% url 'billing:factura_lista' %}?estado=vencida" class="link-mas">Ver todas</a>
+        Cobros vencidos
+        <a href="{% url 'billing:cobro_lista' %}?estado=vencida" class="link-mas">Ver todos</a>
     </h2>
-    {% if facturas_vencidas_lista %}
+    {% if cobros_vencidos_lista %}
     <table class="dashboard-table">
         <thead>
             <tr>
@@ -194,30 +194,30 @@
             </tr>
         </thead>
         <tbody>
-            {% for factura in facturas_vencidas_lista %}
+            {% for cobro in cobros_vencidos_lista %}
             <tr>
-                <td><a href="{% url 'billing:factura_detalle' factura.pk %}">{{ factura.numero_factura|default:factura.id }}</a></td>
-                <td><a href="{% url 'clients:detalle' factura.contrato.cliente_id %}">{{ factura.contrato.cliente.nombre }}</a></td>
-                <td>${{ factura.monto|floatformat:2 }}</td>
-                <td>{{ factura.fecha_vencimiento|date:"d/m/Y" }}</td>
+                <td><a href="{% url 'billing:cobro_detalle' cobro.pk %}">{{ cobro.numero_cobro|default:cobro.id }}</a></td>
+                <td><a href="{% url 'clients:detalle' cobro.contrato.cliente_id %}">{{ cobro.contrato.cliente.nombre }}</a></td>
+                <td>${{ cobro.monto|floatformat:2 }}</td>
+                <td>{{ cobro.fecha_vencimiento|date:"d/m/Y" }}</td>
                 <td>
-                    <a href="{% url 'billing:factura_detalle' factura.pk %}">Ver</a>
+                    <a href="{% url 'billing:cobro_detalle' cobro.pk %}">Ver</a>
                     <span style="margin: 0 6px;">|</span>
-                    <a href="{% url 'billing:pago_crear' %}?factura={{ factura.pk }}" class="btn-cobrar">Cobrar</a>
+                    <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.pk }}" class="btn-cobrar">Cobrar</a>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     {% else %}
-    <p class="sin-datos">No hay facturas vencidas.</p>
+    <p class="sin-datos">No hay cobros vencidos.</p>
     {% endif %}
 
     <h2 class="section-title">
-        Próximas a vencer (7 días)
-        <a href="{% url 'billing:factura_lista' %}?estado=pendiente" class="link-mas">Ver pendientes</a>
+        Próximos a vencer (7 días)
+        <a href="{% url 'billing:cobro_lista' %}?estado=pendiente" class="link-mas">Ver pendientes</a>
     </h2>
-    {% if facturas_proximas_vencer %}
+    {% if cobros_proximos_vencer %}
     <table class="dashboard-table">
         <thead>
             <tr>
@@ -229,30 +229,30 @@
             </tr>
         </thead>
         <tbody>
-            {% for factura in facturas_proximas_vencer %}
+            {% for cobro in cobros_proximos_vencer %}
             <tr>
-                <td><a href="{% url 'billing:factura_detalle' factura.pk %}">{{ factura.numero_factura|default:factura.id }}</a></td>
-                <td><a href="{% url 'clients:detalle' factura.contrato.cliente_id %}">{{ factura.contrato.cliente.nombre }}</a></td>
-                <td>${{ factura.monto|floatformat:2 }}</td>
-                <td>{{ factura.fecha_vencimiento|date:"d/m/Y" }}</td>
+                <td><a href="{% url 'billing:cobro_detalle' cobro.pk %}">{{ cobro.numero_cobro|default:cobro.id }}</a></td>
+                <td><a href="{% url 'clients:detalle' cobro.contrato.cliente_id %}">{{ cobro.contrato.cliente.nombre }}</a></td>
+                <td>${{ cobro.monto|floatformat:2 }}</td>
+                <td>{{ cobro.fecha_vencimiento|date:"d/m/Y" }}</td>
                 <td>
-                    <a href="{% url 'billing:factura_detalle' factura.pk %}">Ver</a>
+                    <a href="{% url 'billing:cobro_detalle' cobro.pk %}">Ver</a>
                     <span style="margin: 0 6px;">|</span>
-                    <a href="{% url 'billing:pago_crear' %}?factura={{ factura.pk }}" class="btn-cobrar">Cobrar</a>
+                    <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.pk }}" class="btn-cobrar">Cobrar</a>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     {% else %}
-    <p class="sin-datos">No hay facturas que venzan en los próximos 7 días.</p>
+    <p class="sin-datos">No hay cobros que venzan en los próximos 7 días.</p>
     {% endif %}
 
     <h2 class="section-title">Accesos útiles</h2>
     <div class="links-utiles">
-        <a href="{% url 'billing:factura_lista' %}?estado=pendiente">Facturas pendientes de cobro</a>
-        <a href="{% url 'billing:factura_lista' %}?estado=vencida">Facturas vencidas</a>
-        <a href="{% url 'billing:factura_crear' %}">Crear nueva factura</a>
+        <a href="{% url 'billing:cobro_lista' %}?estado=pendiente">Cobros pendientes</a>
+        <a href="{% url 'billing:cobro_lista' %}?estado=vencida">Cobros vencidos</a>
+        <a href="{% url 'billing:cobro_crear' %}">Crear nuevo cobro</a>
         <a href="{% url 'billing:pago_crear' %}">Registrar un pago</a>
         <a href="{% url 'billing:reporte' %}">Reporte por período / cliente</a>
         <a href="{% url 'clients:lista' %}">Lista de clientes</a>

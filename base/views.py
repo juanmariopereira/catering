@@ -14,7 +14,7 @@ from datetime import date, timedelta, datetime
 from .models import Feriado
 from .forms import FeriadoForm
 from planning.models import PlanificacionMenu
-from billing.models import Factura, Pago
+from billing.models import Cobro, Pago
 from routes.models import Ruta, RutaCliente
 from purchases.models import PrevisionCompra
 from clients.models import Cliente
@@ -31,10 +31,10 @@ def dashboard(request):
     menus_hoy = PlanificacionMenu.objects.filter(fecha=hoy)
     total_planificaciones_hoy = menus_hoy.count()
 
-    # Facturación
-    facturas_pendientes = Factura.objects.filter(estado='pendiente').count()
-    facturas_vencidas = Factura.objects.filter(estado='vencida').count()
-    monto_pendiente = Factura.objects.filter(
+    # Cobranza
+    cobros_pendientes = Cobro.objects.filter(estado='pendiente').count()
+    cobros_vencidos = Cobro.objects.filter(estado='vencida').count()
+    monto_pendiente = Cobro.objects.filter(
         estado__in=['pendiente', 'vencida']
     ).aggregate(total=Sum('monto'))['total'] or 0
 
@@ -76,8 +76,8 @@ def dashboard(request):
     context = {
         'hoy': hoy,
         'total_planificaciones_hoy': total_planificaciones_hoy,
-        'facturas_pendientes': facturas_pendientes,
-        'facturas_vencidas': facturas_vencidas,
+        'cobros_pendientes': cobros_pendientes,
+        'cobros_vencidos': cobros_vencidos,
         'monto_pendiente': monto_pendiente,
         'total_rutas_hoy': total_rutas_hoy,
         'rutas_hoy': rutas_hoy[:5],
