@@ -32,6 +32,11 @@
     .formset-table .drag-handle { color: #999; font-size: 1.1rem; line-height: 1; }
     .formset-table .orden-input-wrap { display: none; }
     .btn-add-row { margin-top: 10px; }
+    .btn-ai { background-color: #6366f1 !important; }
+    .btn-ai:hover { background-color: #4f46e5 !important; }
+    .sugerir-status { margin-left: 8px; font-size: 0.9rem; color: #555; }
+    .sugerir-status.error { color: #c62828; }
+    .sugerir-status.success { color: #2e7d32; }
 </style>
 {% endblock %}
 
@@ -74,6 +79,26 @@
         <div class="recetas-section">
             <h2>Comidas de la dieta (por momento del día)</h2>
             <p class="help-text">Puede usar tantos momentos del día como necesite (Desayuno, Media mañana, Comida, Merienda, Cena) y añadir varias recetas por momento. Arrastre las filas para reordenar. Use «Añadir otra fila» si necesita más.</p>
+            {% if openai_available %}
+            <p style="margin-bottom: 12px;">
+                <select id="sugerir-objetivo" style="padding: 8px; margin-right: 8px;">
+                    <option value="equilibrado">Equilibrado</option>
+                    <option value="adelgazamiento">Adelgazamiento</option>
+                    <option value="ganancia_muscular">Ganancia muscular</option>
+                    <option value="mantenimiento">Mantenimiento</option>
+                    <option value="bajo_carbohidrato">Bajo carbohidrato</option>
+                    <option value="alta_proteina">Alta proteína</option>
+                </select>
+                <select id="sugerir-plan" style="padding: 8px; margin-right: 8px;">
+                    <option value="">— Sin plan —</option>
+                    {% for plan in planes %}
+                    <option value="{{ plan.id }}">{{ plan.nombre }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" class="btn btn-ai" id="btn-sugerir-dieta">Sugerir dieta con IA</button>
+                <span id="sugerir-dieta-status" class="sugerir-status"></span>
+            </p>
+            {% endif %}
             {{ formset.management_form }}
             <table class="formset-table" id="formset-table">
                 <thead>
@@ -143,6 +168,54 @@
             onEnd: renumberOrden
         });
     }
+
+    {% if openai_available %}
+    var btnSugerir = document.getElementById('btn-sugerir-dieta');
+    var statusSugerir = document.getElementById('sugerir-dieta-status');
+    if (btnSugerir && statusSugerir) {
+        btnSugerir.addEventListener('click', function() {
+            var objetivo = document.getElementById('sugerir-objetivo').value;
+            var planId = document.getElementById('sugerir-plan').value;
+            btnSugerir.disabled = true;
+            statusSugerir.textContent = 'Generando sugerencia...';
+            statusSugerir.className = 'sugerir-status';
+            var fd = new FormData();
+            fd.append('objetivo', objetivo);
+            if (planId) fd.append('plan_id', planId);
+            fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            fetch('{% url "diets:sugerir_dieta" %}', { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.ok && data.recetas && data.recetas.length > 0) {
+                        var rows = tbody.querySelectorAll('.formset-row');
+                        data.recetas.forEach(function(item, idx) {
+                            var row = rows[idx];
+                            if (!row) {
+                                addBtn.click();
+                                rows = tbody.querySelectorAll('.formset-row');
+                                row = rows[rows.length - 1];
+                            }
+                            if (row) {
+                                var tcSelect = row.querySelector('select[name$="-tipo_comida"]');
+                                var recSelect = row.querySelector('select[name$="-receta"]');
+                                var ordInput = row.querySelector('input[name$="-orden"]');
+                                if (tcSelect) tcSelect.value = String(item.tipo_comida_id);
+                                if (recSelect) recSelect.value = String(item.receta_id);
+                                if (ordInput) ordInput.value = item.orden || (idx + 1);
+                            }
+                        });
+                        statusSugerir.textContent = 'Sugerencia aplicada (' + data.recetas.length + ' recetas).';
+                        statusSugerir.className = 'sugerir-status success';
+                    } else {
+                        statusSugerir.textContent = data.error || 'No se generó sugerencia.';
+                        statusSugerir.className = 'sugerir-status error';
+                    }
+                })
+                .catch(function() { statusSugerir.textContent = 'Error de conexión.'; statusSugerir.className = 'sugerir-status error'; })
+                .finally(function() { btnSugerir.disabled = false; });
+        });
+    }
+    {% endif %}
 
     addBtn.addEventListener('click', function() {
         var totalInput = document.getElementById('id_' + prefix + '-TOTAL_FORMS');

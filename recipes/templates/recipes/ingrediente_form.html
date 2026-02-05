@@ -21,6 +21,12 @@
     .btn-secondary { background-color: #6c757d; }
     .form-layout .form-group.checkbox-group label { font-weight: normal; margin-left: 8px; }
     .form-layout .form-group.checkbox-group input { width: auto; }
+    .btn-ai { background-color: #6366f1 !important; }
+    .btn-ai:hover { background-color: #4f46e5 !important; }
+    .btn-ai:disabled { opacity: 0.6; cursor: not-allowed; }
+    .sugerir-status { margin-left: 8px; font-size: 0.9rem; color: #555; }
+    .sugerir-status.error { color: #c62828; }
+    .sugerir-status.success { color: #2e7d32; }
 </style>
 {% endblock %}
 
@@ -44,6 +50,28 @@
             </div>
         </div>
         <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.info_nutricional.id_for_label }}">{{ form.info_nutricional.label }}</label>
+                {% if openai_available %}
+                <span style="margin-left: 10px;">
+                    <button type="button" class="btn btn-ai" id="btn-sugerir-nutricion" title="Estima la información nutricional por 100g con IA">Sugerir con IA</button>
+                    <span id="sugerir-nutricion-status" class="sugerir-status"></span>
+                </span>
+                {% endif %}
+                {{ form.info_nutricional }}
+                {% if form.info_nutricional.help_text %}<div class="help-text">{{ form.info_nutricional.help_text }}</div>{% endif %}
+                {% if form.info_nutricional.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.info_nutricional.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.alergenos.id_for_label }}">{{ form.alergenos.label }}</label>
+                {{ form.alergenos }}
+                {% if form.alergenos.help_text %}<div class="help-text">{{ form.alergenos.help_text }}</div>{% endif %}
+                {% if form.alergenos.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.alergenos.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-1">
             <div class="form-group checkbox-group">
                 <label for="{{ form.activo.id_for_label }}">{{ form.activo }} {{ form.activo.label }}</label>
                 {% if form.activo.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.activo.errors }}</div>{% endif %}
@@ -55,4 +83,51 @@
         </div>
     </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if openai_available %}
+<script>
+(function() {
+    var btn = document.getElementById('btn-sugerir-nutricion');
+    var status = document.getElementById('sugerir-nutricion-status');
+    var nombreInput = document.querySelector('input[name="nombre"]');
+    var unidadSelect = document.querySelector('select[name="unidad_medida"]');
+    var infoTextarea = document.querySelector('textarea[name="info_nutricional"]');
+    if (!btn || !status || !nombreInput || !unidadSelect || !infoTextarea) return;
+    btn.addEventListener('click', function() {
+        var nombre = nombreInput.value.trim();
+        var unidadId = unidadSelect.value;
+        if (!nombre) { status.textContent = 'Escriba el nombre del ingrediente.'; status.className = 'sugerir-status error'; return; }
+        if (!unidadId) { status.textContent = 'Seleccione la unidad de medida.'; status.className = 'sugerir-status error'; return; }
+        btn.disabled = true;
+        status.textContent = 'Estimando...';
+        status.className = 'sugerir-status';
+        var fd = new FormData();
+        fd.append('nombre', nombre);
+        fd.append('unidad_medida', unidadId);
+        fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        fetch('{% url "recipes:sugerir_nutricion_ingrediente" %}', { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ok && data.info_nutricional) {
+                    var info = data.info_nutricional;
+                    var alergenos = info.alergenos;
+                    if (alergenos) delete info.alergenos;
+                    infoTextarea.value = JSON.stringify(info, null, 2);
+                    var alergenosEl = document.querySelector('textarea[name="alergenos"]');
+                    if (alergenosEl && Array.isArray(alergenos)) alergenosEl.value = JSON.stringify(alergenos, null, 2);
+                    status.textContent = 'Información aplicada.';
+                    status.className = 'sugerir-status success';
+                } else {
+                    status.textContent = data.error || 'No se pudo estimar.';
+                    status.className = 'sugerir-status error';
+                }
+            })
+            .catch(function() { status.textContent = 'Error de conexión.'; status.className = 'sugerir-status error'; })
+            .finally(function() { btn.disabled = false; });
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}

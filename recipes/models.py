@@ -63,6 +63,18 @@ class Ingrediente(models.Model):
         verbose_name="Unidad de medida",
         help_text="Unidad por defecto para este ingrediente"
     )
+    info_nutricional = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="Información nutricional",
+        help_text="Por 100g en formato JSON: {\"por_100g\": {\"calorias\": 165, \"proteinas\": 31, \"carbohidratos\": 0, \"grasas\": 3.6, \"fibra\": 0}}. Opcional: \"gramos_por_unidad\" para ingredientes vendidos por unidad."
+    )
+    alergenos = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Alérgenos",
+        help_text="Lista de alérgenos que puede contener (gluten, lactosa, frutos secos, etc.)"
+    )
     activo = models.BooleanField(default=True, verbose_name="Activo")
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
 

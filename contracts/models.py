@@ -203,9 +203,28 @@ class PausaContrato(models.Model):
     def __str__(self):
         return f"{self.contrato} — pausa {self.fecha_inicio} a {self.fecha_fin}"
 
+    # Mapeo: Python date.weekday() 0=lunes, 6=domingo -> valor en dias_entrega del contrato
+    _WEEKDAY_NOMBRE = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+
     def _dias_pausa(self, fecha_inicio, fecha_fin):
-        """Número de días (inclusive) entre fecha_inicio y fecha_fin."""
-        return (fecha_fin - fecha_inicio).days + 1
+        """
+        Número de días de entrega (según dias_entrega del contrato) entre
+        fecha_inicio y fecha_fin (inclusive). Si el contrato no tiene días
+        configurados, se usan días calendario.
+        """
+        contrato = getattr(self, 'contrato', None)
+        if contrato is None and self.contrato_id:
+            contrato = Contrato.objects.filter(pk=self.contrato_id).first()
+        dias_entrega = list(contrato.dias_entrega) if contrato and contrato.dias_entrega else []
+        if not dias_entrega:
+            return (fecha_fin - fecha_inicio).days + 1
+        count = 0
+        d = fecha_inicio
+        while d <= fecha_fin:
+            if self._WEEKDAY_NOMBRE[d.weekday()] in dias_entrega:
+                count += 1
+            d += timedelta(days=1)
+        return count
 
     def save(self, *args, **kwargs):
         """Al crear o modificar una pausa, se extiende fecha_fin del contrato por los días de pausa."""

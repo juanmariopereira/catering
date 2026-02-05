@@ -28,6 +28,14 @@
     .formset-table input, .formset-table select { width: 100%; padding: 6px; }
     .formset-table .delete { width: 40px; text-align: center; }
     .formset-table .delete input { width: auto; }
+    .btn-ai { background-color: #6366f1 !important; }
+    .btn-ai:hover { background-color: #4f46e5 !important; }
+    .btn-ai:disabled { opacity: 0.6; cursor: not-allowed; }
+    .sugerir-status { margin-left: 8px; font-size: 0.9rem; color: #555; }
+    .sugerir-status.error { color: #c62828; }
+    .sugerir-status.success { color: #2e7d32; }
+    .btn-add-row { background-color: #5a9e38 !important; }
+    .btn-add-row:hover { background-color: #4a8e28 !important; }
 </style>
 {% endblock %}
 
@@ -63,6 +71,12 @@
         <div class="form-row form-row-1">
             <div class="form-group">
                 <label for="{{ form.descripcion.id_for_label }}">{{ form.descripcion.label }}</label>
+                {% if object and openai_available %}
+                <span style="margin-left: 8px;">
+                    <button type="button" class="btn btn-ai" id="btn-sugerir-descripcion" title="Genera una descripción con IA a partir del nombre e ingredientes">Sugerir con IA</button>
+                    <span id="sugerir-descripcion-status" class="sugerir-status"></span>
+                </span>
+                {% endif %}
                 {{ form.descripcion }}
                 {% if form.descripcion.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.descripcion.errors }}</div>{% endif %}
             </div>
@@ -70,6 +84,15 @@
         <div class="form-row form-row-2">
             <div class="form-group">
                 <label for="{{ form.info_nutricional.id_for_label }}">{{ form.info_nutricional.label }}</label>
+                {% if object %}
+                <span style="margin-left: 8px;">
+                    <button type="button" class="btn btn-add-row" id="btn-calcular-nutricion" title="Calcula la info nutricional total desde los ingredientes">Calcular desde ingredientes</button>
+                    {% if openai_available %}
+                    <button type="button" class="btn btn-ai" id="btn-sugerir-nutricion-receta" title="Estima con IA cuando no puede calcularse">Sugerir con IA</button>
+                    {% endif %}
+                    <span id="calcular-nutricion-status" class="sugerir-status"></span>
+                </span>
+                {% endif %}
                 {{ form.info_nutricional }}
                 {% if form.info_nutricional.help_text %}<div class="help-text">{{ form.info_nutricional.help_text }}</div>{% endif %}
                 {% if form.info_nutricional.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.info_nutricional.errors }}</div>{% endif %}
@@ -84,6 +107,13 @@
         <div class="ingredientes-section">
             <h2>Ingredientes y cantidades</h2>
             <p class="help-text">Cada fila es un ingrediente con su cantidad y unidad de medida (ej: kg, gr, litros, unidades, tazas). Marque "Eliminar" para quitar un ingrediente.</p>
+            {% if openai_available %}
+            <p style="margin-bottom: 12px;">
+                <button type="button" class="btn btn-ai" id="btn-sugerir-ingredientes" title="Sugiere ingredientes y cantidades con IA según el nombre y tipo de receta">Sugerir ingredientes con IA</button>
+                <span id="sugerir-ingredientes-status" class="sugerir-status"></span>
+            </p>
+            {% endif %}
+            <p style="margin-bottom: 8px;"><button type="button" class="btn btn-add-row" id="add-ingrediente-row">+ Añadir fila</button></p>
             {{ ingredientes_formset.management_form }}
             <table class="formset-table">
                 <thead>
@@ -129,4 +159,174 @@
         </div>
     </form>
 </div>
+
+{% if object %}
+{% block extra_js %}
+<script>
+(function() {
+    var prefix = '{{ ingredientes_formset.prefix }}';
+    var tbody = document.querySelector('.ingredientes-section tbody');
+    var addIngBtn = document.getElementById('add-ingrediente-row');
+    var totalInput = document.getElementById('id_' + prefix + '-TOTAL_FORMS');
+    var descInput = document.querySelector('#id_descripcion, textarea[name="descripcion"]');
+
+    function addIngredienteRow() {
+        if (!tbody || !totalInput) return;
+        var rows = tbody.querySelectorAll('tr');
+        var lastRow = rows[rows.length - 1];
+        if (!lastRow) return;
+        var total = parseInt(totalInput.value, 10);
+        var newRow = lastRow.cloneNode(true);
+        function rep(s, o, n) { return String(s).split('-' + o + '-').join('-' + n + '-').split('_' + o + '_').join('_' + n + '_'); }
+        newRow.querySelectorAll('input, select').forEach(function(el) {
+            if (el.name) el.name = rep(el.name, total - 1, total);
+            if (el.id) el.id = rep(el.id, total - 1, total);
+        });
+        newRow.querySelectorAll('input[type="text"], input[type="number"]').forEach(function(el) {
+            el.value = (el.name && el.name.indexOf('cantidad') !== -1) ? '' : el.value;
+        });
+        newRow.querySelectorAll('select').forEach(function(el) { el.selectedIndex = 0; });
+        newRow.querySelectorAll('input[type="checkbox"]').forEach(function(el) { el.checked = false; });
+        newRow.querySelectorAll('input[name*="-id"]').forEach(function(el) { el.value = ''; });
+        tbody.appendChild(newRow);
+        totalInput.value = total + 1;
+    }
+
+    if (addIngBtn) addIngBtn.addEventListener('click', addIngredienteRow);
+
+    var btnSugerirIng = document.getElementById('btn-sugerir-ingredientes');
+    var statusSugerirIng = document.getElementById('sugerir-ingredientes-status');
+    if (btnSugerirIng && statusSugerirIng && tbody) {
+        btnSugerirIng.addEventListener('click', function() {
+            btnSugerirIng.disabled = true;
+            statusSugerirIng.textContent = 'Generando...';
+            statusSugerirIng.className = 'sugerir-status';
+            var fd = new FormData();
+            fd.append('receta_id', '{{ object.pk }}');
+            fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            fetch('{% url "recipes:sugerir_ingredientes_receta" %}', { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.ok) {
+                        var rows = tbody.querySelectorAll('tr');
+                        (data.ingredientes || []).forEach(function(item, idx) {
+                            while (rows.length <= idx && addIngredienteRow) {
+                                addIngredienteRow();
+                                rows = tbody.querySelectorAll('tr');
+                            }
+                            var row = rows[idx];
+                            if (row) {
+                                var ingSelect = row.querySelector('select[name$="-ingrediente"]');
+                                var cantInput = row.querySelector('input[name$="-cantidad"]');
+                                var uniSelect = row.querySelector('select[name$="-unidad_medida"]');
+                                if (ingSelect) ingSelect.value = String(item.ingrediente_id);
+                                if (cantInput) cantInput.value = item.cantidad;
+                                if (uniSelect) uniSelect.value = String(item.unidad_medida_id);
+                            }
+                        });
+                        if (data.nota_descripcion && descInput) {
+                            var actual = (descInput.value || '').trim();
+                            var nota = (actual ? actual + '\n\n' : '') + data.nota_descripcion;
+                            descInput.value = nota;
+                        }
+                        var numIng = data.ingredientes ? data.ingredientes.length : 0;
+                        var numNoEnc = data.no_encontrados ? data.no_encontrados.length : 0;
+                        var msg = numIng > 0 ? 'Sugerencia aplicada (' + numIng + ' ingredientes)' : 'Información añadida a la descripción';
+                        if (numNoEnc > 0) {
+                            msg += '. ' + numNoEnc + ' no encontrados en catálogo (añadidos a descripción)';
+                        }
+                        msg += '.';
+                        statusSugerirIng.textContent = msg;
+                        statusSugerirIng.className = 'sugerir-status success';
+                    } else {
+                        statusSugerirIng.textContent = data.error || 'No se generaron sugerencias.';
+                        statusSugerirIng.className = 'sugerir-status error';
+                    }
+                })
+                .catch(function() { statusSugerirIng.textContent = 'Error de conexión.'; statusSugerirIng.className = 'sugerir-status error'; })
+                .finally(function() { btnSugerirIng.disabled = false; });
+        });
+    }
+
+    var btn = document.getElementById('btn-calcular-nutricion');
+    var status = document.getElementById('calcular-nutricion-status');
+    var infoInput = document.querySelector('#id_info_nutricional, textarea[name="info_nutricional"], input[name="info_nutricional"]');
+    if (!btn || !status || !infoInput) return;
+    btn.addEventListener('click', function() {
+        btn.disabled = true;
+        status.textContent = 'Calculando...';
+        status.className = 'sugerir-status';
+        var fd = new FormData();
+        fd.append('receta_id', '{{ object.pk }}');
+        fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        fetch('{% url "recipes:calcular_nutricion_receta" %}', { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ok && data.info_nutricional) {
+                    infoInput.value = JSON.stringify(data.info_nutricional, null, 2);
+                    status.textContent = 'Calculado correctamente.';
+                    status.className = 'sugerir-status success';
+                } else {
+                    status.textContent = data.error || 'No se pudo calcular.';
+                    status.className = 'sugerir-status error';
+                }
+            })
+            .catch(function() { status.textContent = 'Error de conexión.'; status.className = 'sugerir-status error'; })
+            .finally(function() { btn.disabled = false; });
+    });
+    var btnDesc = document.getElementById('btn-sugerir-descripcion');
+    var statusDesc = document.getElementById('sugerir-descripcion-status');
+    if (btnDesc && statusDesc && descInput) {
+        btnDesc.addEventListener('click', function() {
+            btnDesc.disabled = true;
+            statusDesc.textContent = 'Generando...';
+            statusDesc.className = 'sugerir-status';
+            var fd = new FormData();
+            fd.append('receta_id', '{{ object.pk }}');
+            fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            fetch('{% url "recipes:sugerir_descripcion_receta" %}', { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.ok && data.descripcion) {
+                        descInput.value = data.descripcion;
+                        statusDesc.textContent = 'Descripción aplicada.';
+                        statusDesc.className = 'sugerir-status success';
+                    } else {
+                        statusDesc.textContent = data.error || 'No se pudo generar.';
+                        statusDesc.className = 'sugerir-status error';
+                    }
+                })
+                .catch(function() { statusDesc.textContent = 'Error de conexión.'; statusDesc.className = 'sugerir-status error'; })
+                .finally(function() { btnDesc.disabled = false; });
+        });
+    }
+    var btnSugerir = document.getElementById('btn-sugerir-nutricion-receta');
+    if (btnSugerir) {
+        btnSugerir.addEventListener('click', function() {
+            btnSugerir.disabled = true;
+            status.textContent = 'Estimando con IA...';
+            status.className = 'sugerir-status';
+            var fd = new FormData();
+            fd.append('receta_id', '{{ object.pk }}');
+            fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            fetch('{% url "recipes:sugerir_nutricion_receta" %}', { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.ok && data.info_nutricional) {
+                        infoInput.value = JSON.stringify(data.info_nutricional, null, 2);
+                        status.textContent = 'Estimación aplicada.';
+                        status.className = 'sugerir-status success';
+                    } else {
+                        status.textContent = data.error || 'No se pudo estimar.';
+                        status.className = 'sugerir-status error';
+                    }
+                })
+                .catch(function() { status.textContent = 'Error de conexión.'; status.className = 'sugerir-status error'; })
+                .finally(function() { btnSugerir.disabled = false; });
+        });
+    }
+})();
+</script>
+{% endblock %}
+{% endif %}
 {% endblock %}

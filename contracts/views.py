@@ -4,9 +4,12 @@ from django.urls import reverse_lazy, reverse
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 from django.db.models import Q
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
 
 from .models import Contrato, PausaContrato
-from .forms import ContratoForm
+from .forms import ContratoForm, PausaContratoForm
 from plans.models import Plan
 from clients.models import Cliente
 
@@ -63,6 +66,32 @@ class ContratoCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
+@login_required
+@require_http_methods(['POST'])
+def generar_mensaje_cliente_view(request):
+    """
+    Vista AJAX: genera mensaje personalizado para el cliente con IA.
+    POST: contrato_id, tipo_mensaje (preguntar_dieta | plan_por_vencer | plan_vencido)
+    Returns: JSON { "ok": true, "mensaje": "..." }
+    """
+    contrato_id = request.POST.get('contrato_id')
+    tipo_mensaje = request.POST.get('tipo_mensaje')
+    if not contrato_id or not tipo_mensaje:
+        return JsonResponse({'ok': False, 'error': 'Faltan contrato_id o tipo_mensaje.'}, status=400)
+    contrato = get_object_or_404(Contrato, pk=contrato_id)
+    try:
+        from .services.ai_mensajes import generar_mensaje_cliente_ia, TIPOS_MENSAJE
+        tipos_validos = [t[0] for t in TIPOS_MENSAJE]
+        if tipo_mensaje not in tipos_validos:
+            return JsonResponse({'ok': False, 'error': 'Tipo de mensaje inválido.'}, status=400)
+        mensaje = generar_mensaje_cliente_ia(contrato, tipo_mensaje, request=request)
+        return JsonResponse({'ok': True, 'mensaje': mensaje})
+    except ValueError as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=500)
+
+
 class ContratoDetailView(LoginRequiredMixin, DetailView):
     model = Contrato
     template_name = 'contracts/contrato_detalle.html'
@@ -100,8 +129,8 @@ class ContratoDeleteView(LoginRequiredMixin, DeleteView):
 
 class PausaContratoCreateView(LoginRequiredMixin, CreateView):
     model = PausaContrato
+    form_class = PausaContratoForm
     template_name = 'contracts/pausa_form.html'
-    fields = ['fecha_inicio', 'fecha_fin', 'motivo']
     context_object_name = 'pausa'
 
     def dispatch(self, request, *args, **kwargs):
@@ -124,8 +153,8 @@ class PausaContratoCreateView(LoginRequiredMixin, CreateView):
 
 class PausaContratoUpdateView(LoginRequiredMixin, UpdateView):
     model = PausaContrato
+    form_class = PausaContratoForm
     template_name = 'contracts/pausa_form.html'
-    fields = ['fecha_inicio', 'fecha_fin', 'motivo']
     context_object_name = 'pausa'
 
     def get_context_data(self, **kwargs):

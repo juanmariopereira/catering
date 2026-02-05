@@ -43,6 +43,12 @@
     /* Evitar que el dropdown de Choices.js quede recortado por overflow del table-responsive */
     .recetas-formset .table-responsive { overflow: visible; }
     .recetas-formset .choices__list--dropdown { z-index: 1050; }
+    .btn-ai { background-color: #6366f1 !important; }
+    .btn-ai:hover { background-color: #4f46e5 !important; }
+    .btn-ai:disabled { opacity: 0.6; cursor: not-allowed; }
+    .sugerir-ia-status { margin-left: 10px; font-size: 0.9rem; color: #555; }
+    .sugerir-ia-status.error { color: #c62828; }
+    .sugerir-ia-status.success { color: #2e7d32; }
 </style>
 {% endblock %}
 
@@ -76,6 +82,14 @@
         <div class="recetas-formset" id="recetas-formset-container">
             <h2>Recetas por momento del día</h2>
             <p>Defina frutas, postres, bebidas y comidas por momento (Desayuno, Media mañana, Comida, Merienda, Cena). Arrastre las filas para reordenar. Use «Añadir fila» para más recetas.</p>
+            {% if openai_available %}
+            <p style="margin-bottom: 12px;">
+                <button type="button" class="btn btn-ai" id="btn-sugerir-ia" title="Genera una propuesta de menú con IA basada en recetas disponibles y menús recientes">
+                    Sugerir menú con IA
+                </button>
+                <span id="sugerir-ia-status" class="sugerir-ia-status"></span>
+            </p>
+            {% endif %}
             {{ receta_formset.management_form }}
             <div class="table-responsive">
             <table>
@@ -162,6 +176,79 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
+(function() {
+    // Sugerir menú con IA
+    var btnSugerir = document.getElementById('btn-sugerir-ia');
+    var statusEl = document.getElementById('sugerir-ia-status');
+    if (btnSugerir && statusEl) {
+        btnSugerir.addEventListener('click', function() {
+            var fechaInput = document.querySelector('input[name="fecha"]');
+            var planSelect = document.querySelector('select[name="plan"]');
+            if (!fechaInput || !planSelect || !fechaInput.value || !planSelect.value) {
+                statusEl.textContent = 'Seleccione fecha y plan primero.';
+                statusEl.className = 'sugerir-ia-status error';
+                return;
+            }
+            btnSugerir.disabled = true;
+            statusEl.textContent = 'Generando sugerencia...';
+            statusEl.className = 'sugerir-ia-status';
+
+            var formData = new FormData();
+            formData.append('fecha', fechaInput.value);
+            formData.append('plan', planSelect.value);
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+            fetch('{% url "planning:sugerir_menu_ia" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ok && data.recetas && data.recetas.length > 0) {
+                    var tbody = document.getElementById('receta-formset-body');
+                    var emptyRow = document.getElementById('empty-form-row');
+                    var totalInput = document.querySelector('input[name$="-TOTAL_FORMS"]');
+                    var prefix = totalInput.name.replace('-TOTAL_FORMS', '');
+                    if (!tbody || !emptyRow || !totalInput) return;
+                    var formsetRows = tbody.querySelectorAll('tr.formset-row');
+                    formsetRows.forEach(function(r) { r.remove(); });
+                    var ord = 0;
+                    data.recetas.forEach(function(item) {
+                        var newRow = emptyRow.cloneNode(true);
+                        newRow.id = '';
+                        newRow.style.display = '';
+                        newRow.classList.add('formset-row');
+                        newRow.innerHTML = newRow.innerHTML.replace(/__prefix__/g, ord);
+                        var tcSelect = newRow.querySelector('select[name$="-tipo_comida"]');
+                        var recSelect = newRow.querySelector('select[name$="-receta"]');
+                        var ordInput = newRow.querySelector('input[name$="-orden"]');
+                        if (tcSelect) tcSelect.value = String(item.tipo_comida_id);
+                        if (recSelect) recSelect.value = String(item.receta_id);
+                        if (ordInput) ordInput.value = item.orden || (ord + 1);
+                        tbody.insertBefore(newRow, emptyRow);
+                        ord++;
+                    });
+                    totalInput.value = ord;
+                    statusEl.textContent = 'Sugerencia aplicada (' + data.recetas.length + ' recetas). Revise y guarde.';
+                    statusEl.className = 'sugerir-ia-status success';
+                    if (window.initSearchableSelects) { tbody.querySelectorAll('tr.formset-row').forEach(function(r) { window.initSearchableSelects(r); }); }
+                } else {
+                    statusEl.textContent = data.error || 'No se generó ninguna sugerencia.';
+                    statusEl.className = 'sugerir-ia-status error';
+                }
+            })
+            .catch(function(err) {
+                statusEl.textContent = 'Error de conexión.';
+                statusEl.className = 'sugerir-ia-status error';
+            })
+            .finally(function() { btnSugerir.disabled = false; });
+        });
+    }
+})();
 (function() {
     var container = document.getElementById('recetas-formset-container');
     if (!container) return;

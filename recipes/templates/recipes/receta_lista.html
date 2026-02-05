@@ -34,6 +34,9 @@
     
     <div class="actions">
         <a href="{% url 'recipes:crear' %}" class="btn">Nueva Receta</a>
+        {% if openai_available %}
+        <a href="{% url 'recipes:importar' %}" class="btn btn-secondary">Importar receta con IA</a>
+        {% endif %}
         <a href="{% url 'recipes:ingrediente_lista' %}" class="btn btn-secondary">Ingredientes</a>
         <form method="get" class="search-form">
             <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Buscar...">

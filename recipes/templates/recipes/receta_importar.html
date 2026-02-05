@@ -1,0 +1,51 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Importar Receta con IA - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'recipes:lista' %}">Recetas</a>
+<span class="sep">/</span>
+<span>Importar receta</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn { display: inline-block; padding: 10px 20px; background-color: #7CB342; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    .btn:hover { background-color: #689F38; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    .btn-ai { background-color: #6366f1 !important; }
+    .btn-ai:hover { background-color: #4f46e5 !important; }
+    .importar-section { margin-top: 20px; }
+    .importar-section textarea { width: 100%; min-height: 200px; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; font-size: 14px; }
+    .importar-section .help-text { color: #555; font-size: 0.9rem; margin-bottom: 10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Importar Receta con IA</h1>
+    <p class="help-text">Pega el texto de una receta (de una web, blog, libro, etc.) y la IA extraerá el nombre, descripción, tipo, momentos del día e ingredientes con cantidades. Los ingredientes se intentarán asociar al catálogo existente.</p>
+
+    {% if openai_available %}
+    <form method="post" class="importar-section">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="texto_receta">Texto de la receta</label>
+            <textarea name="texto_receta" id="texto_receta" placeholder="Pega aquí el texto completo de la receta, incluyendo ingredientes y cantidades...">{{ texto_receta|default:"" }}</textarea>
+        </div>
+        <div style="margin-top: 15px;">
+            <button type="submit" class="btn btn-ai">Importar con IA</button>
+            <a href="{% url 'recipes:lista' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+    {% else %}
+    <p style="color: #c62828;">La importación con IA no está disponible. Configure OPENAI_API_KEY en las variables de entorno.</p>
+    <a href="{% url 'recipes:lista' %}" class="btn btn-secondary">Volver</a>
+    {% endif %}
+</div>
+{% endblock %}

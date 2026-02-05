@@ -54,6 +54,7 @@
             <div class="form-group">
                 <label for="{{ form.fecha_fin.id_for_label }}">{{ form.fecha_fin.label }}</label>
                 {{ form.fecha_fin }}
+                {% if form.fecha_fin.help_text %}<div class="help-text">{{ form.fecha_fin.help_text }}</div>{% endif %}
                 {% if form.fecha_fin.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.fecha_fin.errors }}</div>{% endif %}
             </div>
         </div>
@@ -129,13 +130,8 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if not object %}
 <script>
 (function() {
-    var planPreciosEl = document.getElementById('plan-precios');
-    var clientesDatosEl = document.getElementById('clientes-datos');
-    var planPrecios = planPreciosEl ? JSON.parse(planPreciosEl.textContent) : {};
-    var clientesDatos = clientesDatosEl ? JSON.parse(clientesDatosEl.textContent) : {};
     var form = document.querySelector('form.form-layout');
     if (!form) return;
 
@@ -147,6 +143,12 @@
         if (!sel) return null;
         return sel.tagName === 'SELECT' ? sel.value : (sel.closest('.choices') && (sel.querySelector('select') || sel).value) || sel.value;
     }
+
+    {% if not object %}
+    var planPreciosEl = document.getElementById('plan-precios');
+    var clientesDatosEl = document.getElementById('clientes-datos');
+    var planPrecios = planPreciosEl ? JSON.parse(planPreciosEl.textContent) : {};
+    var clientesDatos = clientesDatosEl ? JSON.parse(clientesDatosEl.textContent) : {};
 
     // Precio por defecto desde el plan
     function updatePrecio() {
@@ -169,8 +171,9 @@
     }
     var clienteSelect = form.querySelector('select[name="cliente"]');
     if (clienteSelect) clienteSelect.addEventListener('change', updateDatosCliente);
+    {% endif %}
 
-    // Fecha fin según frecuencia de pago
+    // Fecha fin según fecha de inicio y frecuencia de pago (nuevo y edición)
     function parseDate(str) {
         if (!str) return null;
         var parts = str.split('-');
@@ -186,25 +189,27 @@
         var fechaInicio = byName('fecha_inicio');
         var fechaFin = byName('fecha_fin');
         var freq = getSelectValue('frecuencia_pago');
-        if (!fechaInicio || !fechaFin || !fechaInicio.value) return;
+        if (!fechaInicio || !fechaFin || !fechaInicio.value || !freq) return;
         var d = parseDate(fechaInicio.value);
         if (!d) return;
-        if (freq === 'diario') { /* un día: fin = inicio */ }
-        else if (freq === 'semanal') d.setDate(d.getDate() + 6);
-        else if (freq === 'quincenal') d.setDate(d.getDate() + 14);
-        else if (freq === 'mensual') {
+        if (freq === 'diario') {
+            d.setDate(d.getDate() + 30);
+        } else if (freq === 'semanal') {
+            d.setDate(d.getDate() + 6);
+        } else if (freq === 'quincenal') {
+            d.setDate(d.getDate() + 14);
+        } else if (freq === 'mensual') {
             d.setMonth(d.getMonth() + 1);
             d.setDate(d.getDate() - 1);
+        } else {
+            return;
         }
-        else return;
         fechaFin.value = formatDate(d);
     }
     var fi = byName('fecha_inicio');
-    var ff = byName('fecha_fin');
     var freqSelect = form.querySelector('select[name="frecuencia_pago"]');
     if (fi) fi.addEventListener('change', calcFechaFin);
     if (freqSelect) freqSelect.addEventListener('change', calcFechaFin);
 })();
 </script>
-{% endif %}
 {% endblock %}

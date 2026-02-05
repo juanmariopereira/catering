@@ -47,6 +47,21 @@
     </div>
     {% endif %}
 
+    {% if receta.info_nutricional %}
+    <div class="descripcion" style="margin-top: 15px;">
+        <strong>Información nutricional:</strong><br>
+        {% for k, v in receta.info_nutricional.items %}
+        {{ k|capfirst }}: {{ v }}{% if not forloop.last %} | {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if alergenos %}
+    <div class="alergenos-aviso" style="margin: 15px 0; padding: 12px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+        <strong>⚠ Alérgenos:</strong> Esta receta puede contener: {{ alergenos|join:", " }}
+    </div>
+    {% endif %}
+
     <div class="ingredientes-section">
         <h2>Ingredientes</h2>
         <p>Cada ingrediente con su cantidad y unidad de medida:</p>

@@ -5,8 +5,38 @@ from django.shortcuts import redirect
 from django.contrib import messages
 from django.db.models import Q
 from django.forms import inlineformset_factory
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
 
 from .models import Dieta, DietaReceta
+from .services.ai_dietas import sugerir_dieta_personalizada, OBJETIVOS_VALIDOS
+
+
+@login_required
+@require_http_methods(['POST'])
+def sugerir_dieta_view(request):
+    """
+    Vista AJAX: sugiere una dieta personalizada con IA.
+    POST: objetivo, plan_id (opcional)
+    Returns: JSON { "ok": true, "recetas": [{ tipo_comida_id, receta_id, orden }] }
+    """
+    objetivo = request.POST.get('objetivo', 'equilibrado').strip().lower()
+    plan_id = request.POST.get('plan_id')
+    if objetivo not in OBJETIVOS_VALIDOS:
+        objetivo = 'equilibrado'
+    try:
+        plan_id = int(plan_id) if plan_id else None
+    except (ValueError, TypeError):
+        plan_id = None
+
+    try:
+        recetas = sugerir_dieta_personalizada(objetivo, plan_id, request=request)
+        return JsonResponse({'ok': True, 'recetas': recetas})
+    except ValueError as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=500)
 
 
 DietaRecetaFormSet = inlineformset_factory(
@@ -69,6 +99,8 @@ class DietaUpdateView(LoginRequiredMixin, UpdateView):
             )
         else:
             context['formset'] = DietaRecetaFormSet(instance=self.object)
+        from plans.models import Plan
+        context['planes'] = Plan.objects.filter(activo=True).order_by('nombre')
         return context
 
     def form_valid(self, form):

@@ -5,6 +5,7 @@ app_name = 'planning'
 
 urlpatterns = [
     path('', views.PlanificacionMenuListView.as_view(), name='lista'),
+    path('sugerir-menu-ia/', views.sugerir_menu_ia_view, name='sugerir_menu_ia'),
     path('resumen/', views.resumen_por_fecha, name='resumen'),
     path('clientes-por-fecha/', views.clientes_reciben_fecha, name='clientes_por_fecha'),
     path('crear/', views.PlanificacionMenuCreateView.as_view(), name='crear'),

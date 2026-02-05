@@ -22,10 +22,14 @@ from .utils import (
     recetas_alternativas_para_momento,
     clientes_no_gustan_por_receta,
 )
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+
 from contracts.models import Contrato, contratos_activos_en_fecha
 from diets.models import TipoComida
 from plans.models import Plan
 from recipes.models import Receta
+from .services.ai_menu import sugerir_menu_ia
 
 BasePlanificacionMenuRecetaFormSet = inlineformset_factory(
     PlanificacionMenu,
@@ -160,6 +164,44 @@ def clientes_reciben_fecha(request):
         'fecha_siguiente': fecha_siguiente,
     }
     return render(request, 'planning/clientes_reciben_fecha.html', context)
+
+
+@login_required
+@require_http_methods(['POST'])
+def sugerir_menu_ia_view(request):
+    """
+    Vista AJAX que sugiere un menú usando OpenAI.
+    POST: fecha (YYYY-MM-DD), plan (ID)
+    Returns: JSON { "ok": true, "recetas": [{ tipo_comida_id, receta_id, orden }] } o { "ok": false, "error": "..." }
+    """
+    fecha_str = request.POST.get('fecha')
+    plan_id_str = request.POST.get('plan')
+
+    if not fecha_str or not plan_id_str:
+        return JsonResponse({'ok': False, 'error': 'Faltan fecha o plan.'}, status=400)
+
+    try:
+        fecha = date.fromisoformat(fecha_str)
+    except ValueError:
+        return JsonResponse({'ok': False, 'error': 'Fecha inválida.'}, status=400)
+
+    try:
+        plan_id = int(plan_id_str)
+    except (ValueError, TypeError):
+        return JsonResponse({'ok': False, 'error': 'Plan inválido.'}, status=400)
+
+    plan = get_object_or_404(Plan, pk=plan_id)
+
+    try:
+        recetas = sugerir_menu_ia(fecha, plan, request=request)
+        return JsonResponse({'ok': True, 'recetas': recetas})
+    except ValueError as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse(
+            {'ok': False, 'error': f'Error al generar sugerencia: {e}'},
+            status=500,
+        )
 
 
 class PlanificacionMenuListView(LoginRequiredMixin, ListView):
