@@ -1,0 +1,89 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Reporte de Cobranza - {{ catering_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filtros { margin: 20px 0; padding: 15px; background-color: #f9f9f9; border-radius: 4px; }
+    .resumen { margin: 20px 0; padding: 15px; background-color: #e3f2fd; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #F44336; color: white; }
+    tr:hover { background-color: #f5f5f5; }
+    .badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .badge-pendiente { background-color: #ffc107; color: #000; }
+    .badge-pagada { background-color: #4CAF50; color: white; }
+    .badge-vencida { background-color: #F44336; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Reporte de Cobranza</h1>
+    
+    <div class="filtros">
+        <form method="get">
+            <label>Fecha Desde: <input type="date" name="fecha_desde" value="{{ fecha_desde }}"></label>
+            <label>Fecha Hasta: <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}"></label>
+            <label>Estado: 
+                <select name="estado">
+                    <option value="">Todos</option>
+                    <option value="pendiente" {% if estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                    <option value="pagada" {% if estado == 'pagada' %}selected{% endif %}>Pagada</option>
+                    <option value="vencida" {% if estado == 'vencida' %}selected{% endif %}>Vencida</option>
+                </select>
+            </label>
+            <button type="submit">Filtrar</button>
+        </form>
+    </div>
+    
+    <div class="resumen">
+        <h3>Resumen</h3>
+        <p><strong>Total Monto:</strong> ${{ total_monto|floatformat:2 }}</p>
+        <p><strong>Total Pagado:</strong> ${{ total_pagado|floatformat:2 }}</p>
+        <p><strong>Total Pendiente:</strong> ${{ total_pendiente|floatformat:2 }}</p>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Fecha Emisión</th>
+                <th>Fecha Vencimiento</th>
+                <th>Monto</th>
+                <th>Pagado</th>
+                <th>Pendiente</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for factura in facturas %}
+                <tr>
+                    <td>{{ factura.numero_factura }}</td>
+                    <td>{{ factura.contrato.cliente.nombre }}</td>
+                    <td>{{ factura.fecha_emision|date:"d/m/Y" }}</td>
+                    <td>{{ factura.fecha_vencimiento|date:"d/m/Y" }}</td>
+                    <td>${{ factura.monto|floatformat:2 }}</td>
+                    <td>${{ factura.calcular_monto_pagado|floatformat:2 }}</td>
+                    <td>${{ factura.monto_pendiente|floatformat:2 }}</td>
+                    <td>
+                        <span class="badge badge-{{ factura.estado }}">
+                            {{ factura.get_estado_display }}
+                        </span>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="8">No hay facturas que coincidan con los filtros.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

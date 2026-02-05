@@ -1,0 +1,120 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Detalle de Cocina {{ fecha }} - {{ catering_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .fecha-navegacion {
+        margin: 20px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .fecha-navegacion a {
+        padding: 8px 16px;
+        background-color: #7CB342;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+    }
+    .fecha-navegacion a:hover { background-color: #689F38; }
+    .fecha-actual { font-size: 18px; font-weight: bold; color: #333; }
+    .recetas-lista { margin-top: 30px; }
+    .receta-item {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        margin-bottom: 15px;
+        background-color: #fafafa;
+    }
+    .receta-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .receta-nombre { font-size: 20px; font-weight: bold; color: #333; }
+    .receta-cantidad {
+        background-color: #7CB342;
+        color: white;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+    }
+    .receta-categoria { color: #666; font-style: italic; }
+    .receta-descripcion { margin-top: 10px; color: #555; }
+    .ingredientes {
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #ddd;
+    }
+    .ingredientes h3 { font-size: 16px; color: #333; margin-bottom: 10px; }
+    .ingrediente-item { padding: 5px 0; color: #666; }
+    .notas {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+        border-radius: 4px;
+    }
+    .sin-recetas { text-align: center; padding: 40px; color: #999; font-size: 18px; }
+    @media print {
+        .fecha-navegacion { display: none; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Detalle de Cocina</h1>
+    
+    <div class="fecha-navegacion">
+        <a href="{% url 'kitchen:detalle_fecha' fecha_anterior %}">← Día Anterior</a>
+        <span class="fecha-actual">{{ fecha|date:"l, d F Y" }}</span>
+        <a href="{% url 'kitchen:detalle_fecha' fecha_siguiente %}">Día Siguiente →</a>
+    </div>
+
+    {% if recetas_info %}
+        <div class="recetas-lista">
+            {% for item in recetas_info %}
+                <div class="receta-item">
+                    <div class="receta-header">
+                        <div>
+                            <div class="receta-nombre">{{ item.receta.nombre }}</div>
+                            <div class="receta-categoria">{{ item.receta.get_categoria_display }}</div>
+                        </div>
+                        <div class="receta-cantidad">{{ item.cantidad }} {{ item.cantidad|pluralize:"vez,veces" }}</div>
+                    </div>
+                    
+                    {% if item.receta.descripcion %}
+                        <div class="receta-descripcion">{{ item.receta.descripcion }}</div>
+                    {% endif %}
+
+                    <div class="ingredientes">
+                        <h3>Ingredientes necesarios:</h3>
+                        {% for receta_ingrediente in item.receta.receta_ingredientes.all %}
+                            <div class="ingrediente-item">
+                                • {{ receta_ingrediente.ingrediente.nombre }}: 
+                                {{ receta_ingrediente.cantidad }} {{ receta_ingrediente.unidad_medida }}
+                                {% if item.cantidad > 1 %}
+                                    (Total: {% widthratio receta_ingrediente.cantidad 1 item.cantidad %} {{ receta_ingrediente.unidad_medida }})
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        {% if detalle_cocina.notas %}
+            <div class="notas">
+                <strong>Notas:</strong> {{ detalle_cocina.notas }}
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="sin-recetas">
+            No hay recetas planificadas para esta fecha.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

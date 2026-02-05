@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ catering_name }}{% endblock %}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f0f7ed;
+            color: #333;
+        }
+        .navbar {
+            background-color: #ffffff;
+            border-bottom: 3px solid #7CB342;
+            padding: 0 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .navbar-brand {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #7CB342;
+            text-decoration: none;
+            padding: 15px 0;
+        }
+        .navbar-brand:hover { color: #689F38; }
+        .navbar-nav {
+            display: flex;
+            gap: 5px;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .nav-link {
+            display: block;
+            padding: 15px 16px;
+            color: #333;
+            text-decoration: none;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .nav-link:hover {
+            color: #7CB342;
+            background-color: #f0f7ed;
+        }
+        .nav-link.active {
+            color: #7CB342;
+            font-weight: 600;
+            border-bottom-color: #7CB342;
+        }
+        .navbar-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .navbar-user span { font-size: 0.9rem; color: #666; }
+        .btn-logout {
+            padding: 8px 16px;
+            background-color: transparent;
+            color: #666;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .btn-logout:hover {
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        .container {
+            background-color: white;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #7CB342;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        a { color: #7CB342; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar no-print">
+        <a href="{% url 'dashboard' %}" class="navbar-brand">{{ catering_name }}</a>
+        <ul class="navbar-nav">
+            <li><a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/dashboard/' or request.path == '/' %}active{% endif %}">Dashboard</a></li>
+            <li><a href="{% url 'clients:lista' %}" class="nav-link {% if '/clients/' in request.path %}active{% endif %}">Clientes</a></li>
+            <li><a href="{% url 'contracts:lista' %}" class="nav-link {% if '/contracts/' in request.path %}active{% endif %}">Contratos</a></li>
+            <li><a href="{% url 'plans:lista' %}" class="nav-link {% if '/plans/' in request.path %}active{% endif %}">Planes</a></li>
+            <li><a href="{% url 'diets:lista' %}" class="nav-link {% if '/diets/' in request.path %}active{% endif %}">Dietas</a></li>
+            <li><a href="{% url 'recipes:lista' %}" class="nav-link {% if '/recipes/' in request.path and 'ingredientes' not in request.path %}active{% endif %}">Recetas</a></li>
+            <li><a href="{% url 'recipes:ingrediente_lista' %}" class="nav-link {% if 'ingredientes' in request.path %}active{% endif %}">Ingredientes</a></li>
+            <li><a href="{% url 'routes:entregador_lista' %}" class="nav-link {% if '/routes/' in request.path %}active{% endif %}">Entregadores</a></li>
+            <li><a href="{% url 'planning:lista' %}" class="nav-link {% if '/planning/' in request.path %}active{% endif %}">Planificación</a></li>
+            <li><a href="{% url 'kitchen:lista' %}" class="nav-link {% if '/kitchen/' in request.path %}active{% endif %}">Cocina</a></li>
+            <li><a href="{% url 'delivery:lista' %}" class="nav-link {% if '/delivery/' in request.path %}active{% endif %}">Entregas</a></li>
+            <li><a href="{% url 'purchases:lista' %}" class="nav-link {% if '/purchases/' in request.path %}active{% endif %}">Compras</a></li>
+            <li><a href="{% url 'billing:factura_lista' %}" class="nav-link {% if '/billing/' in request.path and 'dashboard' not in request.path %}active{% endif %}">Facturación</a></li>
+            <li><a href="{% url 'billing:dashboard' %}" class="nav-link {% if '/billing/dashboard/' in request.path %}active{% endif %}">Cobranza</a></li>
+            <li><a href="{% url 'admin:index' %}" class="nav-link" target="_blank">Admin</a></li>
+        </ul>
+        <div class="navbar-user">
+            {% if user.is_authenticated %}
+            <span>{{ user.get_username }}</span>
+            <a href="{% url 'logout' %}" class="btn-logout">Cerrar sesión</a>
+            {% else %}
+            <a href="{% url 'login' %}" class="btn-logout">Iniciar sesión</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+    {% block extra_js %}{% endblock %}
+    <style>@media print { .no-print { display: none !important; } }</style>
+</body>
+</html>

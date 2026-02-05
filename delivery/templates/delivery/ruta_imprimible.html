@@ -1,0 +1,161 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Ruta de Entrega {{ ruta.fecha }} - {{ catering_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .header {
+        text-align: center;
+        border-bottom: 3px solid #2196F3;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+    }
+    .header h1 { margin: 0; color: #2196F3; }
+    .info-ruta {
+        display: flex;
+        justify-content: space-around;
+        margin: 20px 0;
+        padding: 15px;
+        background-color: #f5f5f5;
+        border-radius: 4px;
+    }
+    .info-item { text-align: center; }
+    .info-label { font-size: 12px; color: #666; text-transform: uppercase; }
+    .info-value { font-size: 18px; font-weight: bold; color: #333; margin-top: 5px; }
+    .clientes-lista { margin-top: 30px; }
+    .cliente-item {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        margin-bottom: 15px;
+        page-break-inside: avoid;
+    }
+    .cliente-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .orden-entrega {
+        background-color: #2196F3;
+        color: white;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 18px;
+    }
+    .cliente-nombre { font-size: 20px; font-weight: bold; color: #333; }
+    .direccion {
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #f9f9f9;
+        border-left: 4px solid #2196F3;
+        border-radius: 4px;
+    }
+    .direccion-label { font-weight: bold; color: #666; margin-bottom: 5px; }
+    .direccion-texto { color: #333; }
+    .notas {
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    .sin-clientes { text-align: center; padding: 40px; color: #999; font-size: 18px; }
+    @media print {
+        .cliente-item { page-break-inside: avoid; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="header">
+        <h1>Ruta de Entrega</h1>
+    </div>
+
+    <div class="info-ruta">
+        <div class="info-item">
+            <div class="info-label">Fecha</div>
+            <div class="info-value">{{ ruta.fecha|date:"d/m/Y" }}</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Entregador</div>
+            <div class="info-value">{{ ruta.entregador.nombre }}</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Total Clientes</div>
+            <div class="info-value">{{ ruta_clientes.count }}</div>
+        </div>
+    </div>
+
+    {% if ruta.entregador.telefono %}
+        <div class="info-ruta">
+            <div class="info-item">
+                <div class="info-label">Teléfono</div>
+                <div class="info-value">{{ ruta.entregador.telefono }}</div>
+            </div>
+            {% if ruta.entregador.vehiculo %}
+                <div class="info-item">
+                    <div class="info-label">Vehículo</div>
+                    <div class="info-value">{{ ruta.entregador.vehiculo }}</div>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {% if ruta_clientes %}
+        <div class="clientes-lista">
+            {% for ruta_cliente in ruta_clientes %}
+                <div class="cliente-item">
+                    <div class="cliente-header">
+                        <div class="orden-entrega">#{{ ruta_cliente.orden_entrega }}</div>
+                        <div class="cliente-nombre">{{ ruta_cliente.contrato.cliente.nombre }}</div>
+                    </div>
+
+                    <div class="direccion">
+                        <div class="direccion-label">Dirección de Entrega:</div>
+                        <div class="direccion-texto">
+                            {% if ruta_cliente.direccion_entrega %}
+                                {% if ruta_cliente.direccion_entrega.calle %}
+                                    {{ ruta_cliente.direccion_entrega.calle }}
+                                    {% if ruta_cliente.direccion_entrega.numero %}#{{ ruta_cliente.direccion_entrega.numero }}{% endif %}
+                                    <br>
+                                {% endif %}
+                                {% if ruta_cliente.direccion_entrega.colonia %}{{ ruta_cliente.direccion_entrega.colonia }}<br>{% endif %}
+                                {% if ruta_cliente.direccion_entrega.ciudad %}
+                                    {{ ruta_cliente.direccion_entrega.ciudad }}
+                                    {% if ruta_cliente.direccion_entrega.codigo_postal %}C.P. {{ ruta_cliente.direccion_entrega.codigo_postal }}{% endif %}
+                                {% endif %}
+                            {% else %}
+                                {{ ruta_cliente.contrato.direccion_entrega|safe }}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if ruta_cliente.contrato.horario_entrega %}
+                        <div class="direccion" style="margin-top: 10px;">
+                            <div class="direccion-label">Horario de Entrega:</div>
+                            <div class="direccion-texto">{{ ruta_cliente.contrato.horario_entrega }}</div>
+                        </div>
+                    {% endif %}
+
+                    {% if ruta_cliente.contrato.cliente.telefono %}
+                        <div class="direccion" style="margin-top: 10px;">
+                            <div class="direccion-label">Teléfono:</div>
+                            <div class="direccion-texto">{{ ruta_cliente.contrato.cliente.telefono }}</div>
+                        </div>
+                    {% endif %}
+
+                    {% if ruta.notas %}
+                        <div class="notas"><strong>Notas:</strong> {{ ruta.notas }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="sin-clientes">No hay clientes asignados a esta ruta.</div>
+    {% endif %}
+</div>
+{% endblock %}

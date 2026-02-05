@@ -1,0 +1,41 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Eliminar Planificación - {{ catering_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn {
+        display: inline-block;
+        padding: 10px 20px;
+        color: white;
+        text-decoration: none;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-right: 10px;
+    }
+    .btn-primary {
+        background-color: #7CB342;
+    }
+    .btn-primary:hover { background-color: #689F38; }
+    .btn-danger { background-color: #F44336; }
+    .btn-danger:hover { background-color: #D32F2F; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Eliminar Planificación</h1>
+    
+    <p>¿Está seguro de que desea eliminar esta planificación?</p>
+    <p><strong>Fecha:</strong> {{ object.fecha }}</p>
+    <p><strong>Cliente:</strong> {{ object.contrato.cliente.nombre }}</p>
+    <p><strong>Dieta:</strong> {{ object.dieta.nombre }}</p>
+    
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Eliminar</button>
+        <a href="{% url 'planning:lista' %}" class="btn btn-primary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Registrar Pago - {{ catering_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    form { margin-top: 20px; }
+    .form-group { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+    input, select, textarea {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    textarea { min-height: 100px; }
+    .btn {
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: #F44336;
+        color: white;
+        text-decoration: none;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-right: 10px;
+    }
+    .btn:hover { background-color: #D32F2F; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Registrar Pago</h1>
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="{{ form.factura.id_for_label }}">Factura:</label>
+            {{ form.factura }}
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.fecha_pago.id_for_label }}">Fecha de Pago:</label>
+            {{ form.fecha_pago }}
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.monto.id_for_label }}">Monto:</label>
+            {{ form.monto }}
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.metodo_pago.id_for_label }}">Método de Pago:</label>
+            {{ form.metodo_pago }}
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.referencia.id_for_label }}">Referencia:</label>
+            {{ form.referencia }}
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.notas.id_for_label }}">Notas:</label>
+            {{ form.notas }}
+        </div>
+        
+        <div>
+            <button type="submit" class="btn">Registrar Pago</button>
+            <a href="{% url 'billing:factura_lista' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
