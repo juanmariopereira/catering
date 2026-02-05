@@ -15,6 +15,7 @@ from .models import Feriado
 from .forms import FeriadoForm
 from planning.models import PlanificacionMenu
 from billing.models import Cobro, Pago
+from billing.utils import obtener_cobros_vencidos
 from routes.models import Ruta, RutaCliente
 from purchases.models import PrevisionCompra
 from clients.models import Cliente
@@ -33,7 +34,7 @@ def dashboard(request):
 
     # Cobranza
     cobros_pendientes = Cobro.objects.filter(estado='pendiente').count()
-    cobros_vencidos = Cobro.objects.filter(estado='vencida').count()
+    cobros_vencidos = obtener_cobros_vencidos().count()
     monto_pendiente = Cobro.objects.filter(
         estado__in=['pendiente', 'vencida']
     ).aggregate(total=Sum('monto'))['total'] or 0

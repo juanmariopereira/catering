@@ -390,7 +390,7 @@
     (function() {
         function initSearchableSelects(container) {
             container = container || document.body;
-            var selects = container.querySelectorAll('select[name*="receta"], select[name*="ingrediente"], select.sustitucion-select, select[name="cliente"], select[name="titular"]');
+            var selects = container.querySelectorAll('select[name*="receta"], select[name*="ingrediente"], select[name*="momentos_dia"], select[name*="tipos_receta"], select.sustitucion-select, select[name="cliente"], select[name="titular"]');
             selects.forEach(function(select) {
                 if (select.closest('#empty-form-row') || select.closest('.choices')) return;
                 if (select._choicesInstance) return;

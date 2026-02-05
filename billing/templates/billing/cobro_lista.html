@@ -67,7 +67,7 @@
             {% for cobro in cobros %}
                 <tr>
                     <td><a href="{% url 'billing:cobro_detalle' cobro.pk %}">{{ cobro.numero_cobro|default:cobro.id }}</a></td>
-                    <td>{{ cobro.contrato.cliente.nombre }}</td>
+                    <td><a href="{% url 'contracts:detalle' cobro.contrato_id %}">{{ cobro.contrato.cliente.nombre }}</a></td>
                     <td>{{ cobro.periodo_desde|date:"d/m/Y" }} – {{ cobro.periodo_hasta|date:"d/m/Y" }}</td>
                     <td>{{ cobro.fecha_vencimiento|date:"d/m/Y" }}</td>
                     <td>${{ cobro.monto|floatformat:2 }}</td>
@@ -78,6 +78,7 @@
                     </td>
                     <td>
                         <a href="{% url 'billing:cobro_detalle' cobro.pk %}">Ver</a>
+                        <a href="{% url 'contracts:detalle' cobro.contrato_id %}">Contrato</a>
                         <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.id }}">Pagar</a>
                     </td>
                 </tr>

@@ -247,9 +247,10 @@ def sugerir_menu_ia_view(request):
         return JsonResponse({'ok': False, 'error': 'Plan inválido.'}, status=400)
 
     plan = get_object_or_404(Plan, pk=plan_id)
+    idea_menu = (request.POST.get('idea_menu') or '').strip() or None
 
     try:
-        recetas = sugerir_menu_ia(fecha, plan, request=request)
+        recetas = sugerir_menu_ia(fecha, plan, request=request, idea_menu=idea_menu)
         return JsonResponse({'ok': True, 'recetas': recetas})
     except ValueError as e:
         return JsonResponse({'ok': False, 'error': str(e)}, status=400)

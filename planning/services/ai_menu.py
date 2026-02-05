@@ -32,32 +32,61 @@ def _get_openai_client():
     return OpenAI(api_key=api_key)
 
 
+def _normalize_info_nutricional(info: dict | None) -> dict | None:
+    """
+    Normaliza info nutricional a un dict plano con calorias, proteinas, carbohidratos, grasas, fibra.
+    Acepta formato plano o anidado (por_100g). Devuelve None si no hay datos útiles.
+    """
+    if not info or not isinstance(info, dict):
+        return None
+    flat = {}
+    if 'por_100g' in info and isinstance(info['por_100g'], dict):
+        flat = {k: v for k, v in info['por_100g'].items() if k in ('calorias', 'proteinas', 'carbohidratos', 'grasas', 'fibra')}
+    for k in ('calorias', 'proteinas', 'carbohidratos', 'grasas', 'fibra'):
+        if k in info and info[k] is not None:
+            try:
+                flat[k] = float(info[k])
+            except (TypeError, ValueError):
+                pass
+    return flat if flat else None
+
+
 def _build_context(fecha, plan):
     """
-    Construye el contexto para el prompt: tipos de comida, recetas, menús recientes, dietas.
+    Construye el contexto para el prompt: tipos de comida, recetas (con info nutricional), menús recientes, dietas.
     """
     from diets.models import DietaReceta, TipoComida
     from planning.models import PlanificacionMenu, PlanificacionMenuReceta
     from recipes.models import Receta
+    from recipes.services.ai_nutricion import calcular_info_nutricional_receta
 
     # Tipos de comida (momentos del día)
     tipos_comida = list(
         TipoComida.objects.order_by('orden', 'nombre').values('id', 'nombre', 'orden')
     )
 
-    # Recetas activas con sus tipos y momentos
+    # Recetas activas con sus tipos, momentos e información nutricional
     recetas = []
     for r in Receta.objects.filter(activa=True).prefetch_related(
         'tipos_receta', 'momentos_dia'
     ).order_by('nombre'):
         tipos = [t.nombre for t in r.tipos_receta.all()]
         momentos = [m.nombre for m in r.momentos_dia.all()]
-        recetas.append({
+        info_nutri = _normalize_info_nutricional(r.info_nutricional)
+        if not info_nutri:
+            try:
+                info_nutri = calcular_info_nutricional_receta(r)
+            except Exception:
+                info_nutri = None
+        item = {
             'id': r.id,
             'nombre': r.nombre,
             'tipos': tipos,
             'momentos_aptos': momentos,
-        })
+        }
+        if info_nutri:
+            item['info_nutricional'] = info_nutri
+        recetas.append(item)
 
     # Menús recientes del mismo plan (últimos 14 días) para evitar repetición
     fecha_desde = fecha - timedelta(days=14)
@@ -99,13 +128,14 @@ def _build_context(fecha, plan):
     }
 
 
-def sugerir_menu_ia(fecha, plan, request=None) -> list[dict[str, Any]]:
+def sugerir_menu_ia(fecha, plan, request=None, idea_menu: str | None = None) -> list[dict[str, Any]]:
     """
     Sugiere un menú usando OpenAI.
 
     Args:
         fecha: fecha del menú
         plan: instancia de Plan
+        idea_menu: opcional; idea o preferencia del usuario para el menú (ej: "menú ligero", "más verduras")
 
     Returns:
         Lista de dicts: [{"tipo_comida_id": int, "receta_id": int, "orden": int}, ...]
@@ -132,17 +162,23 @@ Reglas:
 4. Ten en cuenta las dietas típicas del plan para mantener coherencia.
 5. Incluye variedad: distintos tipos (comida, postre, bebida, fruta, etc.) según el momento.
 6. Cada momento puede tener varias recetas (ej. media mañana: té + galleta + fruta). Ordena con "orden" 1, 2, 3...
-7. Responde ÚNICAMENTE con un JSON válido: un objeto con clave "recetas" que sea un array de objetos.
+7. Si el usuario indica una idea o preferencia para el menú, tenla en cuenta al elegir recetas (ej: "menú ligero", "más verduras", "sin fritos").
+8. Las recetas pueden incluir "info_nutricional" (calorías, proteínas, carbohidratos, grasas, fibra por receta). Cuando el usuario pida criterios nutricionales (ej: menú hipercalórico, bajo en calorías, alto en proteínas, light, bajo en grasas), usa estos datos para elegir recetas que cumplan esa idea. Prioriza recetas con info_nutricional cuando el criterio sea nutricional.
+9. Responde ÚNICAMENTE con un JSON válido: un objeto con clave "recetas" que sea un array de objetos.
    Cada objeto del array debe tener: tipo_comida_id, receta_id, orden.
    Ejemplo: {"recetas": [{"tipo_comida_id": 1, "receta_id": 5, "orden": 1}, {"tipo_comida_id": 1, "receta_id": 12, "orden": 2}]}"""
 
+    idea_line = ""
+    if idea_menu:
+        idea_line = f"\nIdea o preferencia del usuario para este menú: {idea_menu}\n"
+
     user_prompt = f"""Plan: {ctx['plan_nombre']}
 Fecha: {ctx['fecha']} ({ctx['dia_semana']})
-
+{idea_line}
 Tipos de comida (momentos del día):
 {tipos_json}
 
-Recetas disponibles (id, nombre, tipos, momentos_aptos):
+Recetas disponibles (id, nombre, tipos, momentos_aptos, info_nutricional cuando exista: calorías, proteínas, carbohidratos, grasas, fibra por receta):
 {recetas_json}
 
 Menús recientes de este plan (evitar repetir las mismas recetas):
@@ -151,7 +187,7 @@ Menús recientes de este plan (evitar repetir las mismas recetas):
 Dietas típicas del plan (referencia de recetas por momento):
 {dietas_json}
 
-Genera un menú variado para esta fecha. Responde solo con el JSON (objeto con clave "recetas"), sin texto adicional."""
+Genera un menú variado para esta fecha.{" Ten en cuenta la idea del usuario indicada arriba." if idea_menu else ""} Responde solo con el JSON (objeto con clave "recetas"), sin texto adicional."""
 
     try:
         response = client.chat.completions.create(

@@ -38,6 +38,7 @@
         <a href="{% url 'recipes:importar' %}" class="btn btn-secondary">Importar receta con IA</a>
         {% endif %}
         <a href="{% url 'recipes:ingrediente_lista' %}" class="btn btn-secondary">Ingredientes</a>
+        <a href="{% url 'recipes:ingrediente_crear' %}" class="btn">Nuevo ingrediente</a>
         <form method="get" class="search-form">
             <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Buscar...">
             <select name="tipo_receta">

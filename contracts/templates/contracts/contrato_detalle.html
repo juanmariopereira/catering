@@ -28,6 +28,7 @@
     .badge-pausado { background-color: #ff9800; color: white; }
     .badge-vencido { background-color: #757575; color: white; }
     .badge-cancelado { background-color: #F44336; color: white; }
+    .badge-pendiente_pago { background-color: #ffc107; color: #000; }
     .btn-ai { background-color: #6366f1 !important; }
     .btn-ai:hover { background-color: #4f46e5 !important; }
     .btn-ai:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -62,7 +63,7 @@
 
     <div class="card">
         <h1>{{ contrato.cliente.nombre }} — {{ contrato.plan.nombre }}</h1>
-        <p><span class="badge badge-{{ contrato.estado }}">{{ contrato.get_estado_display }}</span></p>
+        <p><span class="badge badge-{{ contrato.estado_badge }}">{{ contrato.get_estado_display }}</span></p>
         <dl class="dl-horizontal">
             <dt>Cliente</dt>
             <dd>{{ contrato.cliente.nombre }} ({{ contrato.cliente.email }})</dd>

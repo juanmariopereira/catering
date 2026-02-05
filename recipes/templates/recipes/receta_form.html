@@ -36,12 +36,40 @@
     .sugerir-status.success { color: #2e7d32; }
     .btn-add-row { background-color: #5a9e38 !important; }
     .btn-add-row:hover { background-color: #4a8e28 !important; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay.show { display: flex; }
+    .modal-box { background: #fff; padding: 24px; border-radius: 8px; max-width: 420px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    .modal-box h3 { margin-top: 0; margin-bottom: 16px; }
+    .modal-box .form-group { margin-bottom: 14px; }
+    .modal-box label { display: block; margin-bottom: 4px; font-weight: 600; }
+    .modal-box input, .modal-box select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+    .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
+    .modal-status { font-size: 12px; margin-top: 8px; min-height: 18px; }
+    .modal-status.error { color: #c62828; }
+    .modal-status.success { color: #2e7d32; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
     <h1>{% if object %}Editar{% else %}Nueva{% endif %} Receta</h1>
+
+    {% if object and planificaciones_con_receta %}
+    <div class="aviso-planificacion" style="margin-bottom: 20px; padding: 14px 18px; background-color: #fff3cd; border-left: 4px solid #ff9800; border-radius: 4px;">
+        <strong>⚠ Esta receta está incluida en planificación</strong>
+        <p style="margin: 10px 0 6px 0;">Los siguientes menús planificados la tienen asignada. Cualquier cambio puede afectar a la previsión de compra y a los clientes que reciben ese menú.</p>
+        <ul style="margin: 0; padding-left: 20px;">
+            {% for p in planificaciones_con_receta %}
+            <li>
+                <strong>{{ p.fecha|date:"d/m/Y" }}</strong> — Plan «{{ p.plan_nombre }}»
+                (momentos: {{ p.momentos|join:", " }})
+                <a href="{% url 'planning:editar' p.planificacion_menu_id %}">Editar menú</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
     <p class="help-text">Info nutricional: use formato JSON. Ej: {"calorias": 250, "proteinas": 15}</p>
     <p class="help-text">En "Tipo de receta" y "Momentos del día" puede elegir varias opciones manteniendo <strong>Ctrl</strong> (o <strong>Cmd</strong> en Mac) al hacer clic.</p>
     
@@ -120,7 +148,10 @@
                 <span id="sugerir-ingredientes-status" class="sugerir-status"></span>
             </p>
             {% endif %}
-            <p style="margin-bottom: 8px;"><button type="button" class="btn btn-add-row" id="add-ingrediente-row">+ Añadir fila</button></p>
+            <p style="margin-bottom: 8px;">
+                <button type="button" class="btn btn-add-row" id="add-ingrediente-row">+ Añadir fila</button>
+                <button type="button" class="btn btn-secondary" id="btn-crear-ingrediente-modal" title="Crear un ingrediente nuevo sin salir de la página">Crear nuevo ingrediente</button>
+            </p>
             {{ ingredientes_formset.management_form }}
             <table class="formset-table">
                 <thead>
@@ -131,19 +162,19 @@
                         <th class="delete">Eliminar</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="formset-ingredientes-tbody">
                     {% for form_ing in ingredientes_formset %}
                     <tr class="formset-row">
-                        <td>
+                        <td data-cell="ingrediente">
                             {{ form_ing.id }}
                             {{ form_ing.ingrediente }}
                             {% if form_ing.ingrediente.errors %}<div style="color: #c62828; font-size: 11px;">{{ form_ing.ingrediente.errors }}</div>{% endif %}
                         </td>
-                        <td>
+                        <td data-cell="cantidad">
                             {{ form_ing.cantidad }}
                             {% if form_ing.cantidad.errors %}<div style="color: #c62828; font-size: 11px;">{{ form_ing.cantidad.errors }}</div>{% endif %}
                         </td>
-                        <td>
+                        <td data-cell="unidad">
                             {{ form_ing.unidad_medida }}
                             {% if form_ing.unidad_medida.errors %}<div style="color: #c62828; font-size: 11px;">{{ form_ing.unidad_medida.errors }}</div>{% endif %}
                         </td>
@@ -154,6 +185,31 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+
+        <div id="modal-crear-ingrediente" class="modal-overlay" aria-hidden="true">
+            <div class="modal-box">
+                <h3>Crear nuevo ingrediente</h3>
+                <p class="help-text">Se añadirá al catálogo y podrá elegirlo en la tabla de arriba.</p>
+                <div class="form-group">
+                    <label for="modal-ingrediente-nombre">Nombre</label>
+                    <input type="text" id="modal-ingrediente-nombre" placeholder="Ej: Tomate triturado">
+                </div>
+                <div class="form-group">
+                    <label for="modal-ingrediente-unidad">Unidad de medida</label>
+                    <select id="modal-ingrediente-unidad">
+                        <option value="">— Elija unidad —</option>
+                        {% for u in unidades_medida %}
+                        <option value="{{ u.pk }}" {% if unidad_medida_por_defecto_id == u.pk %}selected{% endif %}>{{ u }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div id="modal-crear-ingrediente-status" class="modal-status"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="modal-crear-ingrediente-cerrar">Cancelar</button>
+                    <button type="button" class="btn" id="modal-crear-ingrediente-enviar">Crear ingrediente</button>
+                </div>
+            </div>
         </div>
         {% endif %}
 
@@ -166,13 +222,45 @@
         </div>
     </form>
 </div>
+{% endblock %}
 
 {% if object %}
 {% block extra_js %}
+{{ ingrediente_unidad_defecto|json_script:"ingrediente-unidad-defecto" }}
+{{ ingredientes_lista|json_script:"ingredientes-lista" }}
 <script>
 (function() {
     var prefix = '{{ ingredientes_formset.prefix }}';
     var tbody = document.querySelector('.ingredientes-section tbody');
+    var unidadMedidaPorDefectoId = {{ unidad_medida_por_defecto_id|default:"null" }};
+    var ingredienteUnidadDefecto = {};
+    try {
+        var el = document.getElementById('ingrediente-unidad-defecto');
+        if (el) ingredienteUnidadDefecto = JSON.parse(el.textContent || '{}');
+    } catch (e) {}
+    var ingredientesLista = [];
+    try {
+        var elLista = document.getElementById('ingredientes-lista');
+        if (elLista) ingredientesLista = JSON.parse(elLista.textContent || '[]');
+    } catch (e) {}
+
+    function onIngredienteChange(ev) {
+        var row = ev.target.closest('tr');
+        if (!row) return;
+        var ingSelect = ev.target;
+        var unidadSelect = row.querySelector('select[name*="-unidad_medida"]');
+        if (!unidadSelect || !ingSelect) return;
+        var ingId = (ingSelect.value || '').trim();
+        var unidadId = ingId ? ingredienteUnidadDefecto[ingId] : null;
+        if (unidadId != null && String(unidadId)) {
+            if (unidadSelect.querySelector('option[value="' + unidadId + '"]')) {
+                unidadSelect.value = String(unidadId);
+            }
+        }
+    }
+    if (tbody) tbody.addEventListener('change', function(ev) {
+        if (ev.target && ev.target.name && ev.target.name.indexOf('-ingrediente') !== -1) onIngredienteChange(ev);
+    });
     var addIngBtn = document.getElementById('add-ingrediente-row');
     var totalInput = document.getElementById('id_' + prefix + '-TOTAL_FORMS');
     var descInput = document.querySelector('#id_descripcion, textarea[name="descripcion"]');
@@ -192,14 +280,208 @@
         newRow.querySelectorAll('input[type="text"], input[type="number"]').forEach(function(el) {
             el.value = (el.name && el.name.indexOf('cantidad') !== -1) ? '' : el.value;
         });
-        newRow.querySelectorAll('select').forEach(function(el) { el.selectedIndex = 0; });
+        newRow.querySelectorAll('select').forEach(function(el) { el.selectedIndex = 0; el.value = ''; });
+        var cloneIng = newRow.querySelector('select[name$="-ingrediente"]');
+        var cloneUni = newRow.querySelector('select[name$="-unidad_medida"]');
+        if (cloneIng) cloneIng.value = '';
+        if (cloneUni) cloneUni.value = '';
         newRow.querySelectorAll('input[type="checkbox"]').forEach(function(el) { el.checked = false; });
         newRow.querySelectorAll('input[name*="-id"]').forEach(function(el) { el.value = ''; });
+        newRow.querySelectorAll('select').forEach(function(sel) {
+            var wrap = sel.closest('.choices');
+            if (wrap && wrap.parentNode) {
+                wrap.parentNode.replaceChild(sel, wrap);
+            }
+        });
+        var newRowIng = newRow.querySelector('select[name$="-ingrediente"]');
+        if (newRowIng) {
+            while (newRowIng.options.length) newRowIng.remove(0);
+            newRowIng.add(new Option('---------', '', true, true));
+            for (var o = 0; o < ingredientesLista.length; o++) {
+                var ing = ingredientesLista[o];
+                newRowIng.add(new Option(ing.nombre || '', String(ing.id || ''), false, false));
+            }
+            newRowIng.selectedIndex = 0;
+            newRowIng.value = '';
+        }
+        var newRowUni = newRow.querySelector('select[name$="-unidad_medida"]');
+        var sourceUni = document.getElementById('modal-ingrediente-unidad');
+        if (newRowUni && sourceUni) {
+            while (newRowUni.options.length) newRowUni.remove(0);
+            for (var i = 0; i < sourceUni.options.length; i++) {
+                newRowUni.appendChild(sourceUni.options[i].cloneNode(true));
+            }
+            if (unidadMedidaPorDefectoId && newRowUni.querySelector('option[value="' + unidadMedidaPorDefectoId + '"]')) {
+                newRowUni.value = String(unidadMedidaPorDefectoId);
+            }
+        }
         tbody.appendChild(newRow);
+        if (window.initSearchableSelects) window.initSearchableSelects(newRow);
         totalInput.value = total + 1;
     }
 
     if (addIngBtn) addIngBtn.addEventListener('click', addIngredienteRow);
+
+    // Modal crear nuevo ingrediente
+    var modalOverlay = document.getElementById('modal-crear-ingrediente');
+    var modalNombre = document.getElementById('modal-ingrediente-nombre');
+    var modalUnidad = document.getElementById('modal-ingrediente-unidad');
+    var modalStatus = document.getElementById('modal-crear-ingrediente-status');
+    var btnAbrirModal = document.getElementById('btn-crear-ingrediente-modal');
+    var btnCerrarModal = document.getElementById('modal-crear-ingrediente-cerrar');
+    var btnEnviarModal = document.getElementById('modal-crear-ingrediente-enviar');
+    if (modalOverlay && btnAbrirModal) {
+        function abrirModalCrearIngrediente() {
+            modalNombre.value = '';
+            if (modalUnidad) modalUnidad.selectedIndex = 0;
+            modalStatus.textContent = '';
+            modalStatus.className = 'modal-status';
+            modalOverlay.classList.add('show');
+            modalOverlay.setAttribute('aria-hidden', 'false');
+            modalNombre.focus();
+        }
+        function cerrarModalCrearIngrediente() {
+            modalOverlay.classList.remove('show');
+            modalOverlay.setAttribute('aria-hidden', 'true');
+        }
+        btnAbrirModal.addEventListener('click', abrirModalCrearIngrediente);
+        btnCerrarModal.addEventListener('click', cerrarModalCrearIngrediente);
+        modalOverlay.addEventListener('click', function(e) {
+            if (e.target === modalOverlay) cerrarModalCrearIngrediente();
+        });
+        if (btnEnviarModal) {
+            btnEnviarModal.addEventListener('click', function() {
+                var nombre = (modalNombre.value || '').trim();
+                var unidadId = modalUnidad.value;
+                if (!nombre) {
+                    modalStatus.textContent = 'Escriba el nombre del ingrediente.';
+                    modalStatus.className = 'modal-status error';
+                    return;
+                }
+                if (!unidadId) {
+                    modalStatus.textContent = 'Seleccione la unidad de medida.';
+                    modalStatus.className = 'modal-status error';
+                    return;
+                }
+                btnEnviarModal.disabled = true;
+                modalStatus.textContent = 'Creando...';
+                modalStatus.className = 'modal-status';
+                var fd = new FormData();
+                fd.append('nombre', nombre);
+                fd.append('unidad_medida', unidadId);
+                fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+                fetch('{% url "recipes:ingrediente_crear_ajax" %}', { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, status: r.status, data: data }; }); })
+                    .then(function(result) {
+                        var data = result.data;
+                        if (result.ok && data && data.ok) {
+                            var ingId = String(data.id);
+                            var ingNombre = data.nombre || '';
+                            var unidadId = data.unidad_medida_id != null ? String(data.unidad_medida_id) : '';
+                            if (ingId && unidadId) ingredienteUnidadDefecto[ingId] = unidadId;
+                            var alreadyInLista = ingredientesLista.some(function(x) { return String(x.id) === ingId; });
+                            if (ingId && ingNombre && !alreadyInLista) ingredientesLista.push({ id: ingId, nombre: ingNombre });
+                            var tbodyEl = document.getElementById('formset-ingredientes-tbody');
+                            if (tbodyEl && tbodyEl.rows && tbodyEl.rows.length > 0) {
+                                var lastRow = tbodyEl.rows[tbodyEl.rows.length - 1];
+                                var lastRowIngSelect = lastRow.cells && lastRow.cells[0] ? lastRow.cells[0].querySelector('select[name$="-ingrediente"]') : null;
+                                var lastRowHasOtherIng = lastRowIngSelect && (lastRowIngSelect.value || '').trim() && lastRowIngSelect.value !== ingId;
+                                if (lastRowHasOtherIng) {
+                                    addIngredienteRow();
+                                }
+                                var r, row, sel, opt, choicesInstance, choicesOpts = { searchEnabled: true, placeholderValue: 'Buscar...' };
+                                var numRows = tbodyEl.rows.length;
+                                var lastRowIdx = numRows - 1;
+                                for (r = 0; r < numRows; r++) {
+                                    row = tbodyEl.rows[r];
+                                    if (row.cells && row.cells[0]) {
+                                        sel = row.cells[0].querySelector('select[name$="-ingrediente"]');
+                                        if (sel) {
+                                            var hasOpt = false;
+                                            for (var i = 0; i < sel.options.length; i++) {
+                                                if (sel.options[i].value === ingId) { hasOpt = true; break; }
+                                            }
+                                            if (!hasOpt) sel.add(new Option(ingNombre, ingId, false, false));
+                                        }
+                                    }
+                                }
+                                for (r = 0; r < numRows; r++) {
+                                    row = tbodyEl.rows[r];
+                                    if (row.cells && row.cells[0]) {
+                                        sel = row.cells[0].querySelector('select[name$="-ingrediente"]');
+                                        if (!sel) continue;
+                                        var uniSel = row.cells[2] ? row.cells[2].querySelector('select[name$="-unidad_medida"]') : null;
+                                        var isLastRow = (r === lastRowIdx);
+                                        if (isLastRow) {
+                                            if (sel._choicesInstance) {
+                                                try { sel._choicesInstance.destroy(); sel._choicesInstance = null; } catch (e) {}
+                                            }
+                                            if (uniSel && uniSel._choicesInstance) {
+                                                try { uniSel._choicesInstance.destroy(); uniSel._choicesInstance = null; } catch (e) {}
+                                            }
+                                            sel = row.cells[0].querySelector('select[name$="-ingrediente"]');
+                                            uniSel = row.cells[2] ? row.cells[2].querySelector('select[name$="-unidad_medida"]') : null;
+                                            if (sel) {
+                                                var hasOpt = false;
+                                                for (var j = 0; j < sel.options.length; j++) {
+                                                    if (sel.options[j].value === ingId) { hasOpt = true; break; }
+                                                }
+                                                if (!hasOpt) sel.add(new Option(ingNombre, ingId, false, true));
+                                                sel.value = ingId;
+                                            }
+                                            if (uniSel && unidadId) uniSel.value = unidadId;
+                                            if (typeof window.Choices !== 'undefined') {
+                                                if (sel) {
+                                                    try {
+                                                        choicesInstance = new window.Choices(sel, choicesOpts);
+                                                        sel._choicesInstance = choicesInstance;
+                                                        if (typeof choicesInstance.setChoiceByValue === 'function') {
+                                                            choicesInstance.setChoiceByValue(ingId);
+                                                        } else if (typeof choicesInstance.setValue === 'function') {
+                                                            choicesInstance.setValue([ingId]);
+                                                        }
+                                                    } catch (e) {}
+                                                }
+                                                if (uniSel) {
+                                                    try {
+                                                        var uInst = new window.Choices(uniSel, choicesOpts);
+                                                        uniSel._choicesInstance = uInst;
+                                                        if (unidadId && (typeof uInst.setChoiceByValue === 'function')) uInst.setChoiceByValue(unidadId);
+                                                        else if (unidadId && typeof uInst.setValue === 'function') uInst.setValue([unidadId]);
+                                                    } catch (e) {}
+                                                }
+                                            }
+                                        } else {
+                                            var ci = sel._choicesInstance;
+                                            if (ci && typeof ci.setChoices === 'function') {
+                                                try { ci.setChoices([{ value: ingId, label: ingNombre }], 'value', 'label', false); } catch (e) {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            modalStatus.textContent = 'Ingrediente creado. Añadido a la última fila.';
+                            modalStatus.className = 'modal-status success';
+                            setTimeout(function() {
+                                cerrarModalCrearIngrediente();
+                                var tbodyEl = document.getElementById('formset-ingredientes-tbody');
+                                var lastRow = tbodyEl && tbodyEl.rows && tbodyEl.rows.length > 0 ? tbodyEl.rows[tbodyEl.rows.length - 1] : null;
+                                var cantInput = lastRow && lastRow.cells && lastRow.cells[1] ? lastRow.cells[1].querySelector('input') : null;
+                                if (cantInput) cantInput.focus();
+                            }, 600);
+                        } else {
+                            modalStatus.textContent = data.error || 'Error al crear.';
+                            modalStatus.className = 'modal-status error';
+                        }
+                    })
+                    .catch(function() {
+                        modalStatus.textContent = 'Error de conexión.';
+                        modalStatus.className = 'modal-status error';
+                    })
+                    .finally(function() { btnEnviarModal.disabled = false; });
+            });
+        }
+    }
 
     var btnSugerirIng = document.getElementById('btn-sugerir-ingredientes');
     var statusSugerirIng = document.getElementById('sugerir-ingredientes-status');
@@ -336,4 +618,3 @@
 </script>
 {% endblock %}
 {% endif %}
-{% endblock %}

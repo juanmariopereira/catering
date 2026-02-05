@@ -25,6 +25,30 @@ class TipoReceta(models.Model):
         return self.nombre
 
 
+class Alergeno(models.Model):
+    """
+    Catálogo de alérgenos predefinidos (gluten, lactosa, frutos secos, etc.).
+    Se usa en ingredientes para elegir de una lista en lugar de texto libre.
+    """
+    nombre = models.CharField(max_length=80, unique=True, verbose_name="Nombre")
+    orden = models.PositiveIntegerField(
+        default=1,
+        validators=[MinValueValidator(1)],
+        verbose_name="Orden",
+        help_text="Orden para mostrar en listas"
+    )
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+    fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
+
+    class Meta:
+        verbose_name = "Alérgeno"
+        verbose_name_plural = "Alérgenos"
+        ordering = ['orden', 'nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
 class UnidadMedida(models.Model):
     """Unidad de medida parametrizable: kg, gr, lt, un, etc."""
     nombre = models.CharField(max_length=50, unique=True, verbose_name="Nombre")
@@ -84,7 +108,7 @@ class Ingrediente(models.Model):
         ordering = ['nombre']
 
     def __str__(self):
-        return f"{self.nombre} ({self.unidad_medida})"
+        return f"{self.nombre}"
 
 
 class Receta(models.Model):

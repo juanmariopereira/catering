@@ -83,12 +83,17 @@
             <h2>Recetas por momento del día</h2>
             <p>Defina frutas, postres, bebidas y comidas por momento (Desayuno, Media mañana, Comida, Merienda, Cena). Arrastre las filas para reordenar. Use «Añadir fila» para más recetas.</p>
             {% if openai_available %}
-            <p style="margin-bottom: 12px;">
-                <button type="button" class="btn btn-ai" id="btn-sugerir-ia" title="Genera una propuesta de menú con IA basada en recetas disponibles y menús recientes">
-                    Sugerir menú con IA
-                </button>
-                <span id="sugerir-ia-status" class="sugerir-ia-status"></span>
-            </p>
+            <div class="sugerir-ia-block" style="margin-bottom: 12px;">
+                <label for="idea-menu-prompt" style="display: block; margin-bottom: 4px; font-weight: 600;">Idea del menú (opcional):</label>
+                <textarea id="idea-menu-prompt" name="idea_menu" rows="2" placeholder="Ej: menú ligero, más verduras, sin fritos, recetas hipercalóricas, alto en proteínas, bajo en calorías..."
+                    style="width: 100%; max-width: 520px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; resize: vertical;"></textarea>
+                <p style="margin-bottom: 12px;">
+                    <button type="button" class="btn btn-ai" id="btn-sugerir-ia" title="Genera una propuesta de menú con IA basada en recetas disponibles y menús recientes">
+                        Sugerir menú con IA
+                    </button>
+                    <span id="sugerir-ia-status" class="sugerir-ia-status"></span>
+                </p>
+            </div>
             {% endif %}
             {{ receta_formset.management_form }}
             <div class="table-responsive">
@@ -197,6 +202,8 @@
             formData.append('fecha', fechaInput.value);
             formData.append('plan', planSelect.value);
             formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            var ideaEl = document.getElementById('idea-menu-prompt');
+            if (ideaEl && (ideaEl.value || '').trim()) formData.append('idea_menu', ideaEl.value.trim());
 
             fetch('{% url "planning:sugerir_menu_ia" %}', {
                 method: 'POST',

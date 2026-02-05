@@ -8,6 +8,7 @@ from django.forms import inlineformset_factory
 
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+from django.db import IntegrityError
 
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -23,6 +24,82 @@ from .services.ai_nutricion import (
     importar_receta_desde_texto_ia,
     obtener_alergenos_receta,
 )
+
+
+def planificaciones_que_incluyen_receta(receta):
+    """
+    Devuelve lista de dicts con planificaciones (menús) que incluyen esta receta.
+    Cada dict: fecha, plan_nombre, planificacion_menu_id, momentos (lista de nombres).
+    """
+    from planning.models import PlanificacionMenuReceta
+    from collections import defaultdict
+    items = PlanificacionMenuReceta.objects.filter(
+        receta=receta
+    ).select_related(
+        'planificacion_menu', 'planificacion_menu__plan', 'tipo_comida'
+    ).order_by('planificacion_menu__fecha', 'planificacion_menu__plan__nombre', 'tipo_comida__orden')
+    agrupado = defaultdict(list)
+    for pmr in items:
+        pm = pmr.planificacion_menu
+        clave = (pm.fecha, pm.plan.nombre, pm.pk)
+        if pmr.tipo_comida.nombre not in agrupado[clave]:
+            agrupado[clave].append(pmr.tipo_comida.nombre)
+    return [
+        {
+            'fecha': fecha,
+            'plan_nombre': plan_nombre,
+            'planificacion_menu_id': menu_id,
+            'momentos': momentos,
+        }
+        for (fecha, plan_nombre, menu_id), momentos in sorted(agrupado.items(), key=lambda x: (x[0][0], x[0][1]))
+    ]
+
+
+@login_required
+@require_http_methods(['POST'])
+def crear_ingrediente_ajax_view(request):
+    """
+    Vista AJAX: crea un ingrediente y devuelve JSON para actualizar los selects en el formulario de receta.
+    POST: nombre, unidad_medida_id
+    Returns: JSON { "ok": true, "id": X, "nombre": "...", "unidad_medida_id": Y }
+    """
+    nombre = (request.POST.get('nombre') or '').strip()
+    unidad_id = request.POST.get('unidad_medida')
+    if not nombre:
+        return JsonResponse({'ok': False, 'error': 'El nombre del ingrediente es obligatorio.'}, status=400)
+    if not unidad_id:
+        return JsonResponse({'ok': False, 'error': 'Seleccione la unidad de medida.'}, status=400)
+    try:
+        unidad = UnidadMedida.objects.get(pk=unidad_id)
+    except (UnidadMedida.DoesNotExist, ValueError, TypeError):
+        return JsonResponse({'ok': False, 'error': 'Unidad de medida inválida.'}, status=400)
+    existente = Ingrediente.objects.filter(nombre__iexact=nombre).first()
+    if existente:
+        return JsonResponse({'ok': False, 'error': f'Ya existe un ingrediente con el nombre "{nombre}".'}, status=400)
+    try:
+        ingrediente = Ingrediente.objects.create(
+            nombre=nombre,
+            unidad_medida=unidad,
+            info_nutricional={},
+            alergenos=[],
+            activo=True,
+        )
+    except IntegrityError:
+        existente = Ingrediente.objects.filter(nombre__iexact=nombre).first()
+        if existente:
+            return JsonResponse({
+                'ok': True,
+                'id': existente.pk,
+                'nombre': existente.nombre,
+                'unidad_medida_id': existente.unidad_medida_id,
+            })
+        raise
+    return JsonResponse({
+        'ok': True,
+        'id': ingrediente.pk,
+        'nombre': ingrediente.nombre,
+        'unidad_medida_id': ingrediente.unidad_medida_id,
+    })
 
 
 @login_required
@@ -263,6 +340,7 @@ class RecetaDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['alergenos'] = obtener_alergenos_receta(self.object)
+        context['planificaciones_con_receta'] = planificaciones_que_incluyen_receta(self.object)
         return context
 
 
@@ -297,6 +375,20 @@ class RecetaUpdateView(LoginRequiredMixin, UpdateView):
             )
         else:
             context['ingredientes_formset'] = RecetaIngredienteFormSet(instance=self.object)
+        context['planificaciones_con_receta'] = planificaciones_que_incluyen_receta(self.object)
+        from django.db.models import Q
+        unidades = UnidadMedida.objects.filter(activo=True).order_by('orden', 'nombre')
+        unidad_gramo = unidades.filter(Q(nombre__iexact='Gramo') | Q(simbolo__iexact='gr')).first()
+        context['unidades_medida'] = unidades
+        context['unidad_medida_por_defecto_id'] = unidad_gramo.pk if unidad_gramo else None
+        context['ingrediente_unidad_defecto'] = {
+            str(ing.pk): ing.unidad_medida_id
+            for ing in Ingrediente.objects.select_related('unidad_medida').only('pk', 'unidad_medida_id')
+        }
+        context['ingredientes_lista'] = [
+            {'id': ing.pk, 'nombre': ing.nombre}
+            for ing in Ingrediente.objects.order_by('nombre').only('pk', 'nombre')
+        ]
         return context
 
     def form_valid(self, form):

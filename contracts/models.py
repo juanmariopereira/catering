@@ -13,6 +13,7 @@ class Contrato(models.Model):
         ('pausado', 'Pausado'),
         ('vencido', 'Vencido'),
         ('cancelado', 'Cancelado'),
+        ('pendiente_pago', 'Pendiente de pago'),  # solo para etiqueta cuando activo con cobros sin pagar
     ]
 
     FRECUENCIA_PAGO_CHOICES = [
@@ -132,8 +133,19 @@ class Contrato(models.Model):
         return 'activo'
 
     def get_estado_display(self):
-        """Texto legible del estado calculado."""
+        """Texto legible del estado calculado. Si está activo y tiene cobros pendientes/vencidos, muestra 'Pendiente de pago'."""
+        if self.estado == 'activo':
+            if self.cobros.filter(estado__in=['pendiente', 'vencida']).exists():
+                return dict(self.ESTADO_CHOICES).get('pendiente_pago', 'Pendiente de pago')
         return dict(self.ESTADO_CHOICES).get(self.estado, self.estado)
+
+    @property
+    def estado_badge(self):
+        """Clave para la clase CSS del badge: 'pendiente_pago' si activo con cobros sin pagar, sino el estado normal."""
+        if self.estado == 'activo':
+            if self.cobros.filter(estado__in=['pendiente', 'vencida']).exists():
+                return 'pendiente_pago'
+        return self.estado
 
     def __str__(self):
         return f"{self.cliente.nombre} - {self.plan.nombre} ({self.get_estado_display()})"

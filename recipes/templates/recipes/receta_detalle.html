@@ -34,6 +34,23 @@
 {% block content %}
 <div class="container">
     <h1>{{ receta.nombre }}</h1>
+
+    {% if planificaciones_con_receta %}
+    <div class="aviso-planificacion" style="margin-bottom: 20px; padding: 14px 18px; background-color: #fff3cd; border-left: 4px solid #ff9800; border-radius: 4px;">
+        <strong>⚠ Esta receta está incluida en planificación</strong>
+        <p style="margin: 10px 0 6px 0;">Los siguientes menús planificados la tienen asignada. Cualquier cambio (nombre, ingredientes, desactivar) puede afectar a la previsión de compra y a los clientes que reciben ese menú.</p>
+        <ul style="margin: 0; padding-left: 20px;">
+            {% for p in planificaciones_con_receta %}
+            <li>
+                <strong>{{ p.fecha|date:"d/m/Y" }}</strong> — Plan «{{ p.plan_nombre }}»
+                (momentos: {{ p.momentos|join:", " }})
+                <a href="{% url 'planning:editar' p.planificacion_menu_id %}">Editar menú</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
     <div class="meta">
         <span><strong>Tipo de receta:</strong> {% for t in receta.tipos_receta.all %}{{ t.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</span>
         <span><strong>Momentos del día:</strong> {% for m in receta.momentos_dia.all %}{{ m.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</span>

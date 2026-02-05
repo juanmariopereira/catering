@@ -1,5 +1,13 @@
 from django.contrib import admin
-from .models import TipoReceta, UnidadMedida, Ingrediente, Receta, RecetaIngrediente
+from .models import TipoReceta, UnidadMedida, Alergeno, Ingrediente, Receta, RecetaIngrediente
+
+
+@admin.register(Alergeno)
+class AlergenoAdmin(admin.ModelAdmin):
+    list_display = ['nombre', 'orden', 'activo', 'fecha_creacion']
+    list_filter = ['activo']
+    search_fields = ['nombre']
+    ordering = ['orden', 'nombre']
 
 
 @admin.register(UnidadMedida)

@@ -27,6 +27,14 @@
     .sugerir-status { margin-left: 8px; font-size: 0.9rem; color: #555; }
     .sugerir-status.error { color: #c62828; }
     .sugerir-status.success { color: #2e7d32; }
+    .alergenos-ui { margin-top: 8px; }
+    .alergenos-add { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+    .alergenos-add select { min-width: 180px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+    .alergenos-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 36px; }
+    .alergenos-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; background: #e8f5e9; border: 1px solid #7CB342; border-radius: 20px; font-size: 14px; }
+    .alergenos-chip button { background: none; border: none; cursor: pointer; padding: 0 2px; color: #555; font-size: 18px; line-height: 1; }
+    .alergenos-chip button:hover { color: #c62828; }
+    .alergenos-checkboxes { list-style: none; padding: 0; margin: 0; position: absolute; left: -9999px; }
 </style>
 {% endblock %}
 
@@ -64,10 +72,22 @@
             </div>
         </div>
         <div class="form-row form-row-1">
-            <div class="form-group">
-                <label for="{{ form.alergenos.id_for_label }}">{{ form.alergenos.label }}</label>
-                {{ form.alergenos }}
+            <div class="form-group alergenos-form-group">
+                <label for="alergenos-select">{{ form.alergenos.label }}</label>
                 {% if form.alergenos.help_text %}<div class="help-text">{{ form.alergenos.help_text }}</div>{% endif %}
+                <div class="alergenos-ui">
+                    <div class="alergenos-checkboxes" aria-hidden="true">{{ form.alergenos }}</div>
+                    <div class="alergenos-add">
+                        <select id="alergenos-select">
+                            <option value="">— Elija un alérgeno —</option>
+                            {% for a in form.alergenos.field.queryset %}
+                            <option value="{{ a.pk }}" data-nombre="{{ a.nombre }}">{{ a.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" class="btn btn-secondary" id="alergenos-add-btn">Añadir</button>
+                    </div>
+                    <div class="alergenos-chips" id="alergenos-chips"></div>
+                </div>
                 {% if form.alergenos.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.alergenos.errors }}</div>{% endif %}
             </div>
         </div>
@@ -86,6 +106,83 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+(function() {
+    var checkboxesWrap = document.querySelector('.alergenos-checkboxes');
+    var selectEl = document.getElementById('alergenos-select');
+    var addBtn = document.getElementById('alergenos-add-btn');
+    var chipsContainer = document.getElementById('alergenos-chips');
+
+    function getAlergenosCheckboxes() {
+        return checkboxesWrap ? checkboxesWrap.querySelectorAll('input[name="alergenos"]') : [];
+    }
+
+    function getNombreAlergeno(id) {
+        if (!selectEl) return id;
+        var opt = selectEl.querySelector('option[value="' + id + '"]');
+        return opt ? (opt.getAttribute('data-nombre') || opt.textContent).trim() : id;
+    }
+
+    function renderChips() {
+        if (!chipsContainer) return;
+        chipsContainer.innerHTML = '';
+        getAlergenosCheckboxes().forEach(function(cb) {
+            if (!cb.checked) return;
+            var id = cb.value;
+            var nombre = getNombreAlergeno(id);
+            var chip = document.createElement('span');
+            chip.className = 'alergenos-chip';
+            chip.setAttribute('data-id', id);
+            chip.innerHTML = '<span>' + nombre + '</span><button type="button" aria-label="Quitar">×</button>';
+            chip.querySelector('button').addEventListener('click', function() {
+                cb.checked = false;
+                chip.remove();
+            });
+            chipsContainer.appendChild(chip);
+        });
+    }
+
+    function addAlergenoById(id, nombre) {
+        var cb = checkboxesWrap && checkboxesWrap.querySelector('input[name="alergenos"][value="' + id + '"]');
+        if (cb && !cb.checked) {
+            cb.checked = true;
+            renderChips();
+        }
+    }
+
+    if (addBtn && selectEl && chipsContainer) {
+        addBtn.addEventListener('click', function() {
+            var opt = selectEl.options[selectEl.selectedIndex];
+            if (!opt || !opt.value) return;
+            addAlergenoById(opt.value, opt.getAttribute('data-nombre') || opt.textContent);
+        });
+    }
+
+    if (checkboxesWrap) {
+        getAlergenosCheckboxes().forEach(function(cb) {
+            cb.addEventListener('change', renderChips);
+        });
+        renderChips();
+    }
+
+    window.addAlergenosByNames = function(nombres) {
+        if (!Array.isArray(nombres) || !selectEl) return;
+        var opts = selectEl.querySelectorAll('option[value][data-nombre]');
+        nombres.forEach(function(n) {
+            var nNorm = (n || '').toString().trim().toLowerCase();
+            if (!nNorm) return;
+            for (var i = 0; i < opts.length; i++) {
+                var o = opts[i];
+                var nombreOpt = (o.getAttribute('data-nombre') || o.textContent).trim().toLowerCase();
+                if (nombreOpt === nNorm) {
+                    addAlergenoById(o.value, o.getAttribute('data-nombre'));
+                    break;
+                }
+            }
+        });
+    };
+})();
+</script>
 {% if openai_available %}
 <script>
 (function() {
@@ -115,8 +212,9 @@
                     var alergenos = info.alergenos;
                     if (alergenos) delete info.alergenos;
                     infoTextarea.value = JSON.stringify(info, null, 2);
-                    var alergenosEl = document.querySelector('textarea[name="alergenos"]');
-                    if (alergenosEl && Array.isArray(alergenos)) alergenosEl.value = JSON.stringify(alergenos, null, 2);
+                    if (typeof window.addAlergenosByNames === 'function' && Array.isArray(alergenos)) {
+                        window.addAlergenosByNames(alergenos);
+                    }
                     status.textContent = 'Información aplicada.';
                     status.className = 'sugerir-status success';
                 } else {

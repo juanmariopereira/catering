@@ -9,6 +9,7 @@ from django.utils import timezone
 from datetime import date, timedelta
 import csv
 from .models import PrevisionCompra
+from .forms import PrevisionCompraForm
 
 
 class PrevisionCompraListView(LoginRequiredMixin, ListView):
@@ -45,9 +46,16 @@ class PrevisionCompraListView(LoginRequiredMixin, ListView):
 class PrevisionCompraCreateView(LoginRequiredMixin, CreateView):
     """Vista para crear una nueva previsión de compra"""
     model = PrevisionCompra
+    form_class = PrevisionCompraForm
     template_name = 'purchases/prevision_form.html'
-    fields = ['fecha_desde', 'fecha_hasta', 'notas']
     success_url = reverse_lazy('purchases:lista')
+
+    def get_initial(self):
+        initial = super().get_initial()
+        manana = date.today() + timedelta(days=1)
+        initial['fecha_desde'] = manana
+        initial['fecha_hasta'] = manana
+        return initial
 
     def form_valid(self, form):
         prevision = form.save()
@@ -70,8 +78,8 @@ class PrevisionCompraDetailView(LoginRequiredMixin, DetailView):
 class PrevisionCompraUpdateView(LoginRequiredMixin, UpdateView):
     """Vista para editar una previsión de compra (fechas y notas; items se recalculan)"""
     model = PrevisionCompra
+    form_class = PrevisionCompraForm
     template_name = 'purchases/prevision_form.html'
-    fields = ['fecha_desde', 'fecha_hasta', 'notas']
     context_object_name = 'prevision'
 
     def get_success_url(self):

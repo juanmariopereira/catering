@@ -191,7 +191,7 @@ def dashboard_cobranza(request):
     total_cobros = Cobro.objects.count()
     cobros_pendientes = Cobro.objects.filter(estado='pendiente').count()
     cobros_pagados = Cobro.objects.filter(estado='pagada').count()
-    cobros_vencidos = Cobro.objects.filter(estado='vencida').count()
+    cobros_vencidos = obtener_cobros_vencidos().count()
 
     monto_total_pendiente = Cobro.objects.filter(
         estado__in=['pendiente', 'vencida']

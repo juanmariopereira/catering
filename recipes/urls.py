@@ -23,6 +23,7 @@ urlpatterns = [
     path('unidades-medida/<int:pk>/editar/', views.UnidadMedidaUpdateView.as_view(), name='unidad_medida_editar'),
     path('unidades-medida/<int:pk>/eliminar/', views.UnidadMedidaDeleteView.as_view(), name='unidad_medida_eliminar'),
     path('ingredientes/sugerir-nutricion/', views.sugerir_nutricion_ingrediente_view, name='sugerir_nutricion_ingrediente'),
+    path('ingredientes/crear-ajax/', views.crear_ingrediente_ajax_view, name='ingrediente_crear_ajax'),
     path('ingredientes/', views.IngredienteListView.as_view(), name='ingrediente_lista'),
     path('ingredientes/crear/', views.IngredienteCreateView.as_view(), name='ingrediente_crear'),
     path('ingredientes/<int:pk>/editar/', views.IngredienteUpdateView.as_view(), name='ingrediente_editar'),
