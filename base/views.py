@@ -69,3 +69,8 @@ def dashboard(request):
     }
 
     return render(request, 'base/dashboard.html', context)
+
+
+def page_not_found(request, exception):
+    """Vista 404 amigable: recurso o registro no encontrado."""
+    return render(request, '404.html', status=404)

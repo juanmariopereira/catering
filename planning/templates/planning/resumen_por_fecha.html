@@ -2,6 +2,16 @@
 
 {% block title %}Resumen por fecha - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Producción</span>
+<span class="sep">/</span>
+<a href="{% url 'planning:lista' %}">Planificación</a>
+<span class="sep">/</span>
+<span>Resumen {{ fecha|date:"d/m/Y" }}</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .fecha-navegacion { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 24px; }

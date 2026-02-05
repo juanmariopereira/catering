@@ -2,6 +2,14 @@
 
 {% block title %}Clientes - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'clients:lista' %}">Clientes</a>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .actions { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
@@ -18,6 +26,8 @@
     .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
     .badge-activo { background-color: #4CAF50; color: white; }
     .badge-inactivo { background-color: #9e9e9e; color: white; }
+    .th-sortable a { color: white; text-decoration: underline; }
+    .th-sortable a:hover { color: #e8f5e9; }
 </style>
 {% endblock %}
 
@@ -42,10 +52,23 @@
     <table>
         <thead>
             <tr>
-                <th>Nombre</th>
-                <th>Email</th>
+                <th class="th-sortable">
+                    <a href="{% url 'clients:lista' %}{% if query_base %}?{{ query_base }}&order={% else %}?order={% endif %}{% if order_current == 'nombre' %}-nombre{% else %}nombre{% endif %}">Nombre</a>
+                    {% if order_current == 'nombre' %} ↑{% elif order_current == '-nombre' %} ↓{% endif %}
+                </th>
+                <th class="th-sortable">
+                    <a href="{% url 'clients:lista' %}{% if query_base %}?{{ query_base }}&order={% else %}?order={% endif %}{% if order_current == 'email' %}-email{% else %}email{% endif %}">Email</a>
+                    {% if order_current == 'email' %} ↑{% elif order_current == '-email' %} ↓{% endif %}
+                </th>
                 <th>Teléfono</th>
-                <th>Estado</th>
+                <th class="th-sortable">
+                    <a href="{% url 'clients:lista' %}{% if query_base %}?{{ query_base }}&order={% else %}?order={% endif %}{% if order_current == 'estado' %}-estado{% else %}estado{% endif %}">Estado</a>
+                    {% if order_current == 'estado' %} ↑{% elif order_current == '-estado' %} ↓{% endif %}
+                </th>
+                <th class="th-sortable">
+                    <a href="{% url 'clients:lista' %}{% if query_base %}?{{ query_base }}&order={% else %}?order={% endif %}{% if order_current == 'ultimo_contrato' %}-ultimo_contrato{% else %}ultimo_contrato{% endif %}">Último contrato</a>
+                    {% if order_current == 'ultimo_contrato' %} ↑{% elif order_current == '-ultimo_contrato' %} ↓{% endif %}
+                </th>
                 <th>Acciones</th>
             </tr>
         </thead>
@@ -56,6 +79,7 @@
                     <td>{{ cliente.email }}</td>
                     <td>{{ cliente.telefono }}</td>
                     <td><span class="badge badge-{% if cliente.activo %}activo{% else %}inactivo{% endif %}">{% if cliente.activo %}Activo{% else %}Inactivo{% endif %}</span></td>
+                    <td>{% if cliente.ultimo_contrato_fecha %}{{ cliente.ultimo_contrato_fecha|date:"d/m/Y" }}{% else %}—{% endif %}</td>
                     <td>
                         <a href="{% url 'clients:detalle' cliente.pk %}">Ver</a> |
                         <a href="{% url 'clients:editar' cliente.pk %}">Editar</a> |
@@ -63,7 +87,7 @@
                     </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="5">No hay clientes.</td></tr>
+                <tr><td colspan="6">No hay clientes.</td></tr>
             {% endfor %}
         </tbody>
     </table>

@@ -2,6 +2,16 @@
 
 {% block title %}{% if object %}Editar{% else %}Nueva{% endif %} Planificación - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Producción</span>
+<span class="sep">/</span>
+<a href="{% url 'planning:lista' %}">Planificación</a>
+<span class="sep">/</span>
+<span>{% if object %}Editar planificación{% else %}Nueva planificación{% endif %}</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     form { margin-top: 20px; }

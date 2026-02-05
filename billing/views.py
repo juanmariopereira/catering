@@ -109,6 +109,19 @@ class PagoCreateView(LoginRequiredMixin, CreateView):
         factura_id = self.object.factura_id
         return reverse('billing:factura_detalle', args=[factura_id])
 
+    def get_initial(self):
+        initial = super().get_initial()
+        initial['fecha_pago'] = timezone.now().date()
+        factura_id = self.request.GET.get('factura')
+        if factura_id:
+            try:
+                factura = Factura.objects.get(id=factura_id)
+                initial['factura'] = factura
+                initial['monto'] = factura.monto_pendiente()
+            except Factura.DoesNotExist:
+                pass
+        return initial
+
     def form_valid(self, form):
         pago = form.save()
         messages.success(self.request, f'Pago de {pago.monto} registrado exitosamente.')

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Contrato
+from .models import Contrato, PausaContrato
 
 
 @admin.register(Contrato)
@@ -21,7 +21,7 @@ class ContratoAdmin(admin.ModelAdmin):
             'fields': ('precio', 'frecuencia_pago')
         }),
         ('Entrega', {
-            'fields': ('direccion_entrega', 'horario_entrega', 'dias_entrega')
+            'fields': ('direccion_entrega', 'link_maps', 'horario_entrega', 'dias_entrega')
         }),
         ('Pausa', {
             'fields': ('fecha_pausa', 'fecha_reanudacion'),
@@ -64,3 +64,12 @@ class ContratoAdmin(admin.ModelAdmin):
             contrato.cancelar()
         self.message_user(request, f'{queryset.count()} contrato(s) cancelado(s).')
     cancelar_contratos.short_description = 'Cancelar contratos seleccionados'
+
+
+@admin.register(PausaContrato)
+class PausaContratoAdmin(admin.ModelAdmin):
+    list_display = ['contrato', 'fecha_inicio', 'fecha_fin', 'motivo', 'fecha_creacion']
+    list_filter = ['fecha_inicio', 'fecha_fin']
+    search_fields = ['contrato__cliente__nombre', 'motivo']
+    date_hierarchy = 'fecha_inicio'
+    autocomplete_fields = ['contrato']

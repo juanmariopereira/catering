@@ -2,6 +2,18 @@
 
 {% block title %}Editar notas - {{ detalle_cocina.fecha }} - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Producción</span>
+<span class="sep">/</span>
+<a href="{% url 'kitchen:lista' %}">Cocina</a>
+<span class="sep">/</span>
+<a href="{% url 'kitchen:detalle_fecha' detalle_cocina.fecha|date:'Y-m-d' %}">Detalle {{ detalle_cocina.fecha }}</a>
+<span class="sep">/</span>
+<span>Editar notas</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     form { margin-top: 20px; }

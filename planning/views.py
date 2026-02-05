@@ -16,22 +16,38 @@ from .models import (
     PlanificacionDieta,
     PlanificacionRecetaSustituta,
 )
+from .forms import PlanificacionMenuForm, PlanificacionMenuRecetaForm
 from .utils import (
     obtener_conflictos_menu_por_cliente,
     recetas_alternativas_para_momento,
+    clientes_no_gustan_por_receta,
 )
-from contracts.models import Contrato
+from contracts.models import Contrato, contratos_activos_en_fecha
 from diets.models import TipoComida
 from plans.models import Plan
 from recipes.models import Receta
 
-PlanificacionMenuRecetaFormSet = inlineformset_factory(
+BasePlanificacionMenuRecetaFormSet = inlineformset_factory(
     PlanificacionMenu,
     PlanificacionMenuReceta,
+    form=PlanificacionMenuRecetaForm,
     fields=('tipo_comida', 'receta', 'orden'),
-    extra=5,
+    extra=1,
     can_delete=True,
 )
+
+
+class PlanificacionMenuRecetaFormSet(BasePlanificacionMenuRecetaFormSet):
+    """Formset que pasa receta_counts al form para mostrar [N] clientes en el select."""
+
+    def __init__(self, *args, receta_counts=None, **kwargs):
+        self.receta_counts = receta_counts or {}
+        super().__init__(*args, **kwargs)
+
+    def get_form_kwargs(self, index):
+        kwargs = super().get_form_kwargs(index)
+        kwargs['receta_counts'] = self.receta_counts
+        return kwargs
 
 
 @login_required
@@ -49,13 +65,8 @@ def resumen_por_fecha(request):
     else:
         fecha = timezone.now().date()
 
-    # Contratos activos en esa fecha (estado activo, fecha dentro del rango)
-    contratos_fecha = Contrato.objects.filter(
-        estado='activo',
-        fecha_inicio__lte=fecha,
-    ).filter(
-        Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha)
-    ).select_related('plan', 'cliente')
+    # Contratos activos en esa fecha (estado activo, en rango, sin pausa ese día)
+    contratos_fecha = contratos_activos_en_fecha(fecha).select_related('plan', 'cliente')
 
     # Agrupar por plan: plan -> [contratos]
     por_plan = defaultdict(list)
@@ -122,12 +133,7 @@ def clientes_reciben_fecha(request):
         pm.plan_id: pm
         for pm in PlanificacionMenu.objects.filter(fecha=fecha).select_related('plan')
     }
-    contratos_fecha = Contrato.objects.filter(
-        estado='activo',
-        fecha_inicio__lte=fecha,
-    ).filter(
-        Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha)
-    ).select_related('plan', 'cliente')
+    contratos_fecha = contratos_activos_en_fecha(fecha).select_related('plan', 'cliente')
 
     filas = []
     for c in contratos_fecha:
@@ -179,10 +185,10 @@ class PlanificacionMenuListView(LoginRequiredMixin, ListView):
 
 
 class PlanificacionMenuCreateView(LoginRequiredMixin, CreateView):
-    """Crear menú planificado (fecha + plan). Redirige a editar para añadir recetas por momento."""
+    """Crear menú planificado (fecha + plan) con recetas por momento del día (comidas, frutas, postres, bebidas)."""
     model = PlanificacionMenu
+    form_class = PlanificacionMenuForm
     template_name = 'planning/planificacion_menu_form.html'
-    fields = ['fecha', 'plan', 'notas']
     success_url = reverse_lazy('planning:lista')
 
     def get_initial(self):
@@ -193,48 +199,76 @@ class PlanificacionMenuCreateView(LoginRequiredMixin, CreateView):
             try:
                 initial['fecha'] = date.fromisoformat(fecha_param)
             except ValueError:
-                pass
+                initial['fecha'] = timezone.now().date() + timedelta(days=1)
+        else:
+            initial['fecha'] = timezone.now().date() + timedelta(days=1)
         if plan_id:
             initial['plan'] = plan_id
         return initial
 
-    def form_valid(self, form):
-        obj = form.save()
-        messages.success(self.request, 'Menú creado. Añada las recetas por momento del día.')
-        return redirect(reverse('planning:editar', args=[obj.pk]))
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['planes'] = Plan.objects.filter(activo=True).order_by('nombre')
+        initial = self.get_initial()
+        fecha = initial.get('fecha')
+        plan = initial.get('plan')
+        receta_counts = clientes_no_gustan_por_receta(fecha, plan) if (fecha and plan) else {}
+        if self.request.POST:
+            context['receta_formset'] = PlanificacionMenuRecetaFormSet(
+                self.request.POST, instance=self.object, receta_counts=receta_counts
+            )
+        else:
+            context['receta_formset'] = PlanificacionMenuRecetaFormSet(
+                instance=self.object, receta_counts=receta_counts
+            )
         return context
+
+    def form_valid(self, form):
+        self.object = form.save()
+        fecha = self.object.fecha
+        plan = self.object.plan
+        receta_counts = clientes_no_gustan_por_receta(fecha, plan)
+        receta_formset = PlanificacionMenuRecetaFormSet(
+            self.request.POST, instance=self.object, receta_counts=receta_counts
+        )
+        if receta_formset.is_valid():
+            receta_formset.save()
+            messages.success(
+                self.request,
+                'Menú creado con las recetas por momento del día. Puede editar sustituciones por cliente si lo necesita.'
+            )
+        else:
+            messages.warning(
+                self.request,
+                'Menú creado. Revise las recetas a continuación y guarde de nuevo si hizo cambios.'
+            )
+        return redirect(reverse('planning:editar', args=[self.object.pk]))
 
 
 class PlanificacionMenuUpdateView(LoginRequiredMixin, UpdateView):
     """Editar menú: recetas por tipo_comida (formset) y sustituciones por cliente."""
     model = PlanificacionMenu
+    form_class = PlanificacionMenuForm
     template_name = 'planning/planificacion_menu_form.html'
-    fields = ['fecha', 'plan', 'notas']
     success_url = reverse_lazy('planning:lista')
     context_object_name = 'planificacion_menu'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         obj = self.object
+        fecha = obj.fecha
+        plan = obj.plan
+        receta_counts = clientes_no_gustan_por_receta(fecha, plan)
         if self.request.POST:
             context['receta_formset'] = PlanificacionMenuRecetaFormSet(
-                self.request.POST, instance=obj
+                self.request.POST, instance=obj, receta_counts=receta_counts
             )
         else:
-            context['receta_formset'] = PlanificacionMenuRecetaFormSet(instance=obj)
-        # Contratos activos en esta fecha con este plan (para sustituciones por cliente)
-        fecha = obj.fecha
-        contratos = Contrato.objects.filter(
-            plan=obj.plan,
-            estado='activo',
-            fecha_inicio__lte=fecha,
-        ).filter(
-            Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha)
-        ).select_related('cliente')
+            context['receta_formset'] = PlanificacionMenuRecetaFormSet(
+                instance=obj, receta_counts=receta_counts
+            )
+        # Contratos activos en esta fecha con este plan (para sustituciones por cliente; excluye pausas)
+        contratos = contratos_activos_en_fecha(fecha).filter(plan=plan).select_related('cliente')
         context['contratos_fecha'] = contratos
         # Por cada contrato: conflictos (recetas del menú con ingredientes no gustados) y sustituciones actuales
         sustituciones_actuales = {
@@ -248,9 +282,10 @@ class PlanificacionMenuUpdateView(LoginRequiredMixin, UpdateView):
         for c in contratos:
             conflictos = obtener_conflictos_menu_por_cliente(obj, c)
             for cf in conflictos:
+                tipo_receta_ids = list(cf['receta'].tipos_receta.values_list('id', flat=True))
                 cf['alternativas'] = recetas_alternativas_para_momento(
                     cf['tipo_comida'].id, cf['receta'].id, c.cliente_id,
-                    categoria_preferida=cf['receta'].categoria,
+                    tipo_receta_ids=tipo_receta_ids if tipo_receta_ids else None,
                 )
                 ids_alt = {r.id for r in cf['alternativas']}
                 cf['otras_recetas'] = [

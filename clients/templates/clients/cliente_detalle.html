@@ -2,6 +2,16 @@
 
 {% block title %}{{ cliente.nombre }} - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'clients:lista' %}">Clientes</a>
+<span class="sep">/</span>
+<span>{{ cliente.nombre }}</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
@@ -41,12 +51,36 @@
             <dd>{{ cliente.email }}</dd>
             <dt>Teléfono</dt>
             <dd>{{ cliente.telefono }}</dd>
+            {% if cliente.titular %}
+            <dt>Cliente titular</dt>
+            <dd><a href="{% url 'clients:detalle' cliente.titular.pk %}">{{ cliente.titular.nombre }}</a> (para cobranzas)</dd>
+            {% endif %}
+            {% if cliente.direccion %}
+            <dt>Dirección</dt>
+            <dd>{{ cliente.direccion }}</dd>
+            {% endif %}
+            {% if cliente.link_maps %}
+            <dt>Google Maps</dt>
+            <dd><a href="{{ cliente.link_maps }}" target="_blank" rel="noopener">Abrir en Google Maps</a></dd>
+            {% endif %}
             {% if cliente.notas %}
             <dt>Notas</dt>
             <dd>{{ cliente.notas }}</dd>
             {% endif %}
         </dl>
     </div>
+
+    {% if cliente.dependientes.exists %}
+    <div class="card">
+        <h2>Dependientes</h2>
+        <p>Clientes vinculados a este titular para facilitar el control de cobranzas.</p>
+        <ul style="margin: 0; padding-left: 20px;">
+            {% for dep in cliente.dependientes.all %}
+            <li><a href="{% url 'clients:detalle' dep.pk %}">{{ dep.nombre }}</a></li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 
     <div class="card">
         <h2>Ingredientes que no le gustan</h2>

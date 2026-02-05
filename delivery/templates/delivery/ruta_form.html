@@ -2,17 +2,23 @@
 
 {% block title %}{% if object %}Editar{% else %}Nueva{% endif %} Ruta - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Producción</span>
+<span class="sep">/</span>
+<a href="{% url 'delivery:lista' %}">Entregas</a>
+<span class="sep">/</span>
+<span>{% if object %}Editar ruta{% else %}Nueva ruta{% endif %}</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
-    form { margin-top: 20px; }
-    .form-group { margin-bottom: 20px; }
-    label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
-    input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-    textarea { min-height: 80px; }
     .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
     .btn:hover { background-color: {{ brand_color_hover }}; }
     .btn-secondary { background-color: #6c757d; }
-    .btn-secondary:hover { background-color: #5a6268; }
+    .form-layout .form-group.checkbox-group label { font-weight: normal; margin-left: 8px; }
+    .form-layout .form-group.checkbox-group input { width: auto; }
     .clientes-section { margin-top: 30px; padding-top: 20px; border-top: 2px solid {{ brand_color }}; }
     .clientes-section h2 { margin-bottom: 15px; }
     .formset-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -21,7 +27,10 @@
     .formset-table input, .formset-table select { width: 100%; padding: 6px; }
     .formset-table .delete { width: 50px; text-align: center; }
     .formset-table .delete input { width: auto; }
-    .orden-col { width: 100px; }
+    .formset-table .drag-cell { width: 36px; padding: 4px 8px; vertical-align: middle; cursor: grab; user-select: none; }
+    .formset-table .drag-cell:active { cursor: grabbing; }
+    .formset-table .drag-handle { color: #999; font-size: 1.1rem; line-height: 1; }
+    .formset-table .orden-input-wrap { display: none; }
 </style>
 {% endblock %}
 
@@ -29,40 +38,55 @@
 <div class="container">
     <h1>{% if object %}Editar{% else %}Nueva{% endif %} Ruta de Entrega</h1>
 
-    <form method="post">
+    <form method="post" class="form-layout">
         {% csrf_token %}
-        {% for field in form %}
+        <div class="form-row form-row-2">
             <div class="form-group">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% if field.errors %}<div style="color: #c62828; font-size: 12px;">{{ field.errors }}</div>{% endif %}
+                <label for="{{ form.fecha.id_for_label }}">{{ form.fecha.label }}</label>
+                {{ form.fecha }}
+                {% if form.fecha.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.fecha.errors }}</div>{% endif %}
             </div>
-        {% endfor %}
+            <div class="form-group">
+                <label for="{{ form.entregador.id_for_label }}">{{ form.entregador.label }}</label>
+                {{ form.entregador }}
+                {% if form.entregador.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.entregador.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-1">
+            <div class="form-group checkbox-group">
+                <label for="{{ form.activa.id_for_label }}">{{ form.activa }} {{ form.activa.label }}</label>
+                {% if form.activa.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.activa.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.notas.id_for_label }}">{{ form.notas.label }}</label>
+                {{ form.notas }}
+                {% if form.notas.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.notas.errors }}</div>{% endif %}
+            </div>
+        </div>
 
         {% if formset %}
         <div class="clientes-section">
             <h2>Clientes en la ruta (orden de entrega)</h2>
-            <p>Seleccione el contrato y el orden de entrega (1, 2, 3...). Marque "Eliminar" para quitar un cliente de la ruta.</p>
+            <p>Seleccione el contrato. Arrastre las filas para definir el orden de entrega. Marque "Eliminar" para quitar un cliente de la ruta.</p>
             {{ formset.management_form }}
             <table class="formset-table">
                 <thead>
                     <tr>
+                        <th class="drag-cell" title="Arrastrar para reordenar"></th>
                         <th>Contrato (Cliente)</th>
-                        <th class="orden-col">Orden</th>
                         <th class="delete">Eliminar</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="ruta-formset-body">
                     {% for f in formset %}
                     <tr class="formset-row">
+                        <td class="drag-cell"><span class="drag-handle" title="Arrastrar para reordenar">⋮⋮</span><span class="orden-input-wrap">{{ f.orden_entrega }}</span>{% if f.orden_entrega.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.orden_entrega.errors }}</div>{% endif %}</td>
                         <td>
                             {{ f.id }}
                             {{ f.contrato }}
                             {% if f.contrato.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.contrato.errors }}</div>{% endif %}
-                        </td>
-                        <td>
-                            {{ f.orden_entrega }}
-                            {% if f.orden_entrega.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.orden_entrega.errors }}</div>{% endif %}
                         </td>
                         <td class="delete">
                             {% if f.DELETE %}{{ f.DELETE }}{% endif %}
@@ -74,7 +98,7 @@
         </div>
         {% endif %}
 
-        <div style="margin-top: 25px;">
+        <div class="form-actions">
             <button type="submit" class="btn">Guardar</button>
             {% if object %}
                 <a href="{% url 'delivery:ruta_imprimible' object.pk %}" class="btn btn-secondary">Ver imprimible</a>
@@ -83,4 +107,27 @@
         </div>
     </form>
 </div>
+{% if formset %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+(function() {
+    var tbody = document.getElementById('ruta-formset-body');
+    if (!tbody || typeof Sortable === 'undefined') return;
+    function renumberOrden() {
+        var rows = tbody.querySelectorAll('tr.formset-row');
+        rows.forEach(function(tr, idx) {
+            var input = tr.querySelector('input[name$="-orden_entrega"]');
+            if (input) input.value = idx + 1;
+        });
+    }
+    new Sortable(tbody, {
+        animation: 150,
+        handle: '.drag-handle',
+        onEnd: renumberOrden
+    });
+})();
+</script>
+{% endblock %}
+{% endif %}
 {% endblock %}

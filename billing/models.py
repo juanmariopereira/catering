@@ -67,15 +67,14 @@ class Factura(models.Model):
     def actualizar_estado(self):
         """Actualiza el estado de la factura según pagos y fecha de vencimiento"""
         monto_pagado = self.calcular_monto_pagado()
-        
         if monto_pagado >= self.monto:
-            self.estado = 'pagada'
+            nuevo_estado = 'pagada'
         elif timezone.now().date() > self.fecha_vencimiento:
-            self.estado = 'vencida'
+            nuevo_estado = 'vencida'
         else:
-            self.estado = 'pendiente'
-        
-        self.save()
+            nuevo_estado = 'pendiente'
+        self.estado = nuevo_estado
+        Factura.objects.filter(pk=self.pk).update(estado=nuevo_estado)
 
     def save(self, *args, **kwargs):
         # Generar número de factura si no existe

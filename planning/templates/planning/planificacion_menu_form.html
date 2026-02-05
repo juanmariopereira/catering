@@ -2,16 +2,18 @@
 
 {% block title %}{% if object %}Editar menú{% else %}Nuevo menú{% endif %} - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Producción</span>
+<span class="sep">/</span>
+<a href="{% url 'planning:lista' %}">Planificación</a>
+<span class="sep">/</span>
+<span>{% if object %}Menú {{ object.fecha|date:"d/m/Y" }} — {{ object.plan.nombre }}{% else %}Nuevo menú{% endif %}</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
-    form { margin-top: 20px; }
-    .form-group { margin-bottom: 20px; }
-    label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
-    input, select, textarea {
-        width: 100%; max-width: 400px;
-        padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;
-    }
-    textarea { min-height: 80px; }
     .btn {
         display: inline-block; padding: 10px 20px; background-color: {{ brand_color|default:'#7CB342' }};
         color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;
@@ -19,6 +21,8 @@
     .btn:hover { background-color: {{ brand_color_hover|default:'#689F38' }}; }
     .btn-secondary { background-color: #6c757d; }
     .btn-secondary:hover { background-color: #5a6268; }
+    .btn-add-row { background-color: #5a9e38; font-size: 0.95rem; }
+    .btn-add-row:hover { background-color: #4a8e28; }
     .recetas-formset { margin-top: 24px; }
     .recetas-formset table { width: 100%; border-collapse: collapse; margin-top: 12px; }
     .recetas-formset th, .recetas-formset td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
@@ -32,6 +36,13 @@
     .cliente-conflictos h3 { margin-top: 0; font-size: 1rem; }
     .conflicto-item { margin-bottom: 12px; }
     .sustitucion-select { max-width: 320px; margin-top: 6px; }
+    .drag-cell { width: 36px; padding: 4px 8px; vertical-align: middle; cursor: grab; user-select: none; }
+    .drag-cell:active { cursor: grabbing; }
+    .drag-handle { color: #999; font-size: 1.1rem; line-height: 1; }
+    .drag-cell .orden-input-wrap { display: none; }
+    /* Evitar que el dropdown de Choices.js quede recortado por overflow del table-responsive */
+    .recetas-formset .table-responsive { overflow: visible; }
+    .recetas-formset .choices__list--dropdown { z-index: 1050; }
 </style>
 {% endblock %}
 
@@ -39,49 +50,66 @@
 <div class="container">
     <h1>{% if object %}Editar menú{% else %}Nuevo menú{% endif %} (fecha + plan)</h1>
 
-    <form method="post">
+    <form method="post" class="form-layout">
         {% csrf_token %}
-        <div class="form-group">
-            <label for="{{ form.fecha.id_for_label }}">Fecha:</label>
-            {{ form.fecha }}
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.fecha.id_for_label }}">Fecha:</label>
+                {{ form.fecha }}
+                {% if form.fecha.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.fecha.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.plan.id_for_label }}">Plan:</label>
+                {{ form.plan }}
+                {% if form.plan.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.plan.errors }}</div>{% endif %}
+            </div>
         </div>
-        <div class="form-group">
-            <label for="{{ form.plan.id_for_label }}">Plan:</label>
-            {{ form.plan }}
-        </div>
-        <div class="form-group">
-            <label for="{{ form.notas.id_for_label }}">Notas:</label>
-            {{ form.notas }}
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.notas.id_for_label }}">Notas:</label>
+                {{ form.notas }}
+                {% if form.notas.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.notas.errors }}</div>{% endif %}
+            </div>
         </div>
 
         {% if receta_formset %}
-        <div class="recetas-formset">
+        <div class="recetas-formset" id="recetas-formset-container">
             <h2>Recetas por momento del día</h2>
-            <p>Defina frutas, postres, bebidas y comidas por momento (Desayuno, Media mañana, Comida, Merienda, Cena).</p>
+            <p>Defina frutas, postres, bebidas y comidas por momento (Desayuno, Media mañana, Comida, Merienda, Cena). Arrastre las filas para reordenar. Use «Añadir fila» para más recetas.</p>
             {{ receta_formset.management_form }}
             <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
+                        <th class="drag-cell" title="Arrastrar para reordenar"></th>
                         <th>Momento</th>
                         <th>Receta</th>
-                        <th>Orden</th>
                         {% if receta_formset.can_delete %}<th>Eliminar</th>{% endif %}
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="receta-formset-body">
                     {% for f in receta_formset %}
-                    <tr>
+                    <tr class="formset-row">
+                        <td class="drag-cell"><span class="drag-handle" title="Arrastrar para reordenar">⋮⋮</span><span class="orden-input-wrap">{{ f.orden }}</span></td>
                         <td>{{ f.tipo_comida }}</td>
                         <td>{{ f.receta }}</td>
-                        <td>{{ f.orden }}</td>
                         {% if receta_formset.can_delete %}<td>{{ f.DELETE }}</td>{% endif %}
                         {{ f.id }}
                     </tr>
                     {% endfor %}
+                    <tr id="empty-form-row" style="display: none;">
+                        <td class="drag-cell"><span class="drag-handle">⋮⋮</span><span class="orden-input-wrap">{{ receta_formset.empty_form.orden }}</span></td>
+                        <td>{{ receta_formset.empty_form.tipo_comida }}</td>
+                        <td>{{ receta_formset.empty_form.receta }}</td>
+                        {% if receta_formset.can_delete %}<td>{{ receta_formset.empty_form.DELETE }}</td>{% endif %}
+                        {{ receta_formset.empty_form.id }}
+                    </tr>
                 </tbody>
             </table>
             </div>
+            <p style="margin-top: 10px;">
+                <button type="button" class="btn btn-add-row" id="add-receta-row">Añadir fila</button>
+            </p>
         </div>
         {% endif %}
 
@@ -123,10 +151,71 @@
         </div>
         {% endif %}
 
-        <div style="margin-top: 25px;">
+        <div class="form-actions">
             <button type="submit" class="btn">Guardar</button>
             <a href="{% url 'planning:lista' %}" class="btn btn-secondary">Cancelar</a>
         </div>
     </form>
 </div>
+
+{% if receta_formset %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+(function() {
+    var container = document.getElementById('recetas-formset-container');
+    if (!container) return;
+    var tbody = document.getElementById('receta-formset-body');
+    var emptyRow = document.getElementById('empty-form-row');
+    var totalInput = container.querySelector('input[name$="-TOTAL_FORMS"]');
+    var addBtn = document.getElementById('add-receta-row');
+    if (!tbody || !emptyRow || !totalInput || !addBtn) return;
+    if (addBtn.dataset.addRowListener === '1') return;
+    addBtn.dataset.addRowListener = '1';
+
+    function renumberOrden() {
+        var rows = tbody.querySelectorAll('tr.formset-row');
+        rows.forEach(function(tr, idx) {
+            var input = tr.querySelector('input[name$="-orden"]');
+            if (input) input.value = idx + 1;
+        });
+    }
+
+    if (typeof Sortable !== 'undefined') {
+        new Sortable(tbody, {
+            animation: 150,
+            handle: '.drag-handle',
+            filter: '#empty-form-row',
+            onEnd: renumberOrden
+        });
+    }
+
+    addBtn.addEventListener('click', function() {
+        var total = parseInt(totalInput.value, 10);
+        var newRow = emptyRow.cloneNode(true);
+        newRow.id = '';
+        newRow.style.display = '';
+        newRow.classList.add('formset-row');
+
+        var html = newRow.innerHTML;
+        var prefix = totalInput.name.replace('-TOTAL_FORMS', '');
+        var oldPrefix = prefix + '-__prefix__';
+        var newPrefix = prefix + '-' + total;
+        newRow.innerHTML = html.split(oldPrefix).join(newPrefix);
+
+        newRow.querySelectorAll('input, select').forEach(function(el) {
+            if (el.type !== 'hidden' && el.name !== undefined) el.value = '';
+            if (el.type === 'checkbox' && el.name && el.name.indexOf('DELETE') !== -1) el.checked = false;
+        });
+        var ordenInput = newRow.querySelector('input[name$="-orden"]');
+        if (ordenInput) ordenInput.value = total + 1;
+
+        tbody.insertBefore(newRow, emptyRow);
+        totalInput.value = total + 1;
+        if (window.initSearchableSelects) window.initSearchableSelects(newRow);
+    });
+})();
+</script>
+{% endblock %}
+{% endif %}
 {% endblock %}

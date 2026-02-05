@@ -2,6 +2,14 @@
 
 {% block title %}Contratos - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Finanzas</span>
+<span class="sep">/</span>
+<a href="{% url 'contracts:lista' %}">Contratos</a>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .actions { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
@@ -63,6 +71,7 @@
                     <td>${{ contrato.precio|floatformat:2 }}</td>
                     <td><span class="badge badge-{{ contrato.estado }}">{{ contrato.get_estado_display }}</span></td>
                     <td>
+                        <a href="{% url 'contracts:detalle' contrato.pk %}">Ver</a> |
                         <a href="{% url 'contracts:editar' contrato.pk %}">Editar</a> |
                         {% if contrato.estado == 'activo' %}<a href="{% url 'planning:clientes_por_fecha' %}">Planificación</a> | {% endif %}
                         <a href="{% url 'contracts:eliminar' contrato.pk %}">Eliminar</a>

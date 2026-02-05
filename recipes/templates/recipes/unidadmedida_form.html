@@ -1,0 +1,64 @@
+{% extends 'base/base.html' %}
+
+{% block title %}{% if object %}Editar{% else %}Nueva{% endif %} unidad de medida - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'recipes:lista' %}">Recetas</a>
+<span class="sep">/</span>
+<a href="{% url 'recipes:unidad_medida_lista' %}">Unidades de medida</a>
+<span class="sep">/</span>
+<span>{% if object %}Editar {{ object.nombre }}{% else %}Nueva unidad{% endif %}</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn { display: inline-block; padding: 10px 20px; background-color: #7CB342; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    .btn:hover { background-color: #689F38; }
+    .btn-secondary { background-color: #6c757d; }
+    .form-layout .form-group.checkbox-group label { font-weight: normal; margin-left: 8px; }
+    .form-layout .form-group.checkbox-group input { width: auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>{% if object %}Editar{% else %}Nueva{% endif %} unidad de medida</h1>
+    <p class="help-text">Ej: Kilogramo (kg), Gramo (gr), Litro (lt), Unidad (un). El símbolo es opcional y se muestra en listas.</p>
+
+    <form method="post" class="form-layout">
+        {% csrf_token %}
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.nombre.id_for_label }}">{{ form.nombre.label }}</label>
+                {{ form.nombre }}
+                {% if form.nombre.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.nombre.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.simbolo.id_for_label }}">{{ form.simbolo.label }}</label>
+                {{ form.simbolo }}
+                {% if form.simbolo.help_text %}<div class="help-text">{{ form.simbolo.help_text }}</div>{% endif %}
+                {% if form.simbolo.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.simbolo.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.orden.id_for_label }}">{{ form.orden.label }}</label>
+                {{ form.orden }}
+                {% if form.orden.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.orden.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group checkbox-group">
+                <label for="{{ form.activo.id_for_label }}">{{ form.activo }} {{ form.activo.label }}</label>
+                {% if form.activo.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.activo.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn">Guardar</button>
+            <a href="{% url 'recipes:unidad_medida_lista' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

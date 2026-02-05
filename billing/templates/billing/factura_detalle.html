@@ -2,6 +2,16 @@
 
 {% block title %}Factura {{ factura.numero_factura }} - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Finanzas</span>
+<span class="sep">/</span>
+<a href="{% url 'billing:factura_lista' %}">Facturación</a>
+<span class="sep">/</span>
+<span>Factura {{ factura.numero_factura }}</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }

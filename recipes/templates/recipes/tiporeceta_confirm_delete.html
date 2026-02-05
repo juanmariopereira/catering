@@ -1,0 +1,38 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Eliminar tipo de receta - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'recipes:lista' %}">Recetas</a>
+<span class="sep">/</span>
+<a href="{% url 'recipes:tipo_receta_lista' %}">Tipos de receta</a>
+<span class="sep">/</span>
+<span>Eliminar {{ tiporeceta.nombre }}</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    .btn-primary { background-color: #7CB342; }
+    .btn-primary:hover { background-color: #689F38; }
+    .btn-danger { background-color: #F44336; }
+    .btn-danger:hover { background-color: #D32F2F; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Eliminar tipo de receta</h1>
+    <p>¿Está seguro de que desea eliminar el tipo <strong>{{ tiporeceta.nombre }}</strong>?</p>
+    <p>Las recetas que lo usen quedarán sin ese tipo asignado.</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Eliminar</button>
+        <a href="{% url 'recipes:tipo_receta_lista' %}" class="btn btn-primary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

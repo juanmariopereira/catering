@@ -2,6 +2,12 @@
 
 {% block title %}Dashboard - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Dashboard</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .stats-grid {

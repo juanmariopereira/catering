@@ -7,10 +7,27 @@ class Cliente(models.Model):
     nombre = models.CharField(max_length=200, verbose_name="Nombre completo")
     email = models.EmailField(validators=[EmailValidator()], verbose_name="Email")
     telefono = models.CharField(max_length=20, verbose_name="Teléfono")
-    direcciones = models.JSONField(
-        default=list,
-        verbose_name="Direcciones",
-        help_text="Lista de direcciones del cliente en formato JSON"
+    direccion = models.TextField(
+        blank=True,
+        default='',
+        verbose_name="Dirección",
+        help_text="Dirección literal del cliente"
+    )
+    link_maps = models.URLField(
+        blank=True,
+        null=True,
+        max_length=500,
+        verbose_name="Enlace Google Maps",
+        help_text="URL de Google Maps con la ubicación (opcional)"
+    )
+    titular = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='dependientes',
+        verbose_name="Cliente titular",
+        help_text="Si este cliente es dependiente de otro (ej. familiar), indique el cliente titular para cobranzas."
     )
     activo = models.BooleanField(default=True, verbose_name="Activo")
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")

@@ -2,6 +2,16 @@
 
 {% block title %}Previsión de Compra - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Producción</span>
+<span class="sep">/</span>
+<a href="{% url 'purchases:lista' %}">Compras</a>
+<span class="sep">/</span>
+<span>Previsión {{ prevision.fecha_desde|date:"d/m/Y" }} — {{ prevision.fecha_hasta|date:"d/m/Y" }}</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .actions { margin-bottom: 20px; }

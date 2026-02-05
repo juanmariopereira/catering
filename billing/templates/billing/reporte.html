@@ -2,6 +2,16 @@
 
 {% block title %}Reporte de Cobranza - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Finanzas</span>
+<span class="sep">/</span>
+<a href="{% url 'billing:factura_lista' %}">Facturación</a>
+<span class="sep">/</span>
+<span>Reporte</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .filtros { margin: 20px 0; padding: 15px; background-color: #f9f9f9; border-radius: 4px; }

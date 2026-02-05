@@ -2,17 +2,23 @@
 
 {% block title %}{% if object %}Editar{% else %}Nuevo{% endif %} Plan - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'plans:lista' %}">Planes</a>
+<span class="sep">/</span>
+<span>{% if object %}Editar {{ object.nombre }}{% else %}Nuevo plan{% endif %}</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
-    form { margin-top: 20px; }
-    .form-group { margin-bottom: 20px; }
-    label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
-    input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-    textarea { min-height: 80px; }
     .btn { display: inline-block; padding: 10px 20px; background-color: #7CB342; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
     .btn:hover { background-color: #689F38; }
     .btn-secondary { background-color: #6c757d; }
-    .help-text { font-size: 12px; color: #666; margin-top: 4px; }
+    .form-layout .form-group.checkbox-group label { font-weight: normal; margin-left: 8px; }
+    .form-layout .form-group.checkbox-group input { width: auto; }
 </style>
 {% endblock %}
 
@@ -21,17 +27,40 @@
     <h1>{% if object %}Editar{% else %}Nuevo{% endif %} Plan</h1>
     <p class="help-text">Características: use formato JSON. Ej: {"calorias": 2000, "proteinas": 80}</p>
     
-    <form method="post">
+    <form method="post" class="form-layout">
         {% csrf_token %}
-        {% for field in form %}
+        <div class="form-row form-row-2">
             <div class="form-group">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
-                {% if field.errors %}<div style="color: #c62828; font-size: 12px;">{{ field.errors }}</div>{% endif %}
+                <label for="{{ form.nombre.id_for_label }}">{{ form.nombre.label }}</label>
+                {{ form.nombre }}
+                {% if form.nombre.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.nombre.errors }}</div>{% endif %}
             </div>
-        {% endfor %}
-        <div>
+            <div class="form-group">
+                <label for="{{ form.precio_base.id_for_label }}">{{ form.precio_base.label }}</label>
+                {{ form.precio_base }}
+                {% if form.precio_base.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.precio_base.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.descripcion.id_for_label }}">{{ form.descripcion.label }}</label>
+                {{ form.descripcion }}
+                {% if form.descripcion.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.descripcion.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.caracteristicas.id_for_label }}">{{ form.caracteristicas.label }}</label>
+                {{ form.caracteristicas }}
+                {% if form.caracteristicas.help_text %}<div class="help-text">{{ form.caracteristicas.help_text }}</div>{% endif %}
+                {% if form.caracteristicas.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.caracteristicas.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group checkbox-group">
+                <label for="{{ form.activo.id_for_label }}">{{ form.activo }} {{ form.activo.label }}</label>
+                {% if form.activo.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.activo.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-actions">
             <button type="submit" class="btn">Guardar</button>
             <a href="{% url 'plans:lista' %}" class="btn btn-secondary">Cancelar</a>
         </div>

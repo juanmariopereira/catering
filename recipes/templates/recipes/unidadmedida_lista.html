@@ -1,0 +1,71 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Unidades de medida - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'recipes:lista' %}">Recetas</a>
+<span class="sep">/</span>
+<a href="{% url 'recipes:unidad_medida_lista' %}">Unidades de medida</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .actions { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: #7CB342; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
+    .btn:hover { background-color: #689F38; }
+    .btn-secondary { background-color: #6c757d; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #7CB342; color: white; }
+    tr:hover { background-color: #f5f5f5; }
+    .badge-activo { background-color: #4CAF50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+    .badge-inactivo { background-color: #9e9e9e; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Unidades de medida</h1>
+    <p>Unidades parametrizables para ingredientes y recetas: kg, gr, lt, un, etc. Se usan en ingredientes y en cantidades de recetas.</p>
+
+    <div class="actions">
+        <a href="{% url 'recipes:unidad_medida_crear' %}" class="btn">Nueva unidad</a>
+        <a href="{% url 'recipes:ingrediente_lista' %}" class="btn btn-secondary">Ingredientes</a>
+        <a href="{% url 'recipes:lista' %}" class="btn btn-secondary">Recetas</a>
+    </div>
+
+    <div class="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th>Orden</th>
+                <th>Nombre</th>
+                <th>Símbolo</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in unidades %}
+            <tr>
+                <td>{{ u.orden }}</td>
+                <td>{{ u.nombre }}</td>
+                <td>{{ u.simbolo|default:"—" }}</td>
+                <td><span class="badge-{% if u.activo %}activo{% else %}inactivo{% endif %}">{% if u.activo %}Activo{% else %}Inactivo{% endif %}</span></td>
+                <td>
+                    <a href="{% url 'recipes:unidad_medida_editar' u.pk %}">Editar</a> |
+                    <a href="{% url 'recipes:unidad_medida_eliminar' u.pk %}">Eliminar</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5">No hay unidades de medida.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

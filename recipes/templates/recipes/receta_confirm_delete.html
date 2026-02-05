@@ -2,6 +2,18 @@
 
 {% block title %}Eliminar Receta - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'recipes:lista' %}">Recetas</a>
+<span class="sep">/</span>
+<a href="{% url 'recipes:detalle' object.pk %}">{{ object.nombre }}</a>
+<span class="sep">/</span>
+<span>Eliminar</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }

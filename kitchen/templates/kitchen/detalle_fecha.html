@@ -2,6 +2,16 @@
 
 {% block title %}Detalle de Cocina {{ fecha }} - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Producción</span>
+<span class="sep">/</span>
+<a href="{% url 'kitchen:lista' %}">Cocina</a>
+<span class="sep">/</span>
+<span>Detalle {{ fecha }}</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .fecha-navegacion {
@@ -67,6 +77,17 @@
     .cliente-item { padding: 4px 0; font-size: 0.95rem; }
     .cliente-item.sustituta { color: #856404; font-weight: 600; }
     .cliente-item.sustituta::before { content: "↳ "; }
+    .codigo-entrega-cocina {
+        display: inline-block;
+        margin-right: 8px;
+        padding: 2px 8px;
+        background-color: #2e7d32;
+        color: white;
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 4px;
+        letter-spacing: 0.03em;
+    }
     .notas {
         margin-top: 20px;
         padding: 15px;
@@ -75,7 +96,43 @@
         border-radius: 4px;
     }
     .sin-recetas { text-align: center; padding: 40px; color: #999; font-size: 18px; }
+    /* Resumen por momento */
+    .resumen-cocina { margin-bottom: 32px; }
+    .resumen-cocina h2 { font-size: 1.25rem; margin: 0 0 12px 0; color: #333; border-bottom: 2px solid #7CB342; padding-bottom: 6px; }
+    .resumen-tabla { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.95rem; }
+    .resumen-tabla th, .resumen-tabla td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+    .resumen-tabla th { background-color: #e8f5e9; font-weight: 600; color: #2e7d32; }
+    .resumen-tabla .momento-nombre { font-weight: 600; color: #333; }
+    .resumen-tabla .receta-cant { white-space: nowrap; }
+    .resumen-tabla .cambios { font-size: 0.9rem; color: #856404; }
+    .resumen-tabla .cambio-item { margin: 4px 0; }
+    .resumen-tabla .cambio-item::before { content: "↳ "; }
+    .detalle-completo { margin-top: 28px; padding-top: 24px; border-top: 2px solid #ddd; }
+    .detalle-completo-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 10px 14px;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #555;
+        background-color: #e8f5e9;
+        border: 1px solid #c8e6c9;
+        border-radius: 6px;
+        cursor: pointer;
+        text-align: left;
+    }
+    .detalle-completo-toggle:hover { background-color: #c8e6c9; color: #2e7d32; }
+    .detalle-completo-toggle .toggle-icon { font-size: 0.9rem; transition: transform 0.2s; }
+    .detalle-completo.is-open .detalle-completo-toggle .toggle-icon { transform: rotate(180deg); }
+    .detalle-completo-contenido { display: none; margin-top: 16px; }
+    .detalle-completo.is-open .detalle-completo-contenido { display: block; }
+    .detalle-completo h2 { font-size: 1.2rem; margin: 0; color: inherit; border: none; padding: 0; }
     @media print {
+        .detalle-completo-toggle .toggle-icon { display: none; }
+        .detalle-completo-contenido { display: block !important; }
+        .detalle-completo.is-open .detalle-completo-contenido { display: block !important; }
         .fecha-navegacion { display: none; }
     }
 </style>
@@ -94,16 +151,60 @@
     <p style="margin-bottom: 15px;">
         <a href="{% url 'kitchen:editar_notas' detalle_cocina.pk %}" style="padding: 8px 16px; background-color: {{ brand_color }}; color: white; text-decoration: none; border-radius: 4px;">Editar notas para el cocinero</a>
     </p>
-    <p style="color: #666; font-size: 0.95rem; margin-bottom: 20px;">Este reporte refleja las raciones por receta y las sustituciones definidas en planificación (platos diferentes por cliente). Así la producción sabe cuántos platos preparar y para qué cliente va cada variante.</p>
+    <p style="color: #666; font-size: 0.95rem; margin-bottom: 20px;">Resumen por momento del día (cantidades y cambios de plato). Abajo, detalle completo con ingredientes y clientes por ración.</p>
+
+    {% if resumen_momento %}
+    <section class="resumen-cocina" aria-label="Resumen por momento">
+        <h2>Resumen — Cantidades por comida</h2>
+        <table class="resumen-tabla">
+            <thead>
+                <tr>
+                    <th>Momento</th>
+                    <th>Receta</th>
+                    <th>Cantidad</th>
+                    <th>Cambios (plato distinto por cliente)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bloque in resumen_momento %}
+                    {% for item in bloque.items %}
+                    <tr>
+                        {% if forloop.first %}
+                        <td rowspan="{{ bloque.items|length }}" class="momento-nombre">{{ bloque.tipo_comida.nombre }}</td>
+                        {% endif %}
+                        <td>{{ item.receta.nombre }}</td>
+                        <td class="receta-cant">{{ item.cantidad }}</td>
+                        <td class="cambios">
+                            {% if item.sustituciones %}
+                                {% for s in item.sustituciones %}
+                                <div class="cambio-item">{{ s.cliente_nombre }}: en lugar de «{{ s.receta_original_nombre }}»</div>
+                                {% endfor %}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+    {% endif %}
 
     {% if recetas_info %}
+        <section class="detalle-completo" id="detalle-completo" aria-label="Detalle completo">
+        <button type="button" class="detalle-completo-toggle" aria-expanded="false" aria-controls="detalle-completo-contenido" id="detalle-completo-btn">
+            <span class="toggle-label">Detalle completo (ingredientes y clientes por ración)</span>
+            <span class="toggle-icon" aria-hidden="true">▼</span>
+        </button>
+        <div class="detalle-completo-contenido" id="detalle-completo-contenido" hidden>
         <div class="recetas-lista">
             {% for item in recetas_info %}
                 <div class="receta-item">
                     <div class="receta-header">
                         <div>
                             <div class="receta-nombre">{{ item.receta.nombre }}</div>
-                            <div class="receta-categoria">{{ item.receta.get_categoria_display }}</div>
+                            <div class="receta-categoria">{% for t in item.receta.tipos_receta.all %}{{ t.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</div>
                         </div>
                         <div class="receta-cantidad">{{ item.cantidad }} {{ item.cantidad|pluralize:"vez,veces" }}</div>
                     </div>
@@ -117,6 +218,7 @@
                         <h4>{{ item.cantidad }} {{ item.cantidad|pluralize:"ración,raciones" }} — Para:</h4>
                         {% for p in item.planificaciones %}
                         <div class="cliente-item {% if p.es_sustituta %}sustituta{% endif %}">
+                            {% if p.codigo_entrega %}<span class="codigo-entrega-cocina" title="Código de entrega">{{ p.codigo_entrega }}</span>{% endif %}
                             {{ p.contrato.cliente.nombre }}{% if p.es_sustituta %} (plato diferente: en lugar de «{{ p.receta_original_nombre|default:'' }}»){% endif %}
                         </div>
                         {% endfor %}
@@ -148,10 +250,30 @@
                 <strong>Notas:</strong> Sin notas. <a href="{% url 'kitchen:editar_notas' detalle_cocina.pk %}">Agregar notas</a>
             </div>
         {% endif %}
+        </div>
+        </section>
     {% else %}
         <div class="sin-recetas">
             No hay recetas planificadas para esta fecha.
         </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if recetas_info %}
+<script>
+(function() {
+    var section = document.getElementById('detalle-completo');
+    var btn = document.getElementById('detalle-completo-btn');
+    var content = document.getElementById('detalle-completo-contenido');
+    if (!section || !btn || !content) return;
+    btn.addEventListener('click', function() {
+        var isOpen = section.classList.toggle('is-open');
+        btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        content.hidden = !isOpen;
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}

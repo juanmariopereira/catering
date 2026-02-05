@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.db.models import Q
 from django.forms import inlineformset_factory
 
-from .models import Receta, Ingrediente, RecetaIngrediente
+from .models import TipoReceta, UnidadMedida, Receta, Ingrediente, RecetaIngrediente
 
 
 RecetaIngredienteFormSet = inlineformset_factory(
@@ -29,13 +29,23 @@ class RecetaListView(LoginRequiredMixin, ListView):
         busqueda = self.request.GET.get('q')
         if busqueda:
             queryset = queryset.filter(Q(nombre__icontains=busqueda) | Q(descripcion__icontains=busqueda))
-        categoria = self.request.GET.get('categoria')
-        if categoria:
-            queryset = queryset.filter(categoria=categoria)
+        tipo_receta_id = self.request.GET.get('tipo_receta')
+        if tipo_receta_id:
+            queryset = queryset.filter(tipos_receta_id=tipo_receta_id)
+        momento_id = self.request.GET.get('momento')
+        if momento_id:
+            queryset = queryset.filter(momentos_dia_id=momento_id)
         activa = self.request.GET.get('activa')
         if activa is not None and activa != '':
             queryset = queryset.filter(activa=activa == '1')
-        return queryset.order_by('categoria', 'nombre')
+        return queryset.order_by('nombre')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['tipos_receta'] = TipoReceta.objects.filter(activo=True).order_by('orden', 'nombre')
+        from diets.models import TipoComida
+        context['momentos_dia'] = TipoComida.objects.all().order_by('orden', 'nombre')
+        return context
 
 
 class RecetaDetailView(LoginRequiredMixin, DetailView):
@@ -47,7 +57,7 @@ class RecetaDetailView(LoginRequiredMixin, DetailView):
 class RecetaCreateView(LoginRequiredMixin, CreateView):
     model = Receta
     template_name = 'recipes/receta_form.html'
-    fields = ['nombre', 'descripcion', 'categoria', 'info_nutricional', 'activa']
+    fields = ['nombre', 'descripcion', 'tipos_receta', 'momentos_dia', 'info_nutricional', 'activa']
 
     def get_success_url(self):
         return reverse('recipes:editar', args=[self.object.pk])
@@ -60,7 +70,7 @@ class RecetaCreateView(LoginRequiredMixin, CreateView):
 class RecetaUpdateView(LoginRequiredMixin, UpdateView):
     model = Receta
     template_name = 'recipes/receta_form.html'
-    fields = ['nombre', 'descripcion', 'categoria', 'info_nutricional', 'activa']
+    fields = ['nombre', 'descripcion', 'tipos_receta', 'momentos_dia', 'info_nutricional', 'activa']
 
     def get_success_url(self):
         return reverse('recipes:editar', args=[self.object.pk])
@@ -146,4 +156,94 @@ class IngredienteDeleteView(LoginRequiredMixin, DeleteView):
 
     def form_valid(self, form):
         messages.success(self.request, 'Ingrediente eliminado exitosamente.')
+        return super().form_valid(form)
+
+
+# TipoReceta (parametrizable: Comida, Masa, Postre, Bebida, Fruta, etc.)
+class TipoRecetaListView(LoginRequiredMixin, ListView):
+    model = TipoReceta
+    template_name = 'recipes/tiporeceta_lista.html'
+    context_object_name = 'tipos'
+    paginate_by = 30
+
+    def get_queryset(self):
+        return TipoReceta.objects.all().order_by('orden', 'nombre')
+
+
+class TipoRecetaCreateView(LoginRequiredMixin, CreateView):
+    model = TipoReceta
+    template_name = 'recipes/tiporeceta_form.html'
+    fields = ['nombre', 'orden', 'activo']
+    success_url = reverse_lazy('recipes:tipo_receta_lista')
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Tipo de receta creado.')
+        return super().form_valid(form)
+
+
+class TipoRecetaUpdateView(LoginRequiredMixin, UpdateView):
+    model = TipoReceta
+    template_name = 'recipes/tiporeceta_form.html'
+    fields = ['nombre', 'orden', 'activo']
+    success_url = reverse_lazy('recipes:tipo_receta_lista')
+    context_object_name = 'tiporeceta'
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Tipo de receta actualizado.')
+        return super().form_valid(form)
+
+
+class TipoRecetaDeleteView(LoginRequiredMixin, DeleteView):
+    model = TipoReceta
+    template_name = 'recipes/tiporeceta_confirm_delete.html'
+    success_url = reverse_lazy('recipes:tipo_receta_lista')
+    context_object_name = 'tiporeceta'
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Tipo de receta eliminado.')
+        return super().form_valid(form)
+
+
+# UnidadMedida (parametrizable: kg, gr, lt, un, etc.)
+class UnidadMedidaListView(LoginRequiredMixin, ListView):
+    model = UnidadMedida
+    template_name = 'recipes/unidadmedida_lista.html'
+    context_object_name = 'unidades'
+    paginate_by = 30
+
+    def get_queryset(self):
+        return UnidadMedida.objects.all().order_by('orden', 'nombre')
+
+
+class UnidadMedidaCreateView(LoginRequiredMixin, CreateView):
+    model = UnidadMedida
+    template_name = 'recipes/unidadmedida_form.html'
+    fields = ['nombre', 'simbolo', 'orden', 'activo']
+    success_url = reverse_lazy('recipes:unidad_medida_lista')
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Unidad de medida creada.')
+        return super().form_valid(form)
+
+
+class UnidadMedidaUpdateView(LoginRequiredMixin, UpdateView):
+    model = UnidadMedida
+    template_name = 'recipes/unidadmedida_form.html'
+    fields = ['nombre', 'simbolo', 'orden', 'activo']
+    success_url = reverse_lazy('recipes:unidad_medida_lista')
+    context_object_name = 'unidad'
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Unidad de medida actualizada.')
+        return super().form_valid(form)
+
+
+class UnidadMedidaDeleteView(LoginRequiredMixin, DeleteView):
+    model = UnidadMedida
+    template_name = 'recipes/unidadmedida_confirm_delete.html'
+    success_url = reverse_lazy('recipes:unidad_medida_lista')
+    context_object_name = 'unidad'
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Unidad de medida eliminada.')
         return super().form_valid(form)

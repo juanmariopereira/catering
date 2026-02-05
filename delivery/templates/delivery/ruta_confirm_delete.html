@@ -2,6 +2,16 @@
 
 {% block title %}Eliminar Ruta - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Producción</span>
+<span class="sep">/</span>
+<a href="{% url 'delivery:lista' %}">Entregas</a>
+<span class="sep">/</span>
+<span>Eliminar ruta</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }

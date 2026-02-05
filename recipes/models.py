@@ -2,13 +2,66 @@ from django.db import models
 from django.core.validators import MinValueValidator
 
 
+class TipoReceta(models.Model):
+    """
+    Tipo de receta parametrizable: Comida, Masa, Postre, Complemento, Bebida, Fruta, etc.
+    """
+    nombre = models.CharField(max_length=80, unique=True, verbose_name="Nombre")
+    orden = models.PositiveIntegerField(
+        default=1,
+        validators=[MinValueValidator(1)],
+        verbose_name="Orden",
+        help_text="Orden para mostrar en listas"
+    )
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+    fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
+
+    class Meta:
+        verbose_name = "Tipo de receta"
+        verbose_name_plural = "Tipos de receta"
+        ordering = ['orden', 'nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
+class UnidadMedida(models.Model):
+    """Unidad de medida parametrizable: kg, gr, lt, un, etc."""
+    nombre = models.CharField(max_length=50, unique=True, verbose_name="Nombre")
+    simbolo = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        verbose_name="Símbolo",
+        help_text="Opcional: ej. kg, g, L"
+    )
+    orden = models.PositiveIntegerField(
+        default=1,
+        validators=[MinValueValidator(1)],
+        verbose_name="Orden",
+        help_text="Orden para mostrar en listas"
+    )
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+    fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
+
+    class Meta:
+        verbose_name = "Unidad de medida"
+        verbose_name_plural = "Unidades de medida"
+        ordering = ['orden', 'nombre']
+
+    def __str__(self):
+        return self.simbolo or self.nombre
+
+
 class Ingrediente(models.Model):
     """Modelo para gestionar ingredientes utilizados en las recetas"""
     nombre = models.CharField(max_length=200, unique=True, verbose_name="Nombre")
-    unidad_medida = models.CharField(
-        max_length=50,
+    unidad_medida = models.ForeignKey(
+        UnidadMedida,
+        on_delete=models.PROTECT,
+        related_name='ingredientes',
         verbose_name="Unidad de medida",
-        help_text="Ej: kg, gr, litros, unidades, etc."
+        help_text="Unidad por defecto para este ingrediente"
     )
     activo = models.BooleanField(default=True, verbose_name="Activo")
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
@@ -24,19 +77,22 @@ class Ingrediente(models.Model):
 
 class Receta(models.Model):
     """Modelo para gestionar recetas del sistema"""
-    CATEGORIA_CHOICES = [
-        ('desayuno', 'Desayuno'),
-        ('almuerzo', 'Almuerzo'),
-        ('cena', 'Cena'),
-        ('snack', 'Snack'),
-    ]
 
     nombre = models.CharField(max_length=200, verbose_name="Nombre")
     descripcion = models.TextField(blank=True, null=True, verbose_name="Descripción")
-    categoria = models.CharField(
-        max_length=20,
-        choices=CATEGORIA_CHOICES,
-        verbose_name="Categoría"
+    tipos_receta = models.ManyToManyField(
+        TipoReceta,
+        related_name='recetas',
+        blank=True,
+        verbose_name="Tipo de receta",
+        help_text="Ej: Comida, Masa, Postre, Complemento, Bebida, Fruta (selección múltiple)"
+    )
+    momentos_dia = models.ManyToManyField(
+        'diets.TipoComida',
+        related_name='recetas_momento',
+        blank=True,
+        verbose_name="Momentos del día",
+        help_text="En qué momentos del día se puede usar esta receta: Desayuno, Media mañana, Comida, Merienda, Cena (selección múltiple)"
     )
     info_nutricional = models.JSONField(
         default=dict,
@@ -52,16 +108,18 @@ class Receta(models.Model):
         Ingrediente,
         through='RecetaIngrediente',
         related_name='recetas',
-        verbose_name="Ingredientes"
+        verbose_name="Ingredientes",
+        help_text="Ingredientes y cantidades (selección múltiple con cantidad y unidad)"
     )
 
     class Meta:
         verbose_name = "Receta"
         verbose_name_plural = "Recetas"
-        ordering = ['categoria', 'nombre']
+        ordering = ['nombre']
 
     def __str__(self):
-        return f"{self.get_categoria_display()} - {self.nombre}"
+        tipos = ", ".join(t.nombre for t in self.tipos_receta.all()[:3])
+        return f"{self.nombre}" + (f" ({tipos})" if tipos else "")
 
 
 class RecetaIngrediente(models.Model):
@@ -84,10 +142,12 @@ class RecetaIngrediente(models.Model):
         validators=[MinValueValidator(0)],
         verbose_name="Cantidad"
     )
-    unidad_medida = models.CharField(
-        max_length=50,
+    unidad_medida = models.ForeignKey(
+        UnidadMedida,
+        on_delete=models.PROTECT,
+        related_name='receta_ingredientes',
         verbose_name="Unidad de medida",
-        help_text="Unidad de medida para esta cantidad específica"
+        help_text="Unidad para esta cantidad en la receta"
     )
 
     class Meta:

@@ -2,18 +2,24 @@
 
 {% block title %}{% if object %}Editar{% else %}Nueva{% endif %} Receta - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'recipes:lista' %}">Recetas</a>
+<span class="sep">/</span>
+<span>{% if object %}Editar {{ object.nombre }}{% else %}Nueva receta{% endif %}</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
-    form { margin-top: 20px; }
-    .form-group { margin-bottom: 20px; }
-    label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
-    input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-    textarea { min-height: 80px; }
     .btn { display: inline-block; padding: 10px 20px; background-color: #7CB342; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
     .btn:hover { background-color: #689F38; }
     .btn-secondary { background-color: #6c757d; }
     .btn-secondary:hover { background-color: #5a6268; }
-    .help-text { font-size: 12px; color: #666; margin-top: 4px; }
+    .form-layout .form-group.checkbox-group label { font-weight: normal; margin-left: 8px; }
+    .form-layout .form-group.checkbox-group input { width: auto; }
     .ingredientes-section { margin-top: 30px; padding-top: 20px; border-top: 2px solid #7CB342; }
     .ingredientes-section h2 { margin-bottom: 15px; }
     .formset-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -29,17 +35,50 @@
 <div class="container">
     <h1>{% if object %}Editar{% else %}Nueva{% endif %} Receta</h1>
     <p class="help-text">Info nutricional: use formato JSON. Ej: {"calorias": 250, "proteinas": 15}</p>
+    <p class="help-text">En "Tipo de receta" y "Momentos del día" puede elegir varias opciones manteniendo <strong>Ctrl</strong> (o <strong>Cmd</strong> en Mac) al hacer clic.</p>
     
-    <form method="post">
+    <form method="post" class="form-layout">
         {% csrf_token %}
-        {% for field in form %}
+        <div class="form-row form-row-1">
             <div class="form-group">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
-                {% if field.errors %}<div style="color: #c62828; font-size: 12px;">{{ field.errors }}</div>{% endif %}
+                <label for="{{ form.nombre.id_for_label }}">{{ form.nombre.label }}</label>
+                {{ form.nombre }}
+                {% if form.nombre.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.nombre.errors }}</div>{% endif %}
             </div>
-        {% endfor %}
+        </div>
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.tipos_receta.id_for_label }}">{{ form.tipos_receta.label }}</label>
+                {{ form.tipos_receta }}
+                {% if form.tipos_receta.help_text %}<div class="help-text">{{ form.tipos_receta.help_text }}</div>{% endif %}
+                {% if form.tipos_receta.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.tipos_receta.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.momentos_dia.id_for_label }}">{{ form.momentos_dia.label }}</label>
+                {{ form.momentos_dia }}
+                {% if form.momentos_dia.help_text %}<div class="help-text">{{ form.momentos_dia.help_text }}</div>{% endif %}
+                {% if form.momentos_dia.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.momentos_dia.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.descripcion.id_for_label }}">{{ form.descripcion.label }}</label>
+                {{ form.descripcion }}
+                {% if form.descripcion.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.descripcion.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.info_nutricional.id_for_label }}">{{ form.info_nutricional.label }}</label>
+                {{ form.info_nutricional }}
+                {% if form.info_nutricional.help_text %}<div class="help-text">{{ form.info_nutricional.help_text }}</div>{% endif %}
+                {% if form.info_nutricional.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.info_nutricional.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group checkbox-group">
+                <label for="{{ form.activa.id_for_label }}">{{ form.activa }} {{ form.activa.label }}</label>
+                {% if form.activa.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.activa.errors }}</div>{% endif %}
+            </div>
+        </div>
 
         {% if object %}
         <div class="ingredientes-section">
@@ -81,7 +120,7 @@
         </div>
         {% endif %}
 
-        <div style="margin-top: 25px;">
+        <div class="form-actions">
             <button type="submit" class="btn">Guardar</button>
             {% if object %}
                 <a href="{% url 'recipes:detalle' object.pk %}" class="btn btn-secondary">Ver detalle</a>

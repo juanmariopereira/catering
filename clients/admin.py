@@ -10,10 +10,10 @@ class ClienteAdmin(admin.ModelAdmin):
     readonly_fields = ['fecha_creacion', 'fecha_actualizacion']
     fieldsets = (
         ('Información Básica', {
-            'fields': ('nombre', 'email', 'telefono', 'activo')
+            'fields': ('nombre', 'email', 'telefono', 'titular', 'activo')
         }),
-        ('Direcciones', {
-            'fields': ('direcciones',)
+        ('Dirección', {
+            'fields': ('direccion', 'link_maps')
         }),
         ('Información Adicional', {
             'fields': ('notas', 'fecha_creacion', 'fecha_actualizacion')

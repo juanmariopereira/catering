@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.core.validators import MinValueValidator
 
@@ -60,6 +61,13 @@ class Ruta(models.Model):
 
 class RutaCliente(models.Model):
     """Modelo intermedio para la relación many-to-many entre Ruta y Contrato con orden"""
+    codigo_entrega = models.CharField(
+        max_length=20,
+        unique=True,
+        blank=True,
+        verbose_name="Código de entrega",
+        help_text="Identificador único de esta entrega (ruta imprimible y reporte cocina)"
+    )
     ruta = models.ForeignKey(
         Ruta,
         on_delete=models.CASCADE,
@@ -88,6 +96,18 @@ class RutaCliente(models.Model):
         verbose_name_plural = "Clientes de Rutas"
         unique_together = ['ruta', 'contrato']
         ordering = ['ruta', 'orden_entrega']
+
+    def save(self, *args, **kwargs):
+        if not self.codigo_entrega:
+            self.codigo_entrega = self._generar_codigo_unico()
+        super().save(*args, **kwargs)
+
+    def _generar_codigo_unico(self):
+        for _ in range(10):
+            codigo = uuid.uuid4().hex[:10].upper()
+            if not RutaCliente.objects.filter(codigo_entrega=codigo).exists():
+                return codigo
+        return uuid.uuid4().hex[:10].upper()
 
     def __str__(self):
         return f"{self.ruta} - {self.contrato.cliente.nombre} (Orden: {self.orden_entrega})"

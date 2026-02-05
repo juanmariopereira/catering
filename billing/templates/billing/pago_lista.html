@@ -2,6 +2,16 @@
 
 {% block title %}Pagos - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Finanzas</span>
+<span class="sep">/</span>
+<a href="{% url 'billing:factura_lista' %}">Facturación</a>
+<span class="sep">/</span>
+<a href="{% url 'billing:pago_lista' %}">Pagos</a>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .actions { margin-bottom: 20px; }

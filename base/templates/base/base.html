@@ -152,6 +152,28 @@
         .container button {
             max-width: 100%;
         }
+        /* Layout de formularios: filas con 2 o 3 columnas en escritorio */
+        .form-layout { margin-top: 20px; }
+        .form-layout .form-row {
+            display: grid;
+            gap: 1rem 1.5rem;
+            margin-bottom: 1.25rem;
+            align-items: start;
+        }
+        .form-layout .form-row-2 { grid-template-columns: 1fr 1fr; }
+        .form-layout .form-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .form-layout .form-group { margin-bottom: 0; }
+        .form-layout .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+        .form-layout .form-group input,
+        .form-layout .form-group select,
+        .form-layout .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .form-layout .form-group textarea { min-height: 80px; }
+        .form-layout .help-text { font-size: 12px; color: #666; margin-top: 4px; }
+        .form-layout .form-actions { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #eee; }
+        @media (max-width: 768px) {
+            .form-layout .form-row-2,
+            .form-layout .form-row-3 { grid-template-columns: 1fr; }
+        }
         /* Tablas responsivas: scroll horizontal en pantallas pequeñas */
         .table-responsive {
             overflow-x: auto;
@@ -170,6 +192,33 @@
         }
         .actions .btn, .btn-group .btn {
             margin-right: 0;
+        }
+        /* Breadcrumb */
+        .breadcrumb-nav {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e8e8e8;
+        }
+        .breadcrumb-nav a {
+            color: #7CB342;
+            text-decoration: none;
+        }
+        .breadcrumb-nav a:hover {
+            text-decoration: underline;
+        }
+        .breadcrumb-nav .sep {
+            color: #999;
+            user-select: none;
+        }
+        .breadcrumb-nav span:last-child {
+            color: #333;
+            font-weight: 500;
         }
         /* Responsive: tablet y móvil */
         @media (max-width: 992px) {
@@ -274,6 +323,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/choices.js/10.0.0/choices.min.css">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -284,13 +334,14 @@
                 <a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/dashboard/' or request.path == '/' %}active{% endif %}">Inicio</a>
             </li>
             <li class="nav-item nav-dropdown">
-                <span class="nav-link nav-dropdown-toggle {% if '/clients/' in request.path or '/contracts/' in request.path or '/plans/' in request.path or '/recipes/' in request.path or '/routes/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Catálogos</span>
+                <span class="nav-link nav-dropdown-toggle {% if '/clients/' in request.path or '/plans/' in request.path or '/recipes/' in request.path or '/routes/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Catálogos</span>
                 <ul class="nav-dropdown-menu">
                     <li><a href="{% url 'clients:lista' %}" class="{% if '/clients/' in request.path %}active{% endif %}">Clientes</a></li>
-                    <li><a href="{% url 'contracts:lista' %}" class="{% if '/contracts/' in request.path %}active{% endif %}">Contratos</a></li>
                     <li><a href="{% url 'plans:lista' %}" class="{% if '/plans/' in request.path %}active{% endif %}">Planes</a></li>
                     <li><a href="{% url 'recipes:lista' %}" class="{% if '/recipes/' in request.path and 'ingredientes' not in request.path %}active{% endif %}">Recetas</a></li>
                     <li><a href="{% url 'recipes:ingrediente_lista' %}" class="{% if 'ingredientes' in request.path %}active{% endif %}">Ingredientes</a></li>
+                    <li><a href="{% url 'recipes:unidad_medida_lista' %}" class="{% if 'unidades-medida' in request.path %}active{% endif %}">Unidades de medida</a></li>
+                    <li><a href="{% url 'recipes:tipo_receta_lista' %}" class="{% if 'tipos-receta' in request.path %}active{% endif %}">Tipos de receta</a></li>
                     <li><a href="{% url 'routes:entregador_lista' %}" class="{% if '/routes/' in request.path %}active{% endif %}">Entregadores</a></li>
                 </ul>
             </li>
@@ -304,8 +355,9 @@
                 </ul>
             </li>
             <li class="nav-item nav-dropdown">
-                <span class="nav-link nav-dropdown-toggle {% if '/billing/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Finanzas</span>
+                <span class="nav-link nav-dropdown-toggle {% if '/billing/' in request.path or '/contracts/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Finanzas</span>
                 <ul class="nav-dropdown-menu">
+                    <li><a href="{% url 'contracts:lista' %}" class="{% if '/contracts/' in request.path %}active{% endif %}">Contratos</a></li>
                     <li><a href="{% url 'billing:factura_lista' %}" class="{% if '/billing/' in request.path and 'dashboard' not in request.path %}active{% endif %}">Facturación</a></li>
                     <li><a href="{% url 'billing:dashboard' %}" class="{% if '/billing/dashboard/' in request.path %}active{% endif %}">Cobranza</a></li>
                 </ul>
@@ -325,8 +377,36 @@
     </nav>
 
     <main class="main-content">
+        <nav class="breadcrumb-nav" aria-label="Miga de pan">
+            {% block breadcrumb %}
+            <a href="{% url 'dashboard' %}">Inicio</a>
+            {% endblock %}
+        </nav>
         {% block content %}{% endblock %}
     </main>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/choices.js/10.0.0/choices.min.js"></script>
+    <script>
+    (function() {
+        function initSearchableSelects(container) {
+            container = container || document.body;
+            var selects = container.querySelectorAll('select[name*="receta"], select[name*="ingrediente"], select.sustitucion-select, select[name="cliente"], select[name="titular"]');
+            selects.forEach(function(select) {
+                if (select.closest('#empty-form-row') || select.closest('.choices')) return;
+                if (select._choicesInstance) return;
+                try {
+                    var instance = new Choices(select, { searchEnabled: true, placeholderValue: 'Buscar...' });
+                    select._choicesInstance = instance;
+                } catch (e) {}
+            });
+        }
+        window.initSearchableSelects = initSearchableSelects;
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() { initSearchableSelects(); });
+        } else {
+            initSearchableSelects();
+        }
+    })();
+    </script>
     {% block extra_js %}{% endblock %}
     <style>@media print { .no-print { display: none !important; } }</style>
 </body>

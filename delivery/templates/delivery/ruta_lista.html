@@ -2,6 +2,14 @@
 
 {% block title %}Lista de Rutas de Entrega - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Producción</span>
+<span class="sep">/</span>
+<a href="{% url 'delivery:lista' %}">Entregas</a>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }

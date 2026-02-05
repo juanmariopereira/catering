@@ -1,5 +1,21 @@
 from django.contrib import admin
-from .models import Ingrediente, Receta, RecetaIngrediente
+from .models import TipoReceta, UnidadMedida, Ingrediente, Receta, RecetaIngrediente
+
+
+@admin.register(UnidadMedida)
+class UnidadMedidaAdmin(admin.ModelAdmin):
+    list_display = ['nombre', 'simbolo', 'orden', 'activo', 'fecha_creacion']
+    list_filter = ['activo']
+    search_fields = ['nombre', 'simbolo']
+    ordering = ['orden', 'nombre']
+
+
+@admin.register(TipoReceta)
+class TipoRecetaAdmin(admin.ModelAdmin):
+    list_display = ['nombre', 'orden', 'activo', 'fecha_creacion']
+    list_filter = ['activo']
+    search_fields = ['nombre']
+    ordering = ['orden', 'nombre']
 
 
 @admin.register(Ingrediente)
@@ -17,14 +33,15 @@ class RecetaIngredienteInline(admin.TabularInline):
 
 @admin.register(Receta)
 class RecetaAdmin(admin.ModelAdmin):
-    list_display = ['nombre', 'categoria', 'activa', 'fecha_creacion']
-    list_filter = ['categoria', 'activa', 'fecha_creacion']
+    list_display = ['nombre', 'activa', 'fecha_creacion']
+    list_filter = ['activa', 'tipos_receta', 'momentos_dia', 'fecha_creacion']
     search_fields = ['nombre', 'descripcion']
     readonly_fields = ['fecha_creacion', 'fecha_actualizacion']
+    filter_horizontal = ['tipos_receta', 'momentos_dia']
     inlines = [RecetaIngredienteInline]
     fieldsets = (
         ('Información Básica', {
-            'fields': ('nombre', 'descripcion', 'categoria', 'activa')
+            'fields': ('nombre', 'descripcion', 'tipos_receta', 'momentos_dia', 'activa')
         }),
         ('Información Nutricional', {
             'fields': ('info_nutricional',)

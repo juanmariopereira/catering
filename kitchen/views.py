@@ -62,6 +62,18 @@ def detalle_cocina_fecha(request, fecha_str=None):
 
     # Obtener recetas a preparar para esta fecha
     recetas_info = DetalleCocina.obtener_recetas_por_fecha(fecha)
+    from planning.utils import resumen_cocina_por_momento
+    from routes.models import RutaCliente
+    resumen_momento = resumen_cocina_por_momento(fecha)
+
+    # Códigos de entrega por contrato en esta fecha (para reporte cocina)
+    rutas_clientes_fecha = {
+        rc.contrato_id: rc.codigo_entrega
+        for rc in RutaCliente.objects.filter(ruta__fecha=fecha).select_related('contrato')
+    }
+    for item in recetas_info:
+        for p in item.get('planificaciones', []):
+            p['codigo_entrega'] = rutas_clientes_fecha.get(p['contrato'].id) if p.get('contrato') else None
 
     # Obtener o crear el detalle de cocina
     detalle_cocina, created = DetalleCocina.objects.get_or_create(fecha=fecha)
@@ -70,6 +82,7 @@ def detalle_cocina_fecha(request, fecha_str=None):
         'fecha': fecha,
         'detalle_cocina': detalle_cocina,
         'recetas_info': recetas_info,
+        'resumen_momento': resumen_momento,
         'fecha_anterior': fecha - timedelta(days=1),
         'fecha_siguiente': fecha + timedelta(days=1),
     }

@@ -1,6 +1,6 @@
 from django.db import models
 from django.core.validators import MinValueValidator
-from recipes.models import RecetaIngrediente, Ingrediente
+from recipes.models import RecetaIngrediente, Ingrediente, UnidadMedida
 
 
 class PrevisionCompra(models.Model):
@@ -29,12 +29,12 @@ class PrevisionCompra(models.Model):
             self.fecha_hasta,
         )
         PrevisionCompraItem.objects.filter(prevision=self).delete()
-        for (ingrediente_id, unidad), cantidad_total in ingredientes_totales.items():
+        for (ingrediente_id, unidad_id), cantidad_total in ingredientes_totales.items():
             PrevisionCompraItem.objects.create(
                 prevision=self,
                 ingrediente_id=ingrediente_id,
                 cantidad_total=cantidad_total,
-                unidad_medida=unidad
+                unidad_medida_id=unidad_id
             )
 
 
@@ -58,8 +58,10 @@ class PrevisionCompraItem(models.Model):
         validators=[MinValueValidator(0)],
         verbose_name="Cantidad total"
     )
-    unidad_medida = models.CharField(
-        max_length=50,
+    unidad_medida = models.ForeignKey(
+        'recipes.UnidadMedida',
+        on_delete=models.PROTECT,
+        related_name='prevision_items',
         verbose_name="Unidad de medida"
     )
 

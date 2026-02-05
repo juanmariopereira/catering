@@ -1,0 +1,118 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Contrato {{ contrato.cliente.nombre }} - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Finanzas</span>
+<span class="sep">/</span>
+<a href="{% url 'contracts:lista' %}">Contratos</a>
+<span class="sep">/</span>
+<span>{{ contrato.cliente.nombre }} — {{ contrato.plan.nombre }}</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .actions { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
+    .btn-primary { background-color: #7CB342; }
+    .btn-primary:hover { background-color: #689F38; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    .btn-danger { background-color: #F44336; }
+    .btn-danger:hover { background-color: #D32F2F; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .badge-activo { background-color: #4CAF50; color: white; }
+    .badge-pausado { background-color: #ff9800; color: white; }
+    .badge-cancelado { background-color: #F44336; color: white; }
+    .dl-horizontal dt { float: left; width: 140px; clear: left; font-weight: 600; color: #555; }
+    .dl-horizontal dd { margin-left: 160px; margin-bottom: 8px; }
+    .dl-horizontal::after { content: ""; display: table; clear: both; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #e8f5e9; font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="actions">
+        <a href="{% url 'contracts:lista' %}" class="btn btn-secondary">← Contratos</a>
+        <a href="{% url 'contracts:editar' contrato.pk %}" class="btn btn-primary">Editar contrato</a>
+        <a href="{% url 'contracts:eliminar' contrato.pk %}" class="btn btn-danger">Eliminar</a>
+        {% if contrato.estado == 'activo' %}
+        <a href="{% url 'planning:clientes_por_fecha' %}" class="btn btn-secondary">Planificación</a>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h1>{{ contrato.cliente.nombre }} — {{ contrato.plan.nombre }}</h1>
+        <p><span class="badge badge-{{ contrato.estado }}">{{ contrato.get_estado_display }}</span></p>
+        <dl class="dl-horizontal">
+            <dt>Cliente</dt>
+            <dd>{{ contrato.cliente.nombre }} ({{ contrato.cliente.email }})</dd>
+            <dt>Plan</dt>
+            <dd>{{ contrato.plan.nombre }}</dd>
+            <dt>Fecha inicio</dt>
+            <dd>{{ contrato.fecha_inicio|date:"d/m/Y" }}</dd>
+            <dt>Fecha fin</dt>
+            <dd>{% if contrato.fecha_fin %}{{ contrato.fecha_fin|date:"d/m/Y" }}{% else %}—{% endif %}</dd>
+            <dt>Precio</dt>
+            <dd>${{ contrato.precio|floatformat:2 }} ({{ contrato.get_frecuencia_pago_display }})</dd>
+            <dt>Dirección de entrega</dt>
+            <dd>{% if contrato.direccion_entrega %}{{ contrato.direccion_entrega|linebreaksbr }}{% else %}—{% endif %}
+                {% if contrato.link_maps %}
+                <br><a href="{{ contrato.link_maps }}" target="_blank" rel="noopener noreferrer">Ver en Google Maps</a>
+                {% endif %}
+            </dd>
+            <dt>Días de entrega</dt>
+            <dd>{% if contrato.dias_entrega %}{{ contrato.dias_entrega|join:", " }}{% else %}—{% endif %}</dd>
+            <dt>Horario entrega</dt>
+            <dd>{% if contrato.horario_entrega %}{{ contrato.horario_entrega|time:"H:i" }}{% else %}—{% endif %}</dd>
+            {% if contrato.notas %}
+            <dt>Notas</dt>
+            <dd>{{ contrato.notas }}</dd>
+            {% endif %}
+        </dl>
+    </div>
+
+    <div class="card">
+        <h2>Pausas del contrato</h2>
+        <p>Durante las pausas el cliente no recibe servicio (no se incluye en planificación ni entregas en esas fechas). Puede definir varias pausas por contrato (por ejemplo varias semanas en el mes).</p>
+        <div class="actions" style="margin-top: 10px;">
+            <a href="{% url 'contracts:pausa_crear' contrato.pk %}" class="btn btn-primary">Añadir pausa</a>
+        </div>
+        {% if pausas %}
+        <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha inicio</th>
+                    <th>Fecha fin</th>
+                    <th>Motivo</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pausas %}
+                <tr>
+                    <td>{{ p.fecha_inicio|date:"d/m/Y" }}</td>
+                    <td>{{ p.fecha_fin|date:"d/m/Y" }}</td>
+                    <td>{{ p.motivo|default:"—" }}</td>
+                    <td>
+                        <a href="{% url 'contracts:pausa_editar' p.pk %}">Editar</a> |
+                        <a href="{% url 'contracts:pausa_eliminar' p.pk %}">Eliminar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p>No hay pausas definidas para este contrato.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

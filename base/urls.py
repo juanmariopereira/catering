@@ -37,3 +37,5 @@ urlpatterns = [
     path('purchases/', include('purchases.urls')),
     path('billing/', include('billing.urls')),
 ]
+
+handler404 = 'base.views.page_not_found'

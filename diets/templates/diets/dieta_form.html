@@ -2,18 +2,24 @@
 
 {% block title %}{% if object %}Editar{% else %}Nueva{% endif %} Dieta - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'diets:lista' %}">Dietas</a>
+<span class="sep">/</span>
+<span>{% if object %}Editar {{ object.nombre }}{% else %}Nueva dieta{% endif %}</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
-    form { margin-top: 20px; }
-    .form-group { margin-bottom: 20px; }
-    label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
-    input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-    textarea { min-height: 80px; }
     .btn { display: inline-block; padding: 10px 20px; background-color: #7CB342; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
     .btn:hover { background-color: #689F38; }
     .btn-secondary { background-color: #6c757d; }
     .btn-secondary:hover { background-color: #5a6268; }
-    .help-text { font-size: 12px; color: #666; margin-top: 4px; }
+    .form-layout .form-group.checkbox-group label { font-weight: normal; margin-left: 8px; }
+    .form-layout .form-group.checkbox-group input { width: auto; }
     .recetas-section { margin-top: 30px; padding-top: 20px; border-top: 2px solid #7CB342; }
     .recetas-section h2 { margin-bottom: 15px; }
     .formset-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -21,7 +27,10 @@
     .formset-table th { background-color: #e8f5e9; }
     .formset-table input, .formset-table select { width: 100%; padding: 6px; }
     .formset-table .delete { width: 50px; text-align: center; }
-    .formset-table .orden-col { width: 80px; }
+    .formset-table .drag-cell { width: 36px; padding: 4px 8px; vertical-align: middle; cursor: grab; user-select: none; }
+    .formset-table .drag-cell:active { cursor: grabbing; }
+    .formset-table .drag-handle { color: #999; font-size: 1.1rem; line-height: 1; }
+    .formset-table .orden-input-wrap { display: none; }
     .btn-add-row { margin-top: 10px; }
 </style>
 {% endblock %}
@@ -30,34 +39,55 @@
 <div class="container">
     <h1>{% if object %}Editar{% else %}Nueva{% endif %} Dieta</h1>
 
-    <form method="post">
+    <form method="post" class="form-layout">
         {% csrf_token %}
-        {% for field in form %}
+        <div class="form-row form-row-2">
             <div class="form-group">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
-                {% if field.errors %}<div style="color: #c62828; font-size: 12px;">{{ field.errors }}</div>{% endif %}
+                <label for="{{ form.nombre.id_for_label }}">{{ form.nombre.label }}</label>
+                {{ form.nombre }}
+                {% if form.nombre.help_text %}<div class="help-text">{{ form.nombre.help_text }}</div>{% endif %}
+                {% if form.nombre.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.nombre.errors }}</div>{% endif %}
             </div>
-        {% endfor %}
+            <div class="form-group checkbox-group">
+                <label for="{{ form.activa.id_for_label }}">{{ form.activa }} {{ form.activa.label }}</label>
+                {% if form.activa.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.activa.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.descripcion.id_for_label }}">{{ form.descripcion.label }}</label>
+                {{ form.descripcion }}
+                {% if form.descripcion.help_text %}<div class="help-text">{{ form.descripcion.help_text }}</div>{% endif %}
+                {% if form.descripcion.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.descripcion.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.planes.id_for_label }}">{{ form.planes.label }}</label>
+                {{ form.planes }}
+                {% if form.planes.help_text %}<div class="help-text">{{ form.planes.help_text }}</div>{% endif %}
+                {% if form.planes.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.planes.errors }}</div>{% endif %}
+            </div>
+        </div>
 
         {% if formset %}
         <div class="recetas-section">
             <h2>Comidas de la dieta (por momento del día)</h2>
-            <p class="help-text">Puede usar tantos momentos del día como necesite (Desayuno, Media mañana, Comida, Merienda, Cena) y añadir varias recetas por momento: bebidas, frutas, postres, etc. Ej.: Media mañana = té + galleta + cereal (3 filas con el mismo momento, orden 1, 2, 3). Use «Añadir otra fila» si necesita más.</p>
+            <p class="help-text">Puede usar tantos momentos del día como necesite (Desayuno, Media mañana, Comida, Merienda, Cena) y añadir varias recetas por momento. Arrastre las filas para reordenar. Use «Añadir otra fila» si necesita más.</p>
             {{ formset.management_form }}
             <table class="formset-table" id="formset-table">
                 <thead>
                     <tr>
+                        <th class="drag-cell" title="Arrastrar para reordenar"></th>
                         <th>Momento / Tipo de comida</th>
                         <th>Receta</th>
-                        <th class="orden-col">Orden</th>
                         <th class="delete">Eliminar</th>
                     </tr>
                 </thead>
                 <tbody id="formset-body">
                     {% for f in formset %}
                     <tr class="formset-row">
+                        <td class="drag-cell"><span class="drag-handle" title="Arrastrar para reordenar">⋮⋮</span><span class="orden-input-wrap">{{ f.orden }}</span>{% if f.orden.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.orden.errors }}</div>{% endif %}</td>
                         <td>
                             {{ f.tipo_comida }}
                             {% if f.tipo_comida.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.tipo_comida.errors }}</div>{% endif %}
@@ -66,10 +96,6 @@
                             {{ f.id }}
                             {{ f.receta }}
                             {% if f.receta.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.receta.errors }}</div>{% endif %}
-                        </td>
-                        <td>
-                            {{ f.orden }}
-                            {% if f.orden.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.orden.errors }}</div>{% endif %}
                         </td>
                         <td class="delete">
                             {% if f.DELETE %}{{ f.DELETE }}{% endif %}
@@ -82,7 +108,7 @@
         </div>
         {% endif %}
 
-        <div style="margin-top: 25px;">
+        <div class="form-actions">
             <button type="submit" class="btn">Guardar</button>
             <a href="{% url 'diets:lista' %}" class="btn btn-secondary">Cancelar</a>
         </div>
@@ -92,12 +118,32 @@
 
 {% block extra_js %}
 {% if formset %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 (function() {
     var prefix = '{{ formset.prefix }}';
     var tbody = document.getElementById('formset-body');
     var addBtn = document.getElementById('add-row');
     if (!tbody || !addBtn) return;
+    if (addBtn.dataset.addRowListener === '1') return;
+    addBtn.dataset.addRowListener = '1';
+
+    function renumberOrden() {
+        var rows = tbody.querySelectorAll('tr.formset-row');
+        rows.forEach(function(tr, idx) {
+            var input = tr.querySelector('input[name$="-orden"]');
+            if (input) input.value = idx + 1;
+        });
+    }
+
+    if (typeof Sortable !== 'undefined') {
+        new Sortable(tbody, {
+            animation: 150,
+            handle: '.drag-handle',
+            onEnd: renumberOrden
+        });
+    }
+
     addBtn.addEventListener('click', function() {
         var totalInput = document.getElementById('id_' + prefix + '-TOTAL_FORMS');
         var total = parseInt(totalInput.value, 10);
@@ -118,13 +164,14 @@
             if (lab.htmlFor) lab.htmlFor = replaceIndex(lab.htmlFor, total - 1, total);
         });
         newRow.querySelectorAll('input[type="text"], input[type="number"]').forEach(function(el) {
-            el.value = el.name && el.name.indexOf('orden') !== -1 ? '1' : '';
+            el.value = el.name && el.name.indexOf('orden') !== -1 ? String(total + 1) : '';
         });
         newRow.querySelectorAll('select').forEach(function(el) { el.selectedIndex = 0; });
         newRow.querySelectorAll('input[type="checkbox"]').forEach(function(el) { el.checked = false; });
         newRow.querySelectorAll('[class*="errorlist"], [style*="c62828"]').forEach(function(el) { el.remove(); });
         tbody.appendChild(newRow);
         totalInput.value = total + 1;
+        if (window.initSearchableSelects) window.initSearchableSelects(newRow);
     });
 })();
 </script>

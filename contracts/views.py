@@ -1,10 +1,14 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
-from django.urls import reverse_lazy
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
+from django.urls import reverse_lazy, reverse
+from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 from django.db.models import Q
 
-from .models import Contrato
+from .models import Contrato, PausaContrato
+from .forms import ContratoForm
+from plans.models import Plan
+from clients.models import Cliente
 
 
 class ContratoListView(LoginRequiredMixin, ListView):
@@ -28,22 +32,56 @@ class ContratoListView(LoginRequiredMixin, ListView):
 
 class ContratoCreateView(LoginRequiredMixin, CreateView):
     model = Contrato
+    form_class = ContratoForm
     template_name = 'contracts/contrato_form.html'
-    fields = ['cliente', 'plan', 'fecha_inicio', 'fecha_fin', 'precio', 'frecuencia_pago',
-              'direccion_entrega', 'horario_entrega', 'dias_entrega', 'estado', 'notas']
     success_url = reverse_lazy('contracts:lista')
+
+    def get_initial(self):
+        initial = super().get_initial()
+        plan_id = self.request.GET.get('plan')
+        if plan_id:
+            try:
+                plan = Plan.objects.get(pk=plan_id, activo=True)
+                initial['plan'] = plan.pk
+                initial['precio'] = plan.precio_base
+            except Plan.DoesNotExist:
+                pass
+        return initial
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if not self.object:
+            context['plan_precios'] = {str(p.id): str(p.precio_base) for p in Plan.objects.filter(activo=True)}
+            context['clientes_datos'] = {
+                str(c.id): {'direccion': c.direccion or '', 'link_maps': c.link_maps or ''}
+                for c in Cliente.objects.all()
+            }
+        return context
 
     def form_valid(self, form):
         messages.success(self.request, 'Contrato creado exitosamente.')
         return super().form_valid(form)
 
 
+class ContratoDetailView(LoginRequiredMixin, DetailView):
+    model = Contrato
+    template_name = 'contracts/contrato_detalle.html'
+    context_object_name = 'contrato'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['pausas'] = self.object.pausas.all().order_by('-fecha_inicio')
+        return context
+
+
 class ContratoUpdateView(LoginRequiredMixin, UpdateView):
     model = Contrato
+    form_class = ContratoForm
     template_name = 'contracts/contrato_form.html'
-    fields = ['cliente', 'plan', 'fecha_inicio', 'fecha_fin', 'precio', 'frecuencia_pago',
-              'direccion_entrega', 'horario_entrega', 'dias_entrega', 'estado', 'notas']
-    success_url = reverse_lazy('contracts:lista')
+    context_object_name = 'contrato'
+
+    def get_success_url(self):
+        return reverse('contracts:detalle', args=[self.object.pk])
 
     def form_valid(self, form):
         messages.success(self.request, 'Contrato actualizado exitosamente.')
@@ -57,4 +95,60 @@ class ContratoDeleteView(LoginRequiredMixin, DeleteView):
 
     def form_valid(self, form):
         messages.success(self.request, 'Contrato eliminado exitosamente.')
+        return super().form_valid(form)
+
+
+class PausaContratoCreateView(LoginRequiredMixin, CreateView):
+    model = PausaContrato
+    template_name = 'contracts/pausa_form.html'
+    fields = ['fecha_inicio', 'fecha_fin', 'motivo']
+    context_object_name = 'pausa'
+
+    def dispatch(self, request, *args, **kwargs):
+        self.contrato = get_object_or_404(Contrato, pk=kwargs['contrato_pk'])
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['contrato'] = self.contrato
+        return context
+
+    def form_valid(self, form):
+        form.instance.contrato = self.contrato
+        messages.success(self.request, 'Pausa añadida correctamente.')
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('contracts:detalle', args=[self.object.contrato_id])
+
+
+class PausaContratoUpdateView(LoginRequiredMixin, UpdateView):
+    model = PausaContrato
+    template_name = 'contracts/pausa_form.html'
+    fields = ['fecha_inicio', 'fecha_fin', 'motivo']
+    context_object_name = 'pausa'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['contrato'] = self.object.contrato
+        return context
+
+    def get_success_url(self):
+        return reverse('contracts:detalle', args=[self.object.contrato_id])
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Pausa actualizada correctamente.')
+        return super().form_valid(form)
+
+
+class PausaContratoDeleteView(LoginRequiredMixin, DeleteView):
+    model = PausaContrato
+    template_name = 'contracts/pausa_confirm_delete.html'
+    context_object_name = 'pausa'
+
+    def get_success_url(self):
+        return reverse('contracts:detalle', args=[self.object.contrato_id])
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Pausa eliminada.')
         return super().form_valid(form)

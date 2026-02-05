@@ -2,6 +2,16 @@
 
 {% block title %}{{ receta.nombre }} - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'recipes:lista' %}">Recetas</a>
+<span class="sep">/</span>
+<span>{{ receta.nombre }}</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .meta { color: #666; margin-bottom: 20px; }
@@ -25,7 +35,8 @@
 <div class="container">
     <h1>{{ receta.nombre }}</h1>
     <div class="meta">
-        <span><strong>Categoría:</strong> {{ receta.get_categoria_display }}</span>
+        <span><strong>Tipo de receta:</strong> {% for t in receta.tipos_receta.all %}{{ t.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</span>
+        <span><strong>Momentos del día:</strong> {% for m in receta.momentos_dia.all %}{{ m.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</span>
         <span><strong>Estado:</strong> {% if receta.activa %}Activa{% else %}Inactiva{% endif %}</span>
     </div>
 

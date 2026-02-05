@@ -2,6 +2,16 @@
 
 {% block title %}Ingredientes - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'recipes:lista' %}">Recetas</a>
+<span class="sep">/</span>
+<a href="{% url 'recipes:ingrediente_lista' %}">Ingredientes</a>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .actions { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }

@@ -44,6 +44,17 @@
         font-weight: bold;
         font-size: 18px;
     }
+    .codigo-entrega {
+        display: inline-block;
+        margin-right: 10px;
+        padding: 4px 10px;
+        background-color: #2196F3;
+        color: white;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 4px;
+        letter-spacing: 0.05em;
+    }
     .cliente-nombre { font-size: 20px; font-weight: bold; color: #333; }
     .direccion {
         margin-top: 10px;
@@ -90,46 +101,32 @@
         </div>
     </div>
 
-    {% if ruta.entregador.telefono %}
-        <div class="info-ruta">
-            <div class="info-item">
-                <div class="info-label">Teléfono</div>
-                <div class="info-value">{{ ruta.entregador.telefono }}</div>
-            </div>
-            {% if ruta.entregador.vehiculo %}
-                <div class="info-item">
-                    <div class="info-label">Vehículo</div>
-                    <div class="info-value">{{ ruta.entregador.vehiculo }}</div>
-                </div>
-            {% endif %}
-        </div>
-    {% endif %}
-
     {% if ruta_clientes %}
         <div class="clientes-lista">
             {% for ruta_cliente in ruta_clientes %}
                 <div class="cliente-item">
                     <div class="cliente-header">
                         <div class="orden-entrega">#{{ ruta_cliente.orden_entrega }}</div>
-                        <div class="cliente-nombre">{{ ruta_cliente.contrato.cliente.nombre }}</div>
+                        <div>
+                            <span class="codigo-entrega" title="Código de entrega">{{ ruta_cliente.codigo_entrega }}</span>
+                            <span class="cliente-nombre">{% if ruta_cliente.contrato.cliente.telefono %}{{ ruta_cliente.contrato.cliente.nombre }} · {{ ruta_cliente.contrato.cliente.telefono }}{% else %}{{ ruta_cliente.contrato.cliente.nombre }}{% endif %}</span>
+                        </div>
                     </div>
 
                     <div class="direccion">
                         <div class="direccion-label">Dirección de Entrega:</div>
                         <div class="direccion-texto">
-                            {% if ruta_cliente.direccion_entrega %}
-                                {% if ruta_cliente.direccion_entrega.calle %}
-                                    {{ ruta_cliente.direccion_entrega.calle }}
-                                    {% if ruta_cliente.direccion_entrega.numero %}#{{ ruta_cliente.direccion_entrega.numero }}{% endif %}
-                                    <br>
-                                {% endif %}
+                            {% if ruta_cliente.direccion_entrega and ruta_cliente.direccion_entrega.calle %}
+                                {{ ruta_cliente.direccion_entrega.calle }}{% if ruta_cliente.direccion_entrega.numero %} #{{ ruta_cliente.direccion_entrega.numero }}{% endif %}<br>
                                 {% if ruta_cliente.direccion_entrega.colonia %}{{ ruta_cliente.direccion_entrega.colonia }}<br>{% endif %}
                                 {% if ruta_cliente.direccion_entrega.ciudad %}
-                                    {{ ruta_cliente.direccion_entrega.ciudad }}
-                                    {% if ruta_cliente.direccion_entrega.codigo_postal %}C.P. {{ ruta_cliente.direccion_entrega.codigo_postal }}{% endif %}
+                                    {{ ruta_cliente.direccion_entrega.ciudad }}{% if ruta_cliente.direccion_entrega.codigo_postal %} C.P. {{ ruta_cliente.direccion_entrega.codigo_postal }}{% endif %}
                                 {% endif %}
                             {% else %}
-                                {{ ruta_cliente.contrato.direccion_entrega|safe }}
+                                {{ ruta_cliente.contrato.direccion_entrega|linebreaksbr|default:"—" }}
+                            {% endif %}
+                            {% if ruta_cliente.contrato.link_maps %}
+                                <br><a href="{{ ruta_cliente.contrato.link_maps }}" target="_blank" rel="noopener noreferrer">Ver en Google Maps</a>
                             {% endif %}
                         </div>
                     </div>
@@ -137,14 +134,7 @@
                     {% if ruta_cliente.contrato.horario_entrega %}
                         <div class="direccion" style="margin-top: 10px;">
                             <div class="direccion-label">Horario de Entrega:</div>
-                            <div class="direccion-texto">{{ ruta_cliente.contrato.horario_entrega }}</div>
-                        </div>
-                    {% endif %}
-
-                    {% if ruta_cliente.contrato.cliente.telefono %}
-                        <div class="direccion" style="margin-top: 10px;">
-                            <div class="direccion-label">Teléfono:</div>
-                            <div class="direccion-texto">{{ ruta_cliente.contrato.cliente.telefono }}</div>
+                            <div class="direccion-texto">{{ ruta_cliente.contrato.horario_entrega|time:"H:i" }}</div>
                         </div>
                     {% endif %}
 

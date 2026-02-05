@@ -2,40 +2,209 @@
 
 {% block title %}{% if object %}Editar{% else %}Nuevo{% endif %} Contrato - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Finanzas</span>
+<span class="sep">/</span>
+<a href="{% url 'contracts:lista' %}">Contratos</a>
+<span class="sep">/</span>
+<span>{% if object %}Editar contrato{% else %}Nuevo contrato{% endif %}</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
-    form { margin-top: 20px; }
-    .form-group { margin-bottom: 20px; }
-    label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
-    input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-    textarea { min-height: 80px; }
     .btn { display: inline-block; padding: 10px 20px; background-color: #7CB342; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
     .btn:hover { background-color: #689F38; }
     .btn-secondary { background-color: #6c757d; }
     .btn-secondary:hover { background-color: #5a6268; }
-    .help-text { font-size: 12px; color: #666; margin-top: 4px; }
+    .form-layout ul.checkbox-list { list-style: none; margin: 0; padding: 0; }
+    .form-layout ul.checkbox-list li { margin: 6px 0; }
+    .form-layout ul.checkbox-list label { font-weight: normal; margin-left: 6px; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
     <h1>{% if object %}Editar{% else %}Nuevo{% endif %} Contrato</h1>
-    <p class="help-text">Direcciones y días: use formato JSON. Ej: ["lunes","martes"] o {"calle":"X","numero":"123"}</p>
+    <p class="help-text">Indique la dirección completa de entrega y, si lo desea, un enlace de Google Maps a la ubicación.</p>
     
-    <form method="post">
+    <form method="post" class="form-layout">
         {% csrf_token %}
-        {% for field in form %}
+        <div class="form-row form-row-2">
             <div class="form-group">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
-                {% if field.errors %}<div style="color: #c62828; font-size: 12px;">{{ field.errors }}</div>{% endif %}
+                <label for="{{ form.cliente.id_for_label }}">{{ form.cliente.label }}</label>
+                {{ form.cliente }}
+                {% if form.cliente.help_text %}<div class="help-text">{{ form.cliente.help_text }}</div>{% endif %}
+                {% if form.cliente.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.cliente.errors }}</div>{% endif %}
             </div>
-        {% endfor %}
-        <div>
+            <div class="form-group">
+                <label for="{{ form.plan.id_for_label }}">{{ form.plan.label }}</label>
+                {{ form.plan }}
+                {% if form.plan.help_text %}<div class="help-text">{{ form.plan.help_text }}</div>{% endif %}
+                {% if form.plan.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.plan.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.fecha_inicio.id_for_label }}">{{ form.fecha_inicio.label }}</label>
+                {{ form.fecha_inicio }}
+                {% if form.fecha_inicio.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.fecha_inicio.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.fecha_fin.id_for_label }}">{{ form.fecha_fin.label }}</label>
+                {{ form.fecha_fin }}
+                {% if form.fecha_fin.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.fecha_fin.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.precio.id_for_label }}">{{ form.precio.label }}</label>
+                {{ form.precio }}
+                {% if form.precio.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.precio.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.frecuencia_pago.id_for_label }}">{{ form.frecuencia_pago.label }}</label>
+                {{ form.frecuencia_pago }}
+                {% if form.frecuencia_pago.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.frecuencia_pago.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.direccion_entrega.id_for_label }}">{{ form.direccion_entrega.label }}</label>
+                {{ form.direccion_entrega }}
+                {% if form.direccion_entrega.help_text %}<div class="help-text">{{ form.direccion_entrega.help_text }}</div>{% endif %}
+                {% if form.direccion_entrega.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.direccion_entrega.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.link_maps.id_for_label }}">{{ form.link_maps.label }}</label>
+                {{ form.link_maps }}
+                {% if form.link_maps.help_text %}<div class="help-text">{{ form.link_maps.help_text }}</div>{% endif %}
+                {% if form.link_maps.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.link_maps.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.horario_entrega.id_for_label }}">{{ form.horario_entrega.label }}</label>
+                {{ form.horario_entrega }}
+                {% if form.horario_entrega.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.horario_entrega.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label>{{ form.dias_entrega.label }}</label>
+                {{ form.dias_entrega }}
+                {% if form.dias_entrega.help_text %}<div class="help-text">{{ form.dias_entrega.help_text }}</div>{% endif %}
+                {% if form.dias_entrega.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.dias_entrega.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.estado.id_for_label }}">{{ form.estado.label }}</label>
+                {{ form.estado }}
+                {% if form.estado.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.estado.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.notas.id_for_label }}">{{ form.notas.label }}</label>
+                {{ form.notas }}
+                {% if form.notas.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.notas.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-actions">
             <button type="submit" class="btn">Guardar</button>
+            {% if object %}
+            <a href="{% url 'contracts:detalle' object.pk %}" class="btn btn-secondary">Ver detalle</a>
+            {% endif %}
             <a href="{% url 'contracts:lista' %}" class="btn btn-secondary">Cancelar</a>
         </div>
     </form>
 </div>
+
+{% if not object %}
+{{ plan_precios|json_script:"plan-precios" }}
+{{ clientes_datos|json_script:"clientes-datos" }}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if not object %}
+<script>
+(function() {
+    var planPreciosEl = document.getElementById('plan-precios');
+    var clientesDatosEl = document.getElementById('clientes-datos');
+    var planPrecios = planPreciosEl ? JSON.parse(planPreciosEl.textContent) : {};
+    var clientesDatos = clientesDatosEl ? JSON.parse(clientesDatosEl.textContent) : {};
+    var form = document.querySelector('form.form-layout');
+    if (!form) return;
+
+    function byName(name) {
+        return form.querySelector('[name="' + name + '"]');
+    }
+    function getSelectValue(selectName) {
+        var sel = byName(selectName);
+        if (!sel) return null;
+        return sel.tagName === 'SELECT' ? sel.value : (sel.closest('.choices') && (sel.querySelector('select') || sel).value) || sel.value;
+    }
+
+    // Precio por defecto desde el plan
+    function updatePrecio() {
+        var planId = getSelectValue('plan');
+        var precioInput = byName('precio');
+        if (planId && planPrecios[planId] && precioInput) precioInput.value = planPrecios[planId];
+    }
+    form.querySelector('select[name="plan"]') && form.querySelector('select[name="plan"]').addEventListener('change', updatePrecio);
+    updatePrecio();
+
+    // Dirección y link Maps desde el cliente (editables)
+    function updateDatosCliente() {
+        var clienteId = getSelectValue('cliente');
+        var dir = byName('direccion_entrega');
+        var link = byName('link_maps');
+        if (!clienteId || !clientesDatos[clienteId]) return;
+        var d = clientesDatos[clienteId];
+        if (dir) dir.value = d.direccion || '';
+        if (link) link.value = d.link_maps || '';
+    }
+    var clienteSelect = form.querySelector('select[name="cliente"]');
+    if (clienteSelect) clienteSelect.addEventListener('change', updateDatosCliente);
+
+    // Fecha fin según frecuencia de pago
+    function parseDate(str) {
+        if (!str) return null;
+        var parts = str.split('-');
+        if (parts.length !== 3) return null;
+        var d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        return isNaN(d.getTime()) ? null : d;
+    }
+    function formatDate(d) {
+        var y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    }
+    function calcFechaFin() {
+        var fechaInicio = byName('fecha_inicio');
+        var fechaFin = byName('fecha_fin');
+        var freq = getSelectValue('frecuencia_pago');
+        if (!fechaInicio || !fechaFin || !fechaInicio.value) return;
+        var d = parseDate(fechaInicio.value);
+        if (!d) return;
+        if (freq === 'diario') { /* un día: fin = inicio */ }
+        else if (freq === 'semanal') d.setDate(d.getDate() + 6);
+        else if (freq === 'quincenal') d.setDate(d.getDate() + 14);
+        else if (freq === 'mensual') {
+            d.setMonth(d.getMonth() + 1);
+            d.setDate(d.getDate() - 1);
+        }
+        else return;
+        fechaFin.value = formatDate(d);
+    }
+    var fi = byName('fecha_inicio');
+    var ff = byName('fecha_fin');
+    var freqSelect = form.querySelector('select[name="frecuencia_pago"]');
+    if (fi) fi.addEventListener('change', calcFechaFin);
+    if (freqSelect) freqSelect.addEventListener('change', calcFechaFin);
+})();
+</script>
+{% endif %}
 {% endblock %}

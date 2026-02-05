@@ -2,6 +2,16 @@
 
 {% block title %}Eliminar Planificación - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Producción</span>
+<span class="sep">/</span>
+<a href="{% url 'planning:lista' %}">Planificación</a>
+<span class="sep">/</span>
+<span>Eliminar menú</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .btn {

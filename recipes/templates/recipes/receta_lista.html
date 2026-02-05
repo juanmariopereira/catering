@@ -2,6 +2,14 @@
 
 {% block title %}Recetas - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'recipes:lista' %}">Recetas</a>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .actions { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
@@ -29,12 +37,17 @@
         <a href="{% url 'recipes:ingrediente_lista' %}" class="btn btn-secondary">Ingredientes</a>
         <form method="get" class="search-form">
             <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Buscar...">
-            <select name="categoria">
-                <option value="">Todas</option>
-                <option value="desayuno" {% if request.GET.categoria == 'desayuno' %}selected{% endif %}>Desayuno</option>
-                <option value="almuerzo" {% if request.GET.categoria == 'almuerzo' %}selected{% endif %}>Almuerzo</option>
-                <option value="cena" {% if request.GET.categoria == 'cena' %}selected{% endif %}>Cena</option>
-                <option value="snack" {% if request.GET.categoria == 'snack' %}selected{% endif %}>Snack</option>
+            <select name="tipo_receta">
+                <option value="">Tipo receta</option>
+                {% for t in tipos_receta %}
+                <option value="{{ t.id }}" {% if request.GET.tipo_receta == t.id|stringformat:"d" %}selected{% endif %}>{{ t.nombre }}</option>
+                {% endfor %}
+            </select>
+            <select name="momento">
+                <option value="">Momento día</option>
+                {% for m in momentos_dia %}
+                <option value="{{ m.id }}" {% if request.GET.momento == m.id|stringformat:"d" %}selected{% endif %}>{{ m.nombre }}</option>
+                {% endfor %}
             </select>
             <select name="activa">
                 <option value="">Todas</option>
@@ -50,7 +63,8 @@
         <thead>
             <tr>
                 <th>Nombre</th>
-                <th>Categoría</th>
+                <th>Tipo</th>
+                <th>Momentos día</th>
                 <th>Ingredientes</th>
                 <th>Estado</th>
                 <th>Acciones</th>
@@ -60,7 +74,8 @@
             {% for receta in recetas %}
                 <tr>
                     <td>{{ receta.nombre }}</td>
-                    <td>{{ receta.get_categoria_display }}</td>
+                    <td>{% for t in receta.tipos_receta.all %}{{ t.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+                    <td>{% for m in receta.momentos_dia.all %}{{ m.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
                     <td>{{ receta.receta_ingredientes.count }}</td>
                     <td><span class="badge badge-{% if receta.activa %}activa{% else %}inactiva{% endif %}">{% if receta.activa %}Activa{% else %}Inactiva{% endif %}</span></td>
                     <td>
@@ -70,7 +85,7 @@
                     </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="5">No hay recetas.</td></tr>
+                <tr><td colspan="6">No hay recetas.</td></tr>
             {% endfor %}
         </tbody>
     </table>

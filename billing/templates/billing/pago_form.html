@@ -2,33 +2,25 @@
 
 {% block title %}Registrar Pago - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Finanzas</span>
+<span class="sep">/</span>
+<a href="{% url 'billing:factura_lista' %}">Facturación</a>
+<span class="sep">/</span>
+<a href="{% url 'billing:pago_lista' %}">Pagos</a>
+<span class="sep">/</span>
+<span>{% if object %}Editar pago{% else %}Registrar pago{% endif %}</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
-    form { margin-top: 20px; }
-    .form-group { margin-bottom: 20px; }
-    label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
-    input, select, textarea {
-        width: 100%;
-        padding: 8px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 14px;
-    }
-    textarea { min-height: 100px; }
-    .btn {
-        display: inline-block;
-        padding: 10px 20px;
-        background-color: #F44336;
-        color: white;
-        text-decoration: none;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        margin-right: 10px;
-    }
+    .btn { display: inline-block; padding: 10px 20px; background-color: #F44336; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
     .btn:hover { background-color: #D32F2F; }
     .btn-secondary { background-color: #6c757d; }
     .btn-secondary:hover { background-color: #5a6268; }
+    .monto-esperado { padding: 8px 0; }
 </style>
 {% endblock %}
 
@@ -36,40 +28,54 @@
 <div class="container">
     <h1>Registrar Pago</h1>
     
-    <form method="post">
+    <form method="post" class="form-layout">
         {% csrf_token %}
-        
-        <div class="form-group">
-            <label for="{{ form.factura.id_for_label }}">Factura:</label>
-            {{ form.factura }}
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.factura.id_for_label }}">Factura:</label>
+                {{ form.factura }}
+                {% if form.factura.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.factura.errors }}</div>{% endif %}
+            </div>
         </div>
-        
-        <div class="form-group">
-            <label for="{{ form.fecha_pago.id_for_label }}">Fecha de Pago:</label>
-            {{ form.fecha_pago }}
+        {% if factura and not object %}
+        <div class="form-row form-row-1">
+            <div class="form-group monto-esperado">
+                <strong>Monto pendiente (esperado):</strong> ${{ factura.monto_pendiente|floatformat:2 }}
+            </div>
         </div>
-        
-        <div class="form-group">
-            <label for="{{ form.monto.id_for_label }}">Monto:</label>
-            {{ form.monto }}
+        {% endif %}
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.fecha_pago.id_for_label }}">Fecha de Pago:</label>
+                {{ form.fecha_pago }}
+                {% if form.fecha_pago.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.fecha_pago.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.metodo_pago.id_for_label }}">Método de Pago:</label>
+                {{ form.metodo_pago }}
+                {% if form.metodo_pago.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.metodo_pago.errors }}</div>{% endif %}
+            </div>
         </div>
-        
-        <div class="form-group">
-            <label for="{{ form.metodo_pago.id_for_label }}">Método de Pago:</label>
-            {{ form.metodo_pago }}
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.monto.id_for_label }}">Monto:</label>
+                {{ form.monto }}
+                {% if form.monto.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.monto.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.referencia.id_for_label }}">Referencia:</label>
+                {{ form.referencia }}
+                {% if form.referencia.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.referencia.errors }}</div>{% endif %}
+            </div>
         </div>
-        
-        <div class="form-group">
-            <label for="{{ form.referencia.id_for_label }}">Referencia:</label>
-            {{ form.referencia }}
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.notas.id_for_label }}">Notas:</label>
+                {{ form.notas }}
+                {% if form.notas.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.notas.errors }}</div>{% endif %}
+            </div>
         </div>
-        
-        <div class="form-group">
-            <label for="{{ form.notas.id_for_label }}">Notas:</label>
-            {{ form.notas }}
-        </div>
-        
-        <div>
+        <div class="form-actions">
             <button type="submit" class="btn">Registrar Pago</button>
             {% if object %}
             <a href="{% url 'billing:factura_detalle' object.factura_id %}" class="btn btn-secondary">Cancelar</a>

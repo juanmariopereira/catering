@@ -2,6 +2,16 @@
 
 {% block title %}Dashboard de Cobranza - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Finanzas</span>
+<span class="sep">/</span>
+<a href="{% url 'billing:factura_lista' %}">Facturación</a>
+<span class="sep">/</span>
+<span>Cobranza</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .stats-grid {
