@@ -129,6 +129,21 @@ class Cobro(models.Model):
             self.numero_cobro = f'COB-{fecha_str}-{n:04d}'
         super().save(*args, **kwargs)
         self.actualizar_estado()
+        _extender_contrato_si_cobro_posterior(self)
+
+
+def _extender_contrato_si_cobro_posterior(cobro):
+    """
+    Si el cobro tiene periodo_hasta posterior a la fecha_fin del contrato,
+    actualiza la fecha_fin del contrato (reactiva/extiende el contrato).
+    Se llama al guardar un Cobro o un Pago.
+    """
+    if not cobro.periodo_hasta or not getattr(cobro, 'contrato_id', None):
+        return
+    from contracts.models import Contrato
+    contrato = getattr(cobro, 'contrato', None) or Contrato.objects.filter(pk=cobro.contrato_id).first()
+    if contrato and (contrato.fecha_fin is None or cobro.periodo_hasta > contrato.fecha_fin):
+        Contrato.objects.filter(pk=contrato.pk).update(fecha_fin=cobro.periodo_hasta)
 
 
 class Pago(models.Model):
@@ -180,6 +195,7 @@ class Pago(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         self.cobro.actualizar_estado()
+        _extender_contrato_si_cobro_posterior(self.cobro)
 
     def delete(self, *args, **kwargs):
         cobro = self.cobro

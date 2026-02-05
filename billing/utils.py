@@ -1,7 +1,27 @@
-from datetime import timedelta
+from datetime import date, timedelta
+from calendar import monthrange
+
 from django.utils import timezone
+
 from .models import Cobro, _dias_vencimiento_por_frecuencia
-from contracts.models import Contrato
+from contracts.models import Contrato, q_filtro_estado
+
+
+def periodo_hasta_segun_frecuencia(periodo_desde: date, frecuencia_pago: str) -> date:
+    """
+    Calcula la fecha de fin de período a partir de la fecha de inicio
+    y la frecuencia de pago del contrato.
+    """
+    if frecuencia_pago == 'diario':
+        return periodo_desde
+    if frecuencia_pago == 'semanal':
+        return periodo_desde + timedelta(days=6)
+    if frecuencia_pago == 'quincenal':
+        return periodo_desde + timedelta(days=14)
+    if frecuencia_pago == 'mensual':
+        _, ultimo_dia = monthrange(periodo_desde.year, periodo_desde.month)
+        return periodo_desde.replace(day=ultimo_dia)
+    return periodo_desde
 
 
 def generar_cobro_automatico(contrato: Contrato, periodo_desde, periodo_hasta):
@@ -41,7 +61,7 @@ def generar_cobros_pendientes():
     Genera cobros pendientes para todos los contratos activos
     según su frecuencia de pago.
     """
-    contratos_activos = Contrato.objects.filter(estado='activo')
+    contratos_activos = Contrato.objects.filter(q_filtro_estado('activo'))
     cobros_generados = []
     hoy = timezone.now().date()
 

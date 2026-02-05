@@ -7,7 +7,7 @@
 <span class="sep">/</span>
 <span>Finanzas</span>
 <span class="sep">/</span>
-<a href="{% url 'billing:factura_lista' %}">Facturación</a>
+<a href="{% url 'billing:cobro_lista' %}">Cobranza</a>
 <span class="sep">/</span>
 <a href="{% url 'billing:pago_lista' %}">Pagos</a>
 <span class="sep">/</span>
@@ -32,15 +32,15 @@
         {% csrf_token %}
         <div class="form-row form-row-1">
             <div class="form-group">
-                <label for="{{ form.factura.id_for_label }}">Factura:</label>
-                {{ form.factura }}
-                {% if form.factura.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.factura.errors }}</div>{% endif %}
+                <label for="{{ form.cobro.id_for_label }}">Cobro:</label>
+                {{ form.cobro }}
+                {% if form.cobro.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.cobro.errors }}</div>{% endif %}
             </div>
         </div>
-        {% if factura and not object %}
+        {% if cobro and not object %}
         <div class="form-row form-row-1">
             <div class="form-group monto-esperado">
-                <strong>Monto pendiente (esperado):</strong> ${{ factura.monto_pendiente|floatformat:2 }}
+                <strong>Monto pendiente (esperado):</strong> ${{ cobro.monto_pendiente|floatformat:2 }}
             </div>
         </div>
         {% endif %}
@@ -78,9 +78,9 @@
         <div class="form-actions">
             <button type="submit" class="btn">Registrar Pago</button>
             {% if object %}
-            <a href="{% url 'billing:factura_detalle' object.factura_id %}" class="btn btn-secondary">Cancelar</a>
+            <a href="{% url 'billing:cobro_detalle' object.cobro_id %}" class="btn btn-secondary">Cancelar</a>
             {% else %}
-            <a href="{% url 'billing:factura_lista' %}" class="btn btn-secondary">Cancelar</a>
+            <a href="{% url 'billing:cobro_lista' %}" class="btn btn-secondary">Cancelar</a>
             {% endif %}
         </div>
     </form>

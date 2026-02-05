@@ -26,6 +26,7 @@
     .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
     .badge-activo { background-color: #4CAF50; color: white; }
     .badge-pausado { background-color: #ff9800; color: white; }
+    .badge-vencido { background-color: #757575; color: white; }
     .badge-cancelado { background-color: #F44336; color: white; }
     .btn-ai { background-color: #6366f1 !important; }
     .btn-ai:hover { background-color: #4f46e5 !important; }
@@ -93,22 +94,6 @@
             {% endif %}
         </dl>
     </div>
-
-    {% if openai_available %}
-    <div class="card">
-        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-        <h2>Mensaje personalizado con IA</h2>
-        <p>Genera un mensaje para enviar al cliente (WhatsApp, email, etc.).</p>
-        <div style="margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
-            <button type="button" class="btn btn-ai" data-tipo="preguntar_dieta" title="Incluye platos servidos recientemente">¿Cómo le ha ido con su dieta?</button>
-            <button type="button" class="btn btn-ai" data-tipo="plan_por_vencer">Plan por vencer</button>
-            <button type="button" class="btn btn-ai" data-tipo="plan_vencido">Plan venció</button>
-        </div>
-        <div id="mensaje-status" class="sugerir-status" style="margin-bottom: 8px;"></div>
-        <textarea id="mensaje-generado" rows="6" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit;" placeholder="El mensaje aparecerá aquí..."></textarea>
-        <p style="font-size: 0.85rem; color: #666; margin-top: 8px;">Puede copiar el mensaje y pegarlo en WhatsApp o su cliente de correo.</p>
-    </div>
-    {% endif %}
 
     <div class="card">
         <h2>Cobros del contrato</h2>
@@ -201,6 +186,22 @@
         <p>No hay pausas definidas para este contrato.</p>
         {% endif %}
     </div>
+
+    {% if openai_available %}
+    <div class="card">
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+        <h2>Mensaje personalizado con IA</h2>
+        <p>Genera un mensaje para enviar al cliente (WhatsApp, email, etc.).</p>
+        <div style="margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
+            <button type="button" class="btn btn-ai" data-tipo="preguntar_dieta" title="Incluye platos servidos recientemente">¿Cómo le ha ido con su dieta?</button>
+            <button type="button" class="btn btn-ai" data-tipo="plan_por_vencer">Plan por vencer</button>
+            <button type="button" class="btn btn-ai" data-tipo="plan_vencido">Plan venció</button>
+        </div>
+        <div id="mensaje-status" class="sugerir-status" style="margin-bottom: 8px;"></div>
+        <textarea id="mensaje-generado" rows="6" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit;" placeholder="El mensaje aparecerá aquí..."></textarea>
+        <p style="font-size: 0.85rem; color: #666; margin-top: 8px;">Puede copiar el mensaje y pegarlo en WhatsApp o su cliente de correo.</p>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 

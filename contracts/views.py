@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 
-from .models import Contrato, PausaContrato
+from .models import Contrato, PausaContrato, q_filtro_estado
 from .forms import ContratoForm, PausaContratoForm
 from plans.models import Plan
 from clients.models import Cliente
@@ -30,7 +30,7 @@ class ContratoListView(LoginRequiredMixin, ListView):
             )
         estado = self.request.GET.get('estado')
         if estado:
-            queryset = queryset.filter(estado=estado)
+            queryset = queryset.filter(q_filtro_estado(estado))
         return queryset.select_related('cliente', 'plan').order_by('-fecha_creacion')
 
 

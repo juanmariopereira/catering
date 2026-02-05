@@ -11,6 +11,7 @@ class Contrato(models.Model):
     ESTADO_CHOICES = [
         ('activo', 'Activo'),
         ('pausado', 'Pausado'),
+        ('vencido', 'Vencido'),
         ('cancelado', 'Cancelado'),
     ]
 
@@ -87,11 +88,11 @@ class Contrato(models.Model):
         verbose_name="Notas para el entregador",
         help_text="Indicaciones opcionales para quien realiza la entrega (ej. timbre, dejar en conserjería)"
     )
-    estado = models.CharField(
-        max_length=20,
-        choices=ESTADO_CHOICES,
-        default='activo',
-        verbose_name="Estado"
+    fecha_cancelacion = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name="Fecha de cancelación",
+        help_text="Si está definida, el contrato está cancelado."
     )
     fecha_pausa = models.DateTimeField(
         blank=True,
@@ -112,37 +113,58 @@ class Contrato(models.Model):
         verbose_name_plural = "Contratos"
         ordering = ['-fecha_creacion']
 
+    @property
+    def estado(self):
+        """
+        Estado calculado: cancelado > pausado > vencido > activo.
+        No se considera vencido si tiene algún cobro vigente (periodo_hasta >= hoy).
+        """
+        if self.fecha_cancelacion is not None:
+            return 'cancelado'
+        if self.fecha_pausa is not None and self.fecha_reanudacion is None:
+            return 'pausado'
+        hoy = timezone.now().date()
+        if self.fecha_fin is not None and hoy > self.fecha_fin:
+            # Si tiene cobros con período vigente (periodo_hasta >= hoy), se considera activo
+            if self.cobros.filter(periodo_hasta__gte=hoy).exists():
+                return 'activo'
+            return 'vencido'
+        return 'activo'
+
+    def get_estado_display(self):
+        """Texto legible del estado calculado."""
+        return dict(self.ESTADO_CHOICES).get(self.estado, self.estado)
+
     def __str__(self):
         return f"{self.cliente.nombre} - {self.plan.nombre} ({self.get_estado_display()})"
 
     def pausar(self):
-        """Método para pausar el contrato (estado global)"""
+        """Pausa el contrato (estado global)."""
         if self.estado == 'activo':
-            self.estado = 'pausado'
             self.fecha_pausa = timezone.now()
-            self.save()
+            self.fecha_reanudacion = None
+            self.save(update_fields=['fecha_pausa', 'fecha_reanudacion', 'fecha_actualizacion'])
 
     def reanudar(self):
-        """Método para reanudar el contrato (estado global)"""
+        """Reanuda el contrato tras una pausa global."""
         if self.estado == 'pausado':
-            self.estado = 'activo'
             self.fecha_reanudacion = timezone.now()
             self.fecha_pausa = None
-            self.save()
+            self.save(update_fields=['fecha_pausa', 'fecha_reanudacion', 'fecha_actualizacion'])
 
     def cancelar(self):
-        """Método para cancelar el contrato"""
-        self.estado = 'cancelado'
-        self.save()
+        """Cancela el contrato."""
+        self.fecha_cancelacion = timezone.now()
+        self.save(update_fields=['fecha_cancelacion', 'fecha_actualizacion'])
 
     def esta_activo(self):
-        """Verifica si el contrato está activo (hoy)"""
+        """Verifica si el contrato está activo (hoy)."""
         return self.activo_en_fecha(timezone.now().date())
 
     def activo_en_fecha(self, fecha):
         """
         Verifica si el contrato estaba activo en una fecha dada (para planificación).
-        Devuelve False si el contrato está cancelado, pausado globalmente,
+        Devuelve False si está cancelado, pausado globalmente,
         fuera de rango, o dentro de alguna pausa por fechas (PausaContrato).
         """
         if self.estado == 'cancelado':
@@ -158,13 +180,74 @@ class Contrato(models.Model):
         return True
 
 
+def _q_estado_activo():
+    """Q para filtrar contratos con estado calculado 'activo' (vigentes hoy, o con cobros vigentes)."""
+    from django.utils import timezone
+    from django.db.models import Exists, OuterRef
+    from billing.models import Cobro
+    hoy = timezone.now().date()
+    cobro_vigente = Cobro.objects.filter(contrato_id=OuterRef('pk'), periodo_hasta__gte=hoy)
+    return (
+        Q(fecha_cancelacion__isnull=True)
+        & (Q(fecha_pausa__isnull=True) | Q(fecha_reanudacion__isnull=False))
+        & (
+            Q(fecha_fin__isnull=True)
+            | Q(fecha_fin__gte=hoy)
+            | Exists(cobro_vigente)
+        )
+        & Q(fecha_inicio__lte=hoy)
+    )
+
+
+def _q_estado_vencido():
+    """Q para filtrar contratos con estado calculado 'vencido' (fecha_fin pasada y sin cobros vigentes)."""
+    from django.utils import timezone
+    from django.db.models import Exists, OuterRef
+    from billing.models import Cobro
+    hoy = timezone.now().date()
+    cobro_vigente = Cobro.objects.filter(contrato_id=OuterRef('pk'), periodo_hasta__gte=hoy)
+    return (
+        Q(fecha_cancelacion__isnull=True)
+        & (Q(fecha_pausa__isnull=True) | Q(fecha_reanudacion__isnull=False))
+        & Q(fecha_fin__isnull=False)
+        & Q(fecha_fin__lt=hoy)
+        & ~Exists(cobro_vigente)
+    )
+
+
+def _q_estado_pausado():
+    """Q para filtrar contratos con estado calculado 'pausado'."""
+    return Q(fecha_cancelacion__isnull=True) & Q(fecha_pausa__isnull=False) & Q(fecha_reanudacion__isnull=True)
+
+
+def _q_estado_cancelado():
+    """Q para filtrar contratos con estado calculado 'cancelado'."""
+    return Q(fecha_cancelacion__isnull=False)
+
+
+def q_filtro_estado(estado):
+    """
+    Devuelve el Q para filtrar contratos por estado calculado.
+    estado: 'activo', 'pausado', 'vencido' o 'cancelado'.
+    """
+    if estado == 'activo':
+        return _q_estado_activo()
+    if estado == 'pausado':
+        return _q_estado_pausado()
+    if estado == 'vencido':
+        return _q_estado_vencido()
+    if estado == 'cancelado':
+        return _q_estado_cancelado()
+    return Q()  # sin filtro
+
+
 def contratos_activos_en_fecha(fecha):
     """
     Contratos que están activos en la fecha dada (estado activo, en rango, y no en pausa).
     Uso: planning, entregas, cocina, etc.
     """
     return Contrato.objects.filter(
-        estado='activo',
+        _q_estado_activo(),
         fecha_inicio__lte=fecha,
     ).filter(
         Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha)

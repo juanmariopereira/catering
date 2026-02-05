@@ -1,21 +1,47 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Contrato, PausaContrato
+
+from .models import Contrato, PausaContrato, q_filtro_estado
+
+
+class EstadoContratoListFilter(admin.SimpleListFilter):
+    """Filtro por estado calculado del contrato."""
+    title = 'Estado'
+    parameter_name = 'estado_calc'
+
+    def lookups(self, request, model_admin):
+        return [
+            ('activo', 'Activo'),
+            ('pausado', 'Pausado'),
+            ('vencido', 'Vencido'),
+            ('cancelado', 'Cancelado'),
+        ]
+
+    def queryset(self, request, queryset):
+        if self.value() == 'activo':
+            return queryset.filter(q_filtro_estado('activo'))
+        if self.value() == 'pausado':
+            return queryset.filter(q_filtro_estado('pausado'))
+        if self.value() == 'vencido':
+            return queryset.filter(q_filtro_estado('vencido'))
+        if self.value() == 'cancelado':
+            return queryset.filter(q_filtro_estado('cancelado'))
+        return queryset
 
 
 @admin.register(Contrato)
 class ContratoAdmin(admin.ModelAdmin):
     list_display = ['cliente', 'plan', 'fecha_inicio', 'fecha_fin', 'precio', 'estado_badge', 'frecuencia_pago']
-    list_filter = ['estado', 'frecuencia_pago', 'fecha_inicio', 'fecha_creacion']
+    list_filter = [EstadoContratoListFilter, 'frecuencia_pago', 'fecha_inicio', 'fecha_creacion']
     search_fields = ['cliente__nombre', 'plan__nombre']
-    readonly_fields = ['fecha_creacion', 'fecha_actualizacion']
+    readonly_fields = ['fecha_creacion', 'fecha_actualizacion', 'estado_display']
     date_hierarchy = 'fecha_inicio'
     fieldsets = (
         ('Información del Contrato', {
-            'fields': ('cliente', 'plan', 'estado')
+            'fields': ('cliente', 'plan', 'estado_display')
         }),
         ('Fechas', {
-            'fields': ('fecha_inicio', 'fecha_fin')
+            'fields': ('fecha_inicio', 'fecha_fin', 'fecha_cancelacion')
         }),
         ('Precio y Pago', {
             'fields': ('precio', 'frecuencia_pago')
@@ -23,7 +49,7 @@ class ContratoAdmin(admin.ModelAdmin):
         ('Entrega', {
             'fields': ('direccion_entrega', 'link_maps', 'horario_entrega', 'dias_entrega')
         }),
-        ('Pausa', {
+        ('Pausa global', {
             'fields': ('fecha_pausa', 'fecha_reanudacion'),
             'classes': ('collapse',)
         }),
@@ -37,6 +63,7 @@ class ContratoAdmin(admin.ModelAdmin):
         colors = {
             'activo': 'green',
             'pausado': 'orange',
+            'vencido': '#757575',
             'cancelado': 'red'
         }
         color = colors.get(obj.estado, 'gray')
@@ -46,6 +73,11 @@ class ContratoAdmin(admin.ModelAdmin):
             obj.get_estado_display()
         )
     estado_badge.short_description = 'Estado'
+
+    def estado_display(self, obj):
+        """Estado calculado (solo lectura)."""
+        return obj.get_estado_display()
+    estado_display.short_description = 'Estado'
 
     def pausar_contratos(self, request, queryset):
         for contrato in queryset:

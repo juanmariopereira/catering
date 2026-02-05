@@ -26,6 +26,7 @@
     .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
     .badge-activo { background-color: #4CAF50; color: white; }
     .badge-pausado { background-color: #ff9800; color: white; }
+    .badge-vencido { background-color: #757575; color: white; }
     .badge-cancelado { background-color: #F44336; color: white; }
 </style>
 {% endblock %}
@@ -44,6 +45,7 @@
                 <option value="">Todos los estados</option>
                 <option value="activo" {% if request.GET.estado == 'activo' %}selected{% endif %}>Activo</option>
                 <option value="pausado" {% if request.GET.estado == 'pausado' %}selected{% endif %}>Pausado</option>
+                <option value="vencido" {% if request.GET.estado == 'vencido' %}selected{% endif %}>Vencido</option>
                 <option value="cancelado" {% if request.GET.estado == 'cancelado' %}selected{% endif %}>Cancelado</option>
             </select>
             <button type="submit" class="btn btn-secondary">Filtrar</button>

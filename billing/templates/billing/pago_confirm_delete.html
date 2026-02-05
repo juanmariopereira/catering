@@ -7,7 +7,7 @@
 <span class="sep">/</span>
 <span>Finanzas</span>
 <span class="sep">/</span>
-<a href="{% url 'billing:factura_lista' %}">Facturación</a>
+<a href="{% url 'billing:cobro_lista' %}">Cobranza</a>
 <span class="sep">/</span>
 <a href="{% url 'billing:pago_lista' %}">Pagos</a>
 <span class="sep">/</span>
@@ -27,12 +27,12 @@
 {% block content %}
 <div class="container">
     <h1>Eliminar Pago</h1>
-    <p>¿Está seguro de que desea eliminar el pago de <strong>${{ object.monto }}</strong> ({{ object.get_metodo_pago_display }}) de la factura {{ object.factura.numero_factura }}?</p>
-    <p>Esta acción no se puede deshacer. El estado de la factura se actualizará.</p>
+    <p>¿Está seguro de que desea eliminar el pago de <strong>${{ object.monto }}</strong> ({{ object.get_metodo_pago_display }}) del cobro {{ object.cobro.numero_cobro }}?</p>
+    <p>Esta acción no se puede deshacer. El estado del cobro se actualizará.</p>
     <form method="post">
         {% csrf_token %}
         <button type="submit" class="btn btn-danger">Eliminar</button>
-        <a href="{% url 'billing:factura_detalle' object.factura_id %}" class="btn btn-primary">Cancelar</a>
+        <a href="{% url 'billing:cobro_detalle' object.cobro_id %}" class="btn btn-primary">Cancelar</a>
     </form>
 </div>
 {% endblock %}

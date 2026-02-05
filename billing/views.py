@@ -7,9 +7,10 @@ from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Q, Sum, F
 from datetime import date, timedelta
+
 from .models import Cobro, Pago
-from .utils import obtener_cobros_vencidos
-from contracts.models import Contrato
+from .utils import obtener_cobros_vencidos, periodo_hasta_segun_frecuencia
+from contracts.models import Contrato, q_filtro_estado
 
 
 class CobroListView(LoginRequiredMixin, ListView):
@@ -53,11 +54,17 @@ class CobroCreateView(LoginRequiredMixin, CreateView):
 
     def get_initial(self):
         initial = super().get_initial()
+        hoy = timezone.now().date()
+        initial['periodo_desde'] = hoy
         contrato_id = self.request.GET.get('contrato')
         if contrato_id:
             try:
                 contrato = Contrato.objects.get(pk=contrato_id)
                 initial['contrato'] = contrato
+                initial['periodo_hasta'] = periodo_hasta_segun_frecuencia(
+                    hoy, contrato.frecuencia_pago
+                )
+                initial['monto'] = contrato.precio
             except (Contrato.DoesNotExist, ValueError, TypeError):
                 pass
         return initial
@@ -68,7 +75,7 @@ class CobroCreateView(LoginRequiredMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['contratos'] = Contrato.objects.filter(estado='activo')
+        context['contratos'] = Contrato.objects.filter(q_filtro_estado('activo'))
         return context
 
 
@@ -213,7 +220,7 @@ def dashboard_cobranza(request):
         fecha_vencimiento__gte=hoy,
     ).select_related('contrato', 'contrato__cliente').order_by('fecha_vencimiento')[:10]
 
-    contratos_activos = Contrato.objects.filter(estado='activo').count()
+    contratos_activos = Contrato.objects.filter(q_filtro_estado('activo')).count()
 
     context = {
         'total_cobros': total_cobros,

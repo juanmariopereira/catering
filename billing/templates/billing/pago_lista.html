@@ -7,7 +7,7 @@
 <span class="sep">/</span>
 <span>Finanzas</span>
 <span class="sep">/</span>
-<a href="{% url 'billing:factura_lista' %}">Facturación</a>
+<a href="{% url 'billing:cobro_lista' %}">Cobranza</a>
 <span class="sep">/</span>
 <a href="{% url 'billing:pago_lista' %}">Pagos</a>
 {% endblock %}
@@ -40,7 +40,7 @@
 
     <div class="actions">
         <a href="{% url 'billing:pago_crear' %}" class="btn">Registrar Pago</a>
-        <a href="{% url 'billing:factura_lista' %}" class="btn btn-secondary">Facturas</a>
+        <a href="{% url 'billing:cobro_lista' %}" class="btn btn-secondary">Cobros</a>
         <a href="{% url 'billing:dashboard' %}" class="btn btn-secondary">Dashboard</a>
     </div>
 
@@ -49,7 +49,7 @@
         <thead>
             <tr>
                 <th>Fecha</th>
-                <th>Factura</th>
+                <th>Cobro</th>
                 <th>Cliente</th>
                 <th>Monto</th>
                 <th>Método</th>
@@ -61,8 +61,8 @@
             {% for pago in pagos %}
             <tr>
                 <td>{{ pago.fecha_pago|date:"d/m/Y" }}</td>
-                <td><a href="{% url 'billing:factura_detalle' pago.factura_id %}">{{ pago.factura.numero_factura }}</a></td>
-                <td>{{ pago.factura.contrato.cliente.nombre }}</td>
+                <td><a href="{% url 'billing:cobro_detalle' pago.cobro_id %}">{{ pago.cobro.numero_cobro }}</a></td>
+                <td>{{ pago.cobro.contrato.cliente.nombre }}</td>
                 <td>${{ pago.monto|floatformat:2 }}</td>
                 <td>{{ pago.get_metodo_pago_display }}</td>
                 <td>{{ pago.referencia|default:"—" }}</td>

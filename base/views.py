@@ -18,7 +18,7 @@ from billing.models import Cobro, Pago
 from routes.models import Ruta, RutaCliente
 from purchases.models import PrevisionCompra
 from clients.models import Cliente
-from contracts.models import Contrato
+from contracts.models import Contrato, q_filtro_estado
 from recipes.models import Receta
 
 
@@ -51,7 +51,7 @@ def dashboard(request):
 
     # Clientes y contratos activos
     clientes_activos = Cliente.objects.filter(activo=True).count()
-    contratos_activos = Contrato.objects.filter(estado='activo').count()
+    contratos_activos = Contrato.objects.filter(q_filtro_estado('activo')).count()
 
     # Menús planificados próxima semana
     proxima_semana = hoy + timedelta(days=7)

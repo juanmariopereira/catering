@@ -167,14 +167,16 @@ class ClienteDeleteView(LoginRequiredMixin, DeleteView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        from contracts.models import Contrato
+        from contracts.models import Contrato, q_filtro_estado
         cliente = self.object
         context['contratos_activos'] = Contrato.objects.filter(
-            cliente=cliente, estado='activo'
-        ).select_related('plan').order_by('-fecha_creacion')
+            cliente=cliente
+        ).filter(q_filtro_estado('activo')).select_related('plan').order_by('-fecha_creacion')
+        contratos_activos_ids = Contrato.objects.filter(q_filtro_estado('activo')).values_list('id', flat=True)
         context['dependientes_con_contratos_activos'] = Cliente.objects.filter(
-            titular=cliente
-        ).filter(contratos__estado='activo').distinct()
+            titular=cliente,
+            contratos__in=contratos_activos_ids,
+        ).distinct()
         return context
 
     def form_valid(self, form):
