@@ -27,7 +27,7 @@
 {% block content %}
 <div class="container">
     <h1>Eliminar Previsión</h1>
-    <p>¿Está seguro de que desea eliminar la previsión del período <strong>{{ prevision.fecha_desde|date:"d/m/Y" }} - {{ prevision.fecha_hasta|date:"d/m/Y" }}</strong>?</p>
+    <p>¿Está seguro de que desea eliminar la previsión del período <strong>{% if prevision.fecha_desde == prevision.fecha_hasta %}{{ prevision.fecha_desde|date:"d/m/Y" }}{% else %}{{ prevision.fecha_desde|date:"d/m/Y" }} - {{ prevision.fecha_hasta|date:"d/m/Y" }}{% endif %}</strong>?</p>
     <p>Se eliminarán todos los ítems asociados. Esta acción no se puede deshacer.</p>
     <form method="post">
         {% csrf_token %}

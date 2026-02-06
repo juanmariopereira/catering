@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.forms import inlineformset_factory
 from django.utils import timezone
-from django.db.models import Max
+from django.db.models import Case, IntegerField, Max, Value, When
 from datetime import date, timedelta
 from routes.models import Ruta, RutaCliente, Entregador
 from contracts.models import Contrato, q_filtro_estado, contratos_activos_en_fecha
@@ -53,9 +53,20 @@ class RutaClienteFormSet(BaseRutaClienteFormSet):
             if ids_en_esta_ruta:
                 ids_disponibles = set(disponibles.values_list('pk', flat=True))
                 todos_los_ids = ids_disponibles | ids_en_esta_ruta
-                qs = Contrato.objects.filter(pk__in=todos_los_ids).select_related('cliente', 'plan').order_by('cliente__nombre')
+                qs = Contrato.objects.filter(pk__in=todos_los_ids).select_related('cliente', 'plan')
             else:
-                qs = disponibles.order_by('cliente__nombre')
+                qs = disponibles
+            # Primero los que no tienen ruta asignada, luego por nombre de cliente
+            ids_sin_ruta = set(
+                contratos_sin_ruta_en_fecha(fecha).values_list('pk', flat=True)
+            )
+            qs = qs.annotate(
+                sin_ruta=Case(
+                    When(pk__in=ids_sin_ruta, then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                )
+            ).order_by('-sin_ruta', 'cliente__nombre')
             self.form.base_fields['contrato'].queryset = qs
         super().__init__(*args, **kwargs)
 

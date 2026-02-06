@@ -42,7 +42,7 @@
 
     <div class="header">
         <h1>Checklist — Previsión de Compra</h1>
-        <p class="periodo"><strong>Período:</strong> {{ prevision.fecha_desde|date:"d/m/Y" }} — {{ prevision.fecha_hasta|date:"d/m/Y" }}</p>
+        <p class="periodo"><strong>Período:</strong> {% if prevision.fecha_desde == prevision.fecha_hasta %}{{ prevision.fecha_desde|date:"d/m/Y" }}{% else %}{{ prevision.fecha_desde|date:"d/m/Y" }} — {{ prevision.fecha_hasta|date:"d/m/Y" }}{% endif %}</p>
         <p class="periodo" style="margin-top: 4px;"><strong>Generado:</strong> {{ prevision.fecha_generacion|date:"d/m/Y H:i" }}</p>
     </div>
 

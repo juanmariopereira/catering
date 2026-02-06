@@ -10,7 +10,7 @@
 <span class="sep">/</span>
 <a href="{% url 'purchases:lista' %}">Compras</a>
 <span class="sep">/</span>
-<span>Previsión {{ prevision.fecha_desde|date:"d/m/Y" }} — {{ prevision.fecha_hasta|date:"d/m/Y" }}</span>
+<span>Previsión {% if prevision.fecha_desde == prevision.fecha_hasta %}{{ prevision.fecha_desde|date:"d/m/Y" }}{% else %}{{ prevision.fecha_desde|date:"d/m/Y" }} — {{ prevision.fecha_hasta|date:"d/m/Y" }}{% endif %}</span>
 {% endblock %}
 
 {% block extra_css %}
@@ -46,7 +46,7 @@
         <a href="{% url 'purchases:eliminar' prevision.pk %}" class="btn" style="background-color:#F44336;">Eliminar</a>
     </div>
     
-    <p><strong>Período:</strong> {{ prevision.fecha_desde|date:"d/m/Y" }} - {{ prevision.fecha_hasta|date:"d/m/Y" }}</p>
+    <p><strong>Período:</strong> {% if prevision.fecha_desde == prevision.fecha_hasta %}{{ prevision.fecha_desde|date:"d/m/Y" }}{% else %}{{ prevision.fecha_desde|date:"d/m/Y" }} - {{ prevision.fecha_hasta|date:"d/m/Y" }}{% endif %}</p>
     <p><strong>Fecha de Generación:</strong> {{ prevision.fecha_generacion|date:"d/m/Y H:i" }}</p>
     
     {% if prevision.notas %}

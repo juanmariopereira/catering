@@ -95,6 +95,10 @@
         border-left: 4px solid #ffc107;
         border-radius: 4px;
     }
+    .notas .notas-texto {
+        white-space: pre-wrap;
+        margin-top: 6px;
+    }
     .sin-recetas { text-align: center; padding: 40px; color: #999; font-size: 18px; }
     /* Resumen por momento */
     .resumen-cocina { margin-bottom: 32px; }
@@ -196,7 +200,8 @@
         </table>
         {% if detalle_cocina.notas %}
         <div class="notas">
-            <strong>Notas para el cocinero:</strong> {{ detalle_cocina.notas }}
+            <strong>Notas para el cocinero:</strong><br>
+            <div class="notas-texto">{{ detalle_cocina.notas|linebreaksbr }}</div>
         </div>
         {% else %}
         <div class="notas" style="background-color: #f5f5f5; border-left-color: #999;">

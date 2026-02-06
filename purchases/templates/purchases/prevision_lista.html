@@ -51,7 +51,7 @@
             {% for prevision in previsiones %}
                 <tr>
                     <td>{{ prevision.fecha_generacion|date:"d/m/Y H:i" }}</td>
-                    <td>{{ prevision.fecha_desde|date:"d/m/Y" }} - {{ prevision.fecha_hasta|date:"d/m/Y" }}</td>
+                    <td>{% if prevision.fecha_desde == prevision.fecha_hasta %}{{ prevision.fecha_desde|date:"d/m/Y" }}{% else %}{{ prevision.fecha_desde|date:"d/m/Y" }} - {{ prevision.fecha_hasta|date:"d/m/Y" }}{% endif %}</td>
                     <td>{{ prevision.items.count }}</td>
                     <td class="table-actions">
                         <a href="{% url 'purchases:detalle' prevision.id %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
