@@ -57,7 +57,14 @@
             border-bottom-color: #7CB342;
         }
         .nav-dropdown-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             padding-right: 22px;
+        }
+        .nav-dropdown-toggle .nav-toggle-icon {
+            font-size: 1.1rem;
+            opacity: 0.9;
         }
         .nav-dropdown-toggle::after {
             content: '';
@@ -76,7 +83,7 @@
             position: absolute;
             top: 100%;
             left: 0;
-            min-width: 200px;
+            min-width: 220px;
             background: #fff;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             border-radius: 0 0 6px 6px;
@@ -91,28 +98,49 @@
             display: block;
         }
         .nav-dropdown-menu a {
-            display: block;
-            padding: 10px 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 18px;
             color: #333;
             text-decoration: none;
             font-size: 0.9rem;
             border: none;
+            transition: background 0.15s, color 0.15s;
         }
         .nav-dropdown-menu a:hover {
-            background-color: #f0f7ed;
-            color: #7CB342;
+            background: linear-gradient(90deg, #e8f5e9 0%, #f1f8e9 100%);
+            color: #2e7d32;
         }
         .nav-dropdown-menu a.active {
-            background-color: #e8f5e9;
-            color: #689F38;
+            background: linear-gradient(90deg, #c8e6c9 0%, #dcedc8 100%);
+            color: #1b5e20;
             font-weight: 600;
+        }
+        .nav-dropdown-menu .nav-item-icon {
+            font-size: 1.25rem;
+            width: 1.5em;
+            text-align: center;
+            flex-shrink: 0;
         }
         .navbar-user {
             display: flex;
             align-items: center;
             gap: 15px;
         }
-        .navbar-user span { font-size: 0.9rem; color: #666; }
+        .navbar-user .user-name-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .navbar-user .user-icon { font-size: 1.1rem; opacity: 0.9; }
+        .navbar-user .btn-logout {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
         .banner-contratos-sin-ruta {
             background: #fff3e0;
             border-bottom: 2px solid #ff9800;
@@ -138,7 +166,10 @@
             border-radius: 4px;
             text-decoration: none;
             font-size: 0.9rem;
+            cursor: pointer;
+            font: inherit;
         }
+        .form-logout { display: inline; }
         .btn-logout:hover {
             background-color: #f5f5f5;
             color: #333;
@@ -160,6 +191,31 @@
             padding-bottom: 10px;
             margin-top: 0;
         }
+        /* Título de página con icono (estilo tipo acción rápida) */
+        .page-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 0;
+            margin: 0 0 1rem 0;
+            border-bottom: 3px solid #7CB342;
+            font-size: 1.5rem;
+            color: #333;
+            font-weight: 700;
+        }
+        .page-title-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            font-size: 1.75rem;
+            background: linear-gradient(145deg, #e8f5e9 0%, #f1f8e9 100%);
+            border: 1px solid #c8e6c9;
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
+        .page-title-text { flex: 1; }
         a { color: #7CB342; text-decoration: none; }
         a:hover { text-decoration: underline; }
         /* Formularios e inputs no desbordan en móvil */
@@ -421,50 +477,53 @@
         <a href="{% url 'dashboard' %}" class="navbar-brand">{{ catering_name }}</a>
         <ul class="navbar-nav">
             <li class="nav-item">
-                <a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/dashboard/' or request.path == '/' %}active{% endif %}">Inicio</a>
+                <a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/dashboard/' or request.path == '/' %}active{% endif %}">🏠 Inicio</a>
             </li>
             <li class="nav-item nav-dropdown">
-                <span class="nav-link nav-dropdown-toggle {% if '/clients/' in request.path or '/plans/' in request.path or '/recipes/' in request.path or '/diets/' in request.path or '/routes/' in request.path or '/feriados/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Catálogos</span>
+                <span class="nav-link nav-dropdown-toggle {% if '/clients/' in request.path or '/plans/' in request.path or '/recipes/' in request.path or '/diets/' in request.path or '/routes/' in request.path or '/feriados/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true"><span class="nav-toggle-icon" aria-hidden="true">📚</span>Catálogos</span>
                 <ul class="nav-dropdown-menu">
-                    <li><a href="{% url 'clients:lista' %}" class="{% if '/clients/' in request.path %}active{% endif %}">Clientes</a></li>
-                    <li><a href="{% url 'plans:lista' %}" class="{% if '/plans/' in request.path %}active{% endif %}">Planes</a></li>
-                    <li><a href="{% url 'recipes:lista' %}" class="{% if '/recipes/' in request.path and 'ingredientes' not in request.path %}active{% endif %}">Recetas</a></li>
-                    <li><a href="{% url 'recipes:ingrediente_lista' %}" class="{% if 'ingredientes' in request.path %}active{% endif %}">Ingredientes</a></li>
-                    <li><a href="{% url 'recipes:unidad_medida_lista' %}" class="{% if 'unidades-medida' in request.path %}active{% endif %}">Unidades de medida</a></li>
-                    <li><a href="{% url 'recipes:tipo_receta_lista' %}" class="{% if 'tipos-receta' in request.path %}active{% endif %}">Tipos de receta</a></li>
-                    <li><a href="{% url 'diets:lista' %}" class="{% if '/diets/' in request.path %}active{% endif %}">Dietas</a></li>
-                    <li><a href="{% url 'routes:entregador_lista' %}" class="{% if '/routes/' in request.path %}active{% endif %}">Entregadores</a></li>
-                    <li><a href="{% url 'feriado_lista' %}" class="{% if '/feriados/' in request.path %}active{% endif %}">Feriados</a></li>
+                    <li><a href="{% url 'clients:lista' %}" class="{% if '/clients/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">👥</span>Clientes</a></li>
+                    <li><a href="{% url 'plans:lista' %}" class="{% if '/plans/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📑</span>Planes</a></li>
+                    <li><a href="{% url 'recipes:lista' %}" class="{% if '/recipes/' in request.path and 'ingredientes' not in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🍽️</span>Recetas</a></li>
+                    <li><a href="{% url 'recipes:ingrediente_lista' %}" class="{% if 'ingredientes' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🥗</span>Ingredientes</a></li>
+                    <li><a href="{% url 'recipes:unidad_medida_lista' %}" class="{% if 'unidades-medida' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📏</span>Unidades de medida</a></li>
+                    <li><a href="{% url 'recipes:tipo_receta_lista' %}" class="{% if 'tipos-receta' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🏷️</span>Tipos de receta</a></li>
+                    <li><a href="{% url 'diets:lista' %}" class="{% if '/diets/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📋</span>Dietas</a></li>
+                    <li><a href="{% url 'routes:entregador_lista' %}" class="{% if '/routes/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🚚</span>Entregadores</a></li>
+                    <li><a href="{% url 'feriado_lista' %}" class="{% if '/feriados/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📅</span>Feriados</a></li>
                 </ul>
             </li>
             <li class="nav-item nav-dropdown">
-                <span class="nav-link nav-dropdown-toggle {% if '/planning/' in request.path or '/kitchen/' in request.path or '/delivery/' in request.path or '/purchases/' in request.path or 'composicion-por-fecha' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Producción</span>
+                <span class="nav-link nav-dropdown-toggle {% if '/planning/' in request.path or '/kitchen/' in request.path or '/delivery/' in request.path or '/purchases/' in request.path or 'composicion-por-fecha' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true"><span class="nav-toggle-icon" aria-hidden="true">🏭</span>Producción</span>
                 <ul class="nav-dropdown-menu">
-                    <li><a href="{% url 'planning:lista' %}" class="{% if '/planning/' in request.path %}active{% endif %}">Planificación</a></li>
-                    <li><a href="{% url 'kitchen:lista' %}" class="{% if '/kitchen/' in request.path %}active{% endif %}">Cocina</a></li>
-                    <li><a href="{% url 'diets:composicion_por_fecha' %}" class="{% if 'composicion-por-fecha' in request.path %}active{% endif %}">Composición por fecha</a></li>
-                    <li><a href="{% url 'delivery:lista' %}" class="{% if '/delivery/' in request.path %}active{% endif %}">Entregas</a></li>
-                    <li><a href="{% url 'purchases:lista' %}" class="{% if '/purchases/' in request.path %}active{% endif %}">Compras</a></li>
+                    <li><a href="{% url 'planning:lista' %}" class="{% if '/planning/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📋</span>Planificación</a></li>
+                    <li><a href="{% url 'kitchen:lista' %}" class="{% if '/kitchen/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🍳</span>Cocina</a></li>
+                    <li><a href="{% url 'diets:composicion_por_fecha' %}" class="{% if 'composicion-por-fecha' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🍱</span>Composición Dietas</a></li>
+                    <li><a href="{% url 'delivery:lista' %}" class="{% if '/delivery/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🚚</span>Entregas</a></li>
+                    <li><a href="{% url 'purchases:lista' %}" class="{% if '/purchases/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🛒</span>Compras</a></li>
                 </ul>
             </li>
             <li class="nav-item nav-dropdown">
-                <span class="nav-link nav-dropdown-toggle {% if '/billing/' in request.path or '/contracts/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true">Finanzas</span>
+                <span class="nav-link nav-dropdown-toggle {% if '/billing/' in request.path or '/contracts/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true"><span class="nav-toggle-icon" aria-hidden="true">💵</span>Finanzas</span>
                 <ul class="nav-dropdown-menu">
-                    <li><a href="{% url 'contracts:lista' %}" class="{% if '/contracts/' in request.path %}active{% endif %}">Contratos</a></li>
-                    <li><a href="{% url 'billing:cobro_lista' %}" class="{% if '/billing/' in request.path and '/billing/dashboard/' not in request.path %}active{% endif %}">Cobros</a></li>
-                    <li><a href="{% url 'billing:dashboard' %}" class="{% if '/billing/dashboard/' in request.path %}active{% endif %}">Dashboard Cobranza</a></li>
+                    <li><a href="{% url 'contracts:lista' %}" class="{% if '/contracts/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📄</span>Contratos</a></li>
+                    <li><a href="{% url 'billing:cobro_lista' %}" class="{% if '/billing/' in request.path and '/billing/dashboard/' not in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">💰</span>Cobros</a></li>
+                    <li><a href="{% url 'billing:dashboard' %}" class="{% if '/billing/dashboard/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📊</span>Dashboard Cobranza</a></li>
                 </ul>
             </li>
             <li class="nav-item">
-                <a href="{% url 'admin:index' %}" class="nav-link" target="_blank">Admin</a>
+                <a href="{% url 'admin:index' %}" class="nav-link" target="_blank">⚙️ Admin</a>
             </li>
         </ul>
         <div class="navbar-user">
             {% if user.is_authenticated %}
-            <span>{{ user.get_username }}</span>
-            <a href="{% url 'logout' %}" class="btn-logout">Cerrar sesión</a>
+            <span class="user-name-wrap"><span class="user-icon" aria-hidden="true">👤</span>{{ user.get_username }}</span>
+            <form action="{% url 'logout' %}" method="post" class="form-logout" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn-logout" title="Cerrar sesión"><span aria-hidden="true">🚪</span> Cerrar sesión</button>
+            </form>
             {% else %}
-            <a href="{% url 'login' %}" class="btn-logout">Iniciar sesión</a>
+            <a href="{% url 'login' %}" class="btn-logout" title="Iniciar sesión"><span aria-hidden="true">🔑</span> Iniciar sesión</a>
             {% endif %}
         </div>
     </nav>

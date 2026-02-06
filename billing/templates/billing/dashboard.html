@@ -100,7 +100,7 @@
 
 {% block content %}
 <div class="container dashboard-cobranza">
-    <h1>Dashboard de Cobranza</h1>
+    {% include "base/page_title.html" with title="Dashboard de Cobranza" icon="📊" %}
     <p style="color: #666; margin-top: 0;">Resumen de cobranza, cobros y accesos rápidos.</p>
 
     <div class="quick-actions">

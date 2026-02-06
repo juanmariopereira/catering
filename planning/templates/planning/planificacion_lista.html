@@ -44,7 +44,7 @@
 
 {% block content %}
 <div class="container">
-    <h1>Planificación</h1>
+    {% include "base/page_title.html" with title="Planificación" icon="📋" %}
     <p>Esta herramienta ayuda a quien planifica las comidas del día, facilita la producción en cocina (cantidades y sustituciones por cliente) y da contexto de los contratos activos.</p>
     <p><strong>Flujo recomendado:</strong> 1) <a href="{% url 'planning:resumen' %}">Resumen del día</a> — clientes por plan y menús; 2) <a href="{% url 'planning:clientes_por_fecha' %}">Lista de clientes que reciben</a> — avisos y sustituciones; 3) Editar menús por plan; 4) <a href="{% url 'kitchen:lista' %}">Reporte cocina</a> — para producción.</p>
 

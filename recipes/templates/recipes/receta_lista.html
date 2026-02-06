@@ -53,7 +53,7 @@
 
 {% block content %}
 <div class="container">
-    <h1>Recetas</h1>
+    {% include "base/page_title.html" with title="Recetas" icon="🍽️" %}
     
     <div class="actions">
         <a href="{% url 'recipes:crear' %}" class="btn">Nueva Receta</a>

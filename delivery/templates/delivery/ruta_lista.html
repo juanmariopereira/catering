@@ -37,7 +37,7 @@
 
 {% block content %}
 <div class="container">
-    <h1>Lista de Rutas de Entrega</h1>
+    {% include "base/page_title.html" with title="Entregas" icon="🚚" %}
 
     <form method="get" action="{% url 'delivery:lista' %}" class="filtros">
         <label for="fecha">Fecha</label>

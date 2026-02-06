@@ -61,7 +61,7 @@
 
 {% block content %}
 <div class="container">
-    <h1>Entregadores</h1>
+    {% include "base/page_title.html" with title="Entregadores" icon="🚚" %}
     
     <div class="actions">
         <a href="{% url 'routes:entregador_crear' %}" class="btn">Nuevo Entregador</a>

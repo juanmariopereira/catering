@@ -90,19 +90,6 @@ class CobroListView(LoginRequiredMixin, ListView):
         if cliente_id:
             queryset = queryset.filter(contrato__cliente_id=cliente_id)
 
-        fecha_desde = self.request.GET.get('fecha_desde')
-        if fecha_desde:
-            try:
-                queryset = queryset.filter(periodo_desde__gte=date.fromisoformat(fecha_desde))
-            except ValueError:
-                pass
-        fecha_hasta = self.request.GET.get('fecha_hasta')
-        if fecha_hasta:
-            try:
-                queryset = queryset.filter(periodo_hasta__lte=date.fromisoformat(fecha_hasta))
-            except ValueError:
-                pass
-
         vencimiento_desde = self.request.GET.get('vencimiento_desde')
         if vencimiento_desde:
             try:

@@ -35,7 +35,7 @@
 
 {% block content %}
 <div class="container">
-    <h1>Lista de Detalles de Cocina</h1>
+    {% include "base/page_title.html" with title="Cocina" icon="🍳" %}
 
     <form method="get" class="filtros-form">
         <label for="fecha_desde">Desde</label>

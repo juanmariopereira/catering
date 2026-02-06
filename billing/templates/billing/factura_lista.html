@@ -41,7 +41,7 @@
 
 {% block content %}
 <div class="container">
-    <h1>Facturas</h1>
+    {% include "base/page_title.html" with title="Facturas" icon="📄" %}
     
     <div class="actions">
         <a href="{% url 'billing:factura_crear' %}" class="btn">Nueva Factura</a>

@@ -79,7 +79,7 @@
 
 {% block content %}
 <div class="container">
-    <h1>Composición de dieta por contrato</h1>
+    {% include "base/page_title.html" with title="Composición de dieta por contrato" icon="🍱" %}
 
     <form method="get" action="{% url 'diets:composicion_por_fecha' %}" class="filtros">
         <div class="fila">

@@ -72,7 +72,7 @@
 
 {% block content %}
 <div class="container">
-    <h1>Cobros</h1>
+    {% include "base/page_title.html" with title="Cobros" icon="💰" %}
 
     <div class="actions">
         <a href="{% url 'billing:cobro_crear' %}" class="btn">Nuevo cobro</a>
@@ -106,10 +106,6 @@
             </div>
         </div>
         <div class="filtros-row">
-            <label>Período desde</label>
-            <input type="date" name="fecha_desde" value="{{ request.GET.fecha_desde }}">
-            <label>Período hasta</label>
-            <input type="date" name="fecha_hasta" value="{{ request.GET.fecha_hasta }}">
             <label>Vencimiento desde</label>
             <input type="date" name="vencimiento_desde" value="{{ request.GET.vencimiento_desde }}">
             <label>Vencimiento hasta</label>

@@ -11,7 +11,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy, reverse
 from datetime import date, timedelta, datetime
 
-from .models import Feriado
+from .models import Feriado, es_feriado
 from .forms import FeriadoForm
 from planning.models import PlanificacionMenu
 from billing.models import Cobro, Pago, _dias_vencimiento_por_frecuencia
@@ -55,23 +55,29 @@ def dashboard(request):
     clientes_activos = Cliente.objects.filter(activo=True).count()
     contratos_activos = Contrato.objects.filter(q_filtro_estado('activo')).count()
 
-    # Días futuros a partir de la fecha actual (próximos 60) con menú para todos los planes que tienen entrega ese día
-    # Solo se consideran fechas >= hoy; se cuenta cada día donde todos los planes con entrega tienen menú
+    # Días útiles consecutivos a partir de mañana con menú para todos los planes que tienen entrega ese día.
+    # Día útil = lunes a viernes y no feriado. Se saltan fines de semana y feriados; se corta solo al primer día útil sin menú completo.
     dias_menu_completo = 0
-    d = hoy
-    max_dias = 60
-    while (d - hoy).days < max_dias:
+    d = hoy + timedelta(days=1)
+    max_dias = 365
+    dias_revisados = 0
+    while dias_revisados < max_dias:
+        if d.weekday() >= 5 or es_feriado(d):
+            d += timedelta(days=1)
+            dias_revisados += 1
+            continue
         planes_con_entrega = set(
             contratos_con_entrega_en_fecha(d).values_list('plan_id', flat=True).distinct()
         )
-        if planes_con_entrega:
-            menus_plan_ids = set(
-                PlanificacionMenu.objects.filter(fecha=d, plan_id__in=planes_con_entrega)
-                .values_list('plan_id', flat=True)
-            )
-            if planes_con_entrega <= menus_plan_ids:
-                dias_menu_completo += 1
+        menus_plan_ids = set(
+            PlanificacionMenu.objects.filter(fecha=d, plan_id__in=planes_con_entrega)
+            .values_list('plan_id', flat=True)
+        ) if planes_con_entrega else set()
+        if planes_con_entrega and not (planes_con_entrega <= menus_plan_ids):
+            break
+        dias_menu_completo += 1
         d += timedelta(days=1)
+        dias_revisados += 1
 
     # Entregas (paradas) del día
     total_entregas_hoy = RutaCliente.objects.filter(ruta__fecha=hoy).count()

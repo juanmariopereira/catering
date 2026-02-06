@@ -134,7 +134,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 # Nombre del catering (configurable para usar el sistema con otros caterings)
-CATERING_NAME = 'Healthy Life'
+CATERING_NAME = 'Catering Healthy Life'
 
 # Colores de marca (verde retoño y blanco del logo)
 BRAND_COLOR = '#7CB342'

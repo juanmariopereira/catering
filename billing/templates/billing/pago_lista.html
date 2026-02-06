@@ -36,7 +36,7 @@
 
 {% block content %}
 <div class="container">
-    <h1>Pagos</h1>
+    {% include "base/page_title.html" with title="Pagos" icon="💰" %}
 
     <div class="actions">
         <a href="{% url 'billing:pago_crear' %}" class="btn">Registrar Pago</a>

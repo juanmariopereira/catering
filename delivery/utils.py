@@ -4,7 +4,8 @@ y contratos sin asignar a ninguna ruta.
 """
 from datetime import date
 
-from contracts.models import contratos_activos_en_fecha
+from base.models import es_feriado
+from contracts.models import Contrato, contratos_activos_en_fecha
 from routes.models import RutaCliente
 
 # Día de la semana: Python weekday() 0=lunes, 6=domingo -> valor en contrato.dias_entrega
@@ -14,9 +15,12 @@ DIA_SEMANA_NOMBRE = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabad
 def contratos_con_entrega_en_fecha(fecha):
     """
     Contratos activos en la fecha que tienen entrega ese día (dias_entrega).
+    En feriados no hay entregas: devuelve queryset vacío.
     """
     if hasattr(fecha, 'date'):
         fecha = fecha.date()
+    if es_feriado(fecha):
+        return Contrato.objects.none()
     dia_semana = DIA_SEMANA_NOMBRE[fecha.weekday()]
     return (
         contratos_activos_en_fecha(fecha)

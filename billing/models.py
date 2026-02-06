@@ -149,6 +149,7 @@ def _extender_contrato_si_cobro_posterior(cobro):
 class Pago(models.Model):
     """Modelo para gestionar pagos de cobros."""
     METODO_PAGO_CHOICES = [
+        ('qr', 'QR'),
         ('efectivo', 'Efectivo'),
         ('transferencia', 'Transferencia'),
         ('tarjeta', 'Tarjeta'),
@@ -172,6 +173,7 @@ class Pago(models.Model):
     metodo_pago = models.CharField(
         max_length=20,
         choices=METODO_PAGO_CHOICES,
+        default='qr',
         verbose_name="Método de pago"
     )
     referencia = models.CharField(

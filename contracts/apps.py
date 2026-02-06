@@ -35,4 +35,5 @@ class ContractsConfig(AppConfig):
 
         @receiver(post_delete, sender=Feriado)
         def feriado_post_delete(sender, instance, **kwargs):
+            _feriado_old_fecha.pop(instance.pk, None)
             recalcular_fecha_fin_por_feriado(instance.fecha, -1)

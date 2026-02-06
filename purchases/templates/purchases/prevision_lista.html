@@ -31,7 +31,7 @@
 
 {% block content %}
 <div class="container">
-    <h1>Previsiones de Compra</h1>
+    {% include "base/page_title.html" with title="Previsiones de Compra" icon="🛒" %}
     
     <div class="actions">
         <a href="{% url 'purchases:crear' %}" class="btn">Nueva Previsión</a>

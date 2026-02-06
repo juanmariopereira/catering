@@ -30,7 +30,7 @@
 
 {% block content %}
 <div class="container">
-    <h1>Planes</h1>
+    {% include "base/page_title.html" with title="Planes" icon="📑" %}
     
     <div class="actions">
         <a href="{% url 'plans:crear' %}" class="btn">Nuevo Plan</a>

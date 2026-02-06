@@ -91,6 +91,7 @@ def detalle_cocina_fecha(request, fecha_str=None):
     # Obtener o crear el detalle de cocina
     detalle_cocina, created = DetalleCocina.objects.get_or_create(fecha=fecha)
 
+    from base.models import es_feriado, get_feriado
     context = {
         'fecha': fecha,
         'detalle_cocina': detalle_cocina,
@@ -98,6 +99,8 @@ def detalle_cocina_fecha(request, fecha_str=None):
         'resumen_momento': resumen_momento,
         'fecha_anterior': fecha - timedelta(days=1),
         'fecha_siguiente': fecha + timedelta(days=1),
+        'es_feriado': es_feriado(fecha),
+        'feriado': get_feriado(fecha),
     }
 
     return render(request, 'kitchen/detalle_fecha.html', context)
