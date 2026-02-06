@@ -124,7 +124,7 @@
         <div class="form-actions">
             <button type="submit" class="btn">Guardar</button>
             {% if object %}
-                <a href="{% url 'delivery:ruta_imprimible' object.pk %}" class="btn btn-secondary">Ver imprimible</a>
+                <a href="{% url 'delivery:ruta_imprimible' object.pk %}" class="btn btn-secondary">Ver reporte</a>
             {% endif %}
             <a href="{% url 'delivery:lista' %}" class="btn btn-secondary">Cancelar</a>
         </div>

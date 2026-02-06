@@ -124,6 +124,8 @@
     .modal-recorrido .modal-recorrido-body { flex: 1; min-height: 0; position: relative; }
     .modal-recorrido #mapa-recorrido { width: 100%; height: 100%; min-height: 400px; }
     .modal-recorrido .sin-puntos { padding: 24px; text-align: center; color: #666; }
+    .mapa-recorrido-label { position: absolute; white-space: nowrap; font-size: 12px; font-weight: 600; color: #333; background: #fff; padding: 4px 8px; border-radius: 4px; border: 1px solid #ccc; box-shadow: 0 1px 4px rgba(0,0,0,0.2); pointer-events: none; z-index: 1; transform: translate(14px, -50%); }
+    .mapa-recorrido-label .label-num { color: #c62828; margin-right: 6px; }
     @media print { .btn-ver-recorrido { display: none !important; } }
 </style>
 {% endblock %}
@@ -280,6 +282,7 @@
         var sinPuntosEl = document.getElementById('mapa-recorrido-sin-puntos');
         var mapRecorridoInstance = null;
         var mapRecorridoMarkers = [];
+        var mapRecorridoLabelOverlays = [];
 
         function getRecorridoData() {
             var el = document.getElementById('mapa-recorrido-data');
@@ -340,11 +343,59 @@
             }
             mapRecorridoMarkers.forEach(function(m) { m.setMap(null); });
             mapRecorridoMarkers = [];
+            mapRecorridoLabelOverlays.forEach(function(o) { o.setMap(null); });
+            mapRecorridoLabelOverlays = [];
+            function LabelOverlay(position, text, isPartida) {
+                this.position = position;
+                this.text = text;
+                this.isPartida = !!isPartida;
+                this.div = null;
+            }
+            LabelOverlay.prototype = new google.maps.OverlayView();
+            LabelOverlay.prototype.onAdd = function() {
+                this.div = document.createElement('div');
+                this.div.className = 'mapa-recorrido-label';
+                if (this.isPartida) {
+                    this.div.innerHTML = '<span class="label-num">Salida</span>';
+                } else {
+                    this.div.innerHTML = '<span class="label-num">' + String(this.text).replace(/</g, '&lt;') + '</span>';
+                }
+                this.getPanes().overlayMouseTarget.appendChild(this.div);
+            };
+            LabelOverlay.prototype.draw = function() {
+                if (!this.div || !this.position) return;
+                var pos = this.getProjection().fromLatLngToDivPixel(this.position);
+                if (pos) {
+                    this.div.style.left = pos.x + 'px';
+                    this.div.style.top = pos.y + 'px';
+                }
+            };
+            LabelOverlay.prototype.onRemove = function() { if (this.div && this.div.parentNode) this.div.parentNode.removeChild(this.div); this.div = null; };
+            var infoWindowRecorrido = new google.maps.InfoWindow();
             for (var j = 0; j < puntos.length; j++) {
-                var opts = { position: path[j], map: mapRecorridoInstance, title: puntos[j].label };
+                var pto = puntos[j];
+                var opts = { position: path[j], map: mapRecorridoInstance, title: pto.label };
                 if (j === 0 && data.tiene_punto_partida) opts.icon = { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#4CAF50', fillOpacity: 1, strokeColor: '#2E7D32', strokeWeight: 2 };
                 var marker = new google.maps.Marker(opts);
                 mapRecorridoMarkers.push(marker);
+                var isPartida = (j === 0 && data.tiene_punto_partida);
+                var labelText = isPartida ? 'Salida' : String(pto.orden != null ? pto.orden : (pto.label || ''));
+                var labelOverlay = new LabelOverlay(path[j], labelText, isPartida);
+                labelOverlay.setMap(mapRecorridoInstance);
+                mapRecorridoLabelOverlays.push(labelOverlay);
+                if (!isPartida && (pto.cliente || pto.codigo_entrega || pto.direccion)) {
+                    (function(mkr, pt) {
+                        mkr.addListener('click', function() {
+                            var html = '<div class="mapa-recorrido-popup" style="padding:8px;min-width:200px;max-width:320px;">';
+                            html += '<div style="font-weight:600;margin-bottom:6px;">' + (pt.cliente || '').replace(/</g, '&lt;') + '</div>';
+                            if (pt.codigo_entrega) html += '<div style="font-size:0.9rem;color:#1565c0;margin-bottom:4px;">' + (pt.codigo_entrega || '').replace(/</g, '&lt;') + '</div>';
+                            if (pt.direccion) html += '<div style="font-size:0.85rem;color:#555;">' + (pt.direccion || '').replace(/</g, '&lt;').replace(/\n/g, '<br>') + '</div>';
+                            html += '</div>';
+                            infoWindowRecorrido.setContent(html);
+                            infoWindowRecorrido.open(mapRecorridoInstance, mkr);
+                        });
+                    })(marker, pto);
+                }
             }
             if (path.length > 1) {
                 if (window.polylineRecorrido) window.polylineRecorrido.setMap(null);

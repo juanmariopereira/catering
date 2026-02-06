@@ -19,8 +19,10 @@
     .distribuir-filtro { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 14px; background: #f5f5f5; border-radius: 8px; margin-bottom: 16px; }
     .distribuir-filtro label { font-weight: 600; color: #333; }
     .distribuir-filtro input[type="date"] { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; }
-    .distribuir-filtro .btn-ver { padding: 8px 16px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.95rem; text-decoration: none; display: inline-block; }
-    .distribuir-filtro .btn-ver:hover { background: #1976D2; }
+.distribuir-filtro .btn-ver { padding: 8px 16px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.95rem; text-decoration: none; display: inline-block; }
+.distribuir-filtro .btn-ver:hover { background: #1976D2; }
+.distribuir-filtro .btn-copiar-ultima { padding: 8px 16px; background: #607D8B; color: white; border-radius: 4px; font-size: 0.95rem; text-decoration: none; display: inline-block; }
+.distribuir-filtro .btn-copiar-ultima:hover { background: #455A64; color: white; }
     .distribuir-ayuda { padding: 12px 16px; background: #e3f2fd; border: 1px solid #2196F3; border-radius: 6px; margin-bottom: 16px; font-size: 0.9rem; color: #1565c0; }
     .distribuir-resumen { padding: 10px 14px; background: #f1f8e9; border: 1px solid #7CB342; border-radius: 6px; margin-bottom: 16px; }
     .distribuir-resumen strong { color: #2e7d32; }
@@ -36,6 +38,7 @@
     .distribuir-tabla .link-maps { font-size: 0.85rem; color: #1565c0; margin-top: 4px; display: inline-block; }
     .distribuir-tabla .link-maps:hover { text-decoration: underline; }
     .distribuir-actions { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.distribuir-actions-arriba { margin-top: 0; margin-bottom: 20px; }
     .btn-guardar { padding: 12px 24px; background: #7CB342; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600; }
     .btn-guardar:hover { background: #689F38; }
     .btn-volver { padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 0.95rem; }
@@ -57,6 +60,12 @@
     .mapa-leyenda-colores .leyenda-bola { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #333; flex-shrink: 0; }
     .mapa-leyenda-colores .leyenda-count { font-weight: 600; color: #333; margin-left: 2px; }
     .tabla-agrupada-wrap { margin-top: 20px; }
+    .tabla-agrupada-wrap details { border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa; }
+    .tabla-agrupada-wrap summary { padding: 12px 16px; font-size: 1.1rem; font-weight: 600; color: #333; cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
+    .tabla-agrupada-wrap summary::-webkit-details-marker { display: none; }
+    .tabla-agrupada-wrap summary::before { content: '▶'; font-size: 0.75rem; color: #666; transition: transform 0.2s; }
+    .tabla-agrupada-wrap details[open] summary::before { transform: rotate(90deg); }
+    .tabla-agrupada-wrap .tabla-agrupada-inner { padding: 0 16px 16px; }
     .tabla-agrupada-wrap h3 { font-size: 1.1rem; margin: 0 0 12px 0; color: #333; }
     .grupo-entregador { margin-bottom: 20px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
     .grupo-entregador .grupo-header { padding: 12px 16px; font-weight: 600; font-size: 1rem; display: flex; align-items: center; gap: 10px; }
@@ -83,6 +92,9 @@
         <label for="fecha">Fecha de entrega</label>
         <input type="date" name="fecha" id="fecha" value="{{ fecha_str }}" required>
         <button type="submit" class="btn-ver" id="btn-ver-puntos">Ver puntos de entrega</button>
+        {% if fecha_seleccionada and contratos %}
+        <a href="{% url 'delivery:distribuir_entregas' %}?fecha={{ fecha_str }}&copiar_ultima=1" class="btn-copiar-ultima">Copiar última distribución</a>
+        {% endif %}
     </form>
 
     {% if fecha_seleccionada %}
@@ -121,14 +133,18 @@
             </select>
             {% endfor %}
         </div>
-        <div class="tabla-agrupada-wrap">
-            <h3>Resumen por entregador</h3>
-            <p class="mapa-leyenda" style="margin-bottom: 12px;">Se actualiza al cambiar asignaciones en el mapa.</p>
-            <div id="tabla-agrupada"></div>
-        </div>
-        <div class="distribuir-actions">
+        <div class="distribuir-actions distribuir-actions-arriba">
             <button type="submit" class="btn-guardar">Guardar distribución</button>
             <a href="{% url 'delivery:lista' %}?fecha={{ fecha_str }}" class="btn-volver">Volver a lista de entregas</a>
+        </div>
+        <div class="tabla-agrupada-wrap">
+            <details>
+                <summary>Resumen por entregador</summary>
+                <div class="tabla-agrupada-inner">
+                    <p class="mapa-leyenda" style="margin-bottom: 12px;">Se actualiza al cambiar asignaciones en el mapa.</p>
+                    <div id="tabla-agrupada"></div>
+                </div>
+            </details>
         </div>
     </form>
     {% else %}
@@ -275,7 +291,6 @@
             html += '<option value="' + e.id + '"' + sel + '>' + (e.nombre || '').replace(/</g, '&lt;') + '</option>';
         }
         html += '</select>';
-        html += '<button type="button" class="btn-guardar-modal" id="map-btn-guardar-' + p.id + '">Guardar</button>';
         html += '</div>';
         return html;
     }
@@ -320,20 +335,7 @@
                             if (fs) fs.value = this.value;
                             mkr.setIcon(getMarkerIcon(colorParaEntregador(this.value)));
                             if (window.refreshGroupedTable) window.refreshGroupedTable();
-                        });
-                    }
-                    var btnGuardar = document.getElementById('map-btn-guardar-' + pt.id);
-                    if (btnGuardar) {
-                        btnGuardar.addEventListener('click', function() {
-                            var sel = document.getElementById('map-select-' + pt.id);
-                            if (sel) {
-                                var fs = document.querySelector('select[name="entregador_' + pt.id + '"]');
-                                if (fs) fs.value = sel.value;
-                                mkr.setIcon(getMarkerIcon(colorParaEntregador(sel.value)));
-                                if (window.refreshGroupedTable) window.refreshGroupedTable();
-                            }
-                            var form = document.getElementById('form-distribuir');
-                            if (form) form.submit();
+                            infoWindow.close();
                         });
                     }
                 }, 100);

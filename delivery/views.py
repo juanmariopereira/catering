@@ -10,6 +10,7 @@ from django.db.models import Case, IntegerField, Max, Value, When, Q
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from datetime import date, timedelta
+from base.models import es_feriado
 from routes.models import Ruta, RutaCliente, Entregador
 from contracts.models import Contrato, q_filtro_estado, contratos_activos_en_fecha
 from .forms import RutaForm, PuntoPartidaEntregaForm
@@ -447,6 +448,63 @@ def distribuir_entregas(request):
         ).select_related('ruta'):
             asignacion_actual[rc.contrato_id] = rc.ruta.entregador_id
 
+    # GET con copiar_ultima=1: copiar la distribución más reciente anterior a fecha
+    # Solo se consideran días laborables (lun–vie); se ignora fin de semana u otras fechas con Ruta pero sin entregas.
+    if request.method == 'GET' and request.GET.get('copiar_ultima'):
+        fechas_anteriores = (
+            Ruta.objects.filter(fecha__lt=fecha)
+            .order_by('-fecha')
+            .values_list('fecha', flat=True)
+            .distinct()
+        )
+        ultima_fecha = None
+        for f in fechas_anteriores:
+            if f.weekday() < 5 and not es_feriado(f):  # lun–vie y no feriado
+                ultima_fecha = f
+                break
+        if not ultima_fecha:
+            messages.info(
+                request,
+                'No hay ninguna distribución anterior a la fecha seleccionada.',
+            )
+            return redirect(reverse('delivery:distribuir_entregas') + f'?fecha={fecha.isoformat()}')
+        asignacion_origen = {
+            rc.contrato_id: rc.ruta.entregador_id
+            for rc in RutaCliente.objects.filter(
+                ruta__fecha=ultima_fecha,
+            ).select_related('ruta')
+        }
+        copiados = 0
+        for c in contratos:
+            entregador_id = asignacion_origen.get(c.id)
+            if entregador_id is None:
+                continue
+            actual = asignacion_actual.get(c.id)
+            if actual == entregador_id:
+                continue
+            RutaCliente.objects.filter(ruta__fecha=fecha, contrato_id=c.id).delete()
+            ruta = _get_or_create_ruta(fecha, Entregador.objects.get(pk=entregador_id))
+            max_orden = ruta.ruta_clientes.aggregate(m=Max('orden_entrega'))['m'] or 0
+            RutaCliente.objects.create(
+                ruta=ruta,
+                contrato_id=c.id,
+                orden_entrega=max_orden + 1,
+            )
+            copiados += 1
+        if copiados > 0:
+            messages.success(
+                request,
+                f'Se copió la distribución del {ultima_fecha.strftime("%d/%m/%Y")} '
+                f'a la fecha seleccionada ({copiados} punto(s) asignados).',
+            )
+        else:
+            messages.info(
+                request,
+                f'La distribución del {ultima_fecha.strftime("%d/%m/%Y")} se aplicó; '
+                'no hubo cambios (ya coincidía o no hay contratos comunes).',
+            )
+        return redirect(reverse('delivery:distribuir_entregas') + f'?fecha={fecha.isoformat()}')
+
     if request.method == 'POST':
         # Guardar distribución: entregador_<contrato_id> para cada contrato
         actualizados = 0
@@ -628,10 +686,16 @@ def _datos_recorrido_ruta(ruta, ruta_clientes):
     for rc in ruta_clientes:
         c = rc.contrato
         if c.latitud is not None and c.longitud is not None:
+            nombre_cliente = (c.cliente.nombre if c.cliente_id else '').strip() or '—'
+            direccion = (c.direccion_entrega or '').strip() or '—'
             puntos.append({
                 'lat': float(c.latitud),
                 'lng': float(c.longitud),
-                'label': f"#{rc.orden_entrega} {rc.codigo_entrega}",
+                'label': f"{rc.orden_entrega} {nombre_cliente}",
+                'orden': rc.orden_entrega,
+                'cliente': nombre_cliente,
+                'codigo_entrega': (rc.codigo_entrega or '').strip() or '—',
+                'direccion': direccion,
             })
     mapa = {
         'puntos': puntos,
