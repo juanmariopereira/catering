@@ -1,0 +1,298 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Parámetros del sistema - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Parámetros del sistema</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .param-section { margin-bottom: 32px; }
+    .param-section h2 { font-size: 1.25rem; color: #333; border-bottom: 2px solid #7CB342; padding-bottom: 8px; margin-top: 0; margin-bottom: 16px; }
+    .form-layout .form-group { margin-bottom: 16px; }
+    .form-layout label { display: block; margin-bottom: 4px; font-weight: 600; }
+    .form-layout input, .form-layout textarea { width: 100%; max-width: 480px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+    .form-layout .help-text { font-size: 0.85rem; color: #666; margin-top: 4px; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+    .btn:hover { background-color: {{ brand_color_hover }}; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    .btn-sm { padding: 6px 12px; font-size: 0.9rem; }
+    .param-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .param-table th, .param-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    .param-table th { background-color: #f5f5f5; font-weight: 600; }
+    .param-table tr:hover { background-color: #f9f9f9; }
+    .param-table .valor-cell { max-width: 320px; word-break: break-word; }
+    .param-table .table-actions a { margin-right: 8px; }
+    .add-param-form { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
+    .add-param-form .form-row { display: grid; grid-template-columns: 1fr 2fr 1.5fr auto; gap: 12px; align-items: end; flex-wrap: wrap; }
+    .add-param-form .form-group { margin-bottom: 0; }
+    .add-param-form input, .add-param-form textarea { max-width: none; }
+    @media (max-width: 768px) { .add-param-form .form-row { grid-template-columns: 1fr; } }
+    .gm-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: none; z-index: 2000; }
+    .gm-modal { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(980px, 96vw); max-height: 92vh; background: #fff; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: none; z-index: 2001; overflow: hidden; }
+    .gm-modal-header { padding: 14px 18px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; }
+    .gm-modal-close { background: transparent; border: none; font-size: 1.3rem; cursor: pointer; color: #666; }
+    .gm-modal-body { padding: 14px 18px; }
+    .gm-map { width: 100%; height: 420px; border: 1px solid #e5e5e5; border-radius: 8px; }
+    .gm-modal-footer { padding: 14px 18px; border-top: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .gm-error-msg { background: #ffebee; border: 1px solid #ef5350; color: #c62828; padding: 12px; border-radius: 8px; font-size: 0.9rem; display: none; margin-bottom: 10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Parámetros del sistema</h1>
+    <p class="help-text" style="margin-bottom: 24px;">
+        Configure aquí los parámetros básicos del sistema, como el punto de partida de las entregas y otros valores de configuración.
+    </p>
+
+    {% if messages %}
+    <ul class="messages" style="list-style: none; padding: 0; margin: 0 0 20px 0;">
+        {% for message in messages %}
+        <li style="padding: 10px 14px; margin-bottom: 8px; border-radius: 4px; background: {% if message.tags == 'success' %}#e8f5e9{% else %}#fff3e0{% endif %}; color: #333;">{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <!-- Punto de partida de entregas -->
+    <section class="param-section">
+        <h2>Punto de partida de entregas</h2>
+        <p class="help-text" style="margin-bottom: 16px;">
+            Ubicación desde donde salen las entregas (cocina, depósito). El algoritmo de optimización de rutas usa este punto como origen y destino.
+        </p>
+        <form method="post" class="form-layout" id="punto-partida-form">
+            {% csrf_token %}
+            <input type="hidden" name="guardar_punto_partida" value="1">
+            <div class="form-group">
+                <label for="{{ form_punto_partida.nombre.id_for_label }}">{{ form_punto_partida.nombre.label }}</label>
+                {{ form_punto_partida.nombre }}
+                {% if form_punto_partida.nombre.errors %}<div style="color: #c62828; font-size: 12px;">{{ form_punto_partida.nombre.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form_punto_partida.direccion.id_for_label }}">{{ form_punto_partida.direccion.label }}</label>
+                <p class="help-text" style="margin-bottom: 8px;">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-seleccionar-en-mapa">Seleccionar en mapa</button>
+                </p>
+                {{ form_punto_partida.direccion }}
+                {% if form_punto_partida.direccion.errors %}<div style="color: #c62828; font-size: 12px;">{{ form_punto_partida.direccion.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 480px;">
+                <div>
+                    <label for="{{ form_punto_partida.latitud.id_for_label }}">{{ form_punto_partida.latitud.label }}</label>
+                    {{ form_punto_partida.latitud }}
+                    {% if form_punto_partida.latitud.errors %}<div style="color: #c62828; font-size: 12px;">{{ form_punto_partida.latitud.errors }}</div>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form_punto_partida.longitud.id_for_label }}">{{ form_punto_partida.longitud.label }}</label>
+                    {{ form_punto_partida.longitud }}
+                    {% if form_punto_partida.longitud.errors %}<div style="color: #c62828; font-size: 12px;">{{ form_punto_partida.longitud.errors }}</div>{% endif %}
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="{{ form_punto_partida.activo.id_for_label }}" style="display: flex; align-items: center; gap: 8px;">
+                    {{ form_punto_partida.activo }}
+                    {{ form_punto_partida.activo.label }}
+                </label>
+                {% if form_punto_partida.activo.errors %}<div style="color: #c62828; font-size: 12px;">{{ form_punto_partida.activo.errors }}</div>{% endif %}
+            </div>
+            <div style="margin-top: 16px;">
+                <button type="submit" class="btn">Guardar punto de partida</button>
+            </div>
+        </form>
+    </section>
+
+    <!-- Parámetros del sistema (tabla) -->
+    <section class="param-section">
+        <h2>Parámetros generales</h2>
+        <p class="help-text" style="margin-bottom: 12px;">
+            Clave/valor para configuraciones adicionales (ej. nombre de empresa, días de aviso, etc.).
+        </p>
+
+        <table class="param-table">
+            <thead>
+                <tr>
+                    <th>Clave</th>
+                    <th>Valor</th>
+                    <th>Descripción</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in parametros %}
+                <tr>
+                    <td><code>{{ p.clave }}</code></td>
+                    <td class="valor-cell">{{ p.valor|truncatewords:15 }}</td>
+                    <td>{{ p.descripcion|default:"" }}</td>
+                    <td class="table-actions">
+                        <a href="{% url 'parametro_editar' p.pk %}" title="Editar">Editar</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" style="text-align: center; color: #999; padding: 24px;">No hay parámetros. Añada uno abajo.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="add-param-form">
+            <h3 style="font-size: 1rem; margin-bottom: 12px;">Añadir parámetro</h3>
+            <form method="post" class="form-layout">
+                {% csrf_token %}
+                <input type="hidden" name="guardar_parametro" value="1">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form_parametro_nuevo.clave.id_for_label }}">{{ form_parametro_nuevo.clave.label }}</label>
+                        {{ form_parametro_nuevo.clave }}
+                        {% if form_parametro_nuevo.clave.errors %}<div style="color: #c62828; font-size: 12px;">{{ form_parametro_nuevo.clave.errors }}</div>{% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form_parametro_nuevo.valor.id_for_label }}">{{ form_parametro_nuevo.valor.label }}</label>
+                        {{ form_parametro_nuevo.valor }}
+                        {% if form_parametro_nuevo.valor.errors %}<div style="color: #c62828; font-size: 12px;">{{ form_parametro_nuevo.valor.errors }}</div>{% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form_parametro_nuevo.descripcion.id_for_label }}">{{ form_parametro_nuevo.descripcion.label }}</label>
+                        {{ form_parametro_nuevo.descripcion }}
+                        {% if form_parametro_nuevo.descripcion.errors %}<div style="color: #c62828; font-size: 12px;">{{ form_parametro_nuevo.descripcion.errors }}</div>{% endif %}
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn">Añadir</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+</div>
+
+<!-- Modal Google Maps (punto de partida) -->
+<div class="gm-modal-overlay" id="gm-overlay" aria-hidden="true"></div>
+<div class="gm-modal" id="gm-modal" role="dialog" aria-labelledby="gm-modal-title" aria-hidden="true">
+    <div class="gm-modal-header">
+        <h3 class="gm-modal-title" id="gm-modal-title">Seleccionar punto de partida (Santa Cruz, Bolivia)</h3>
+        <button type="button" class="gm-modal-close" id="gm-close" aria-label="Cerrar">×</button>
+    </div>
+    <div class="gm-modal-body">
+        <p class="help-text" style="margin: 0 0 10px 0;">Mueve el pin en el mapa para elegir la ubicación.</p>
+        <div class="gm-error-msg" id="gm-error-msg">El mapa no pudo cargarse. Revisa la configuración de Google Maps en el servidor.</div>
+        <div class="gm-map" id="gm-map"></div>
+    </div>
+    <div class="gm-modal-footer">
+        <div><strong>Lat:</strong> <span id="gm-lat">—</span> &nbsp; <strong>Lng:</strong> <span id="gm-lng">—</span></div>
+        <div>
+            <button type="button" class="btn btn-secondary btn-sm" id="gm-cancel">Cancelar</button>
+            <button type="button" class="btn btn-sm" id="gm-accept">Usar esta ubicación</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    var form = document.getElementById('punto-partida-form');
+    if (!form) return;
+    function byName(name) { return form.querySelector('[name="' + name + '"]'); }
+    var mapsKey = "{{ google_maps_browser_key|default:'' }}";
+    var gm = { loaded: false, loading: false, map: null, marker: null, geocoder: null, lastLatLng: null };
+    function gmSetCoords(latLng) {
+        if (!latLng) return;
+        var lat = typeof latLng.lat === 'function' ? latLng.lat() : latLng.lat;
+        var lng = typeof latLng.lng === 'function' ? latLng.lng() : latLng.lng;
+        gm.lastLatLng = { lat: lat, lng: lng };
+        var latEl = document.getElementById('gm-lat');
+        var lngEl = document.getElementById('gm-lng');
+        if (latEl) latEl.textContent = lat.toFixed(6);
+        if (lngEl) lngEl.textContent = lng.toFixed(6);
+    }
+    function gmOpen() {
+        var overlay = document.getElementById('gm-overlay');
+        var modal = document.getElementById('gm-modal');
+        if (!overlay || !modal) return;
+        overlay.style.display = 'block';
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+    function gmClose() {
+        var overlay = document.getElementById('gm-overlay');
+        var modal = document.getElementById('gm-modal');
+        if (!overlay || !modal) return;
+        overlay.style.display = 'none';
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+    function gmShowError() {
+        var el = document.getElementById('gm-error-msg');
+        if (el) el.style.display = 'block';
+    }
+    function gmHideError() {
+        var el = document.getElementById('gm-error-msg');
+        if (el) el.style.display = 'none';
+    }
+    function loadGoogleMaps(cb) {
+        if (gm.loaded) { gmHideError(); cb && cb(); return; }
+        if (gm.loading) return;
+        if (!mapsKey || !mapsKey.trim()) { alert('Falta configurar GOOGLE_MAPS_BROWSER_API_KEY.'); return; }
+        gm.loading = true;
+        gmHideError();
+        window.gm_authFailure = function() { gm.loading = false; gm.loaded = false; gmShowError(); };
+        var script = document.createElement('script');
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(mapsKey) + '&libraries=places';
+        script.async = true;
+        script.defer = true;
+        script.onload = function() { gm.loaded = true; gm.loading = false; gmHideError(); cb && cb(); };
+        script.onerror = function() { gm.loading = false; gmShowError(); };
+        document.head.appendChild(script);
+    }
+    function initMapIfNeeded() {
+        if (gm.map || !window.google || !window.google.maps) return;
+        gmHideError();
+        var defaultCenter = { lat: -17.783300, lng: -63.182100 };
+        try {
+            gm.geocoder = new google.maps.Geocoder();
+            gm.map = new google.maps.Map(document.getElementById('gm-map'), {
+                center: defaultCenter, zoom: 13, mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
+            });
+            gm.marker = new google.maps.Marker({ position: defaultCenter, map: gm.map, draggable: true });
+            gmSetCoords(defaultCenter);
+            gm.marker.addListener('dragend', function() {
+                gmSetCoords(gm.marker.getPosition());
+            });
+            var latInput = byName('latitud');
+            var lngInput = byName('longitud');
+            var existingLat = latInput && latInput.value ? parseFloat(latInput.value) : null;
+            var existingLng = lngInput && lngInput.value ? parseFloat(lngInput.value) : null;
+            if (existingLat && existingLng) {
+                var pos = { lat: existingLat, lng: existingLng };
+                gm.map.setCenter(pos); gm.map.setZoom(16); gm.marker.setPosition(pos); gmSetCoords(pos);
+            }
+        } catch (err) { gmShowError(); }
+    }
+    function gmAccept() {
+        if (!gm.lastLatLng) { alert('No hay coordenadas seleccionadas.'); return; }
+        var lat = gm.lastLatLng.lat, lng = gm.lastLatLng.lng;
+        var latInput = byName('latitud');
+        var lngInput = byName('longitud');
+        if (latInput) latInput.value = lat.toFixed(6);
+        if (lngInput) lngInput.value = lng.toFixed(6);
+        gmClose();
+    }
+    document.getElementById('btn-seleccionar-en-mapa') && document.getElementById('btn-seleccionar-en-mapa').addEventListener('click', function() {
+        loadGoogleMaps(function() {
+            gmOpen();
+            setTimeout(function() {
+                initMapIfNeeded();
+                if (gm.map) google.maps.event.trigger(gm.map, 'resize');
+                if (gm.map && gm.marker) gm.map.setCenter(gm.marker.getPosition());
+            }, 50);
+        });
+    });
+    document.getElementById('gm-cancel') && document.getElementById('gm-cancel').addEventListener('click', gmClose);
+    document.getElementById('gm-close') && document.getElementById('gm-close').addEventListener('click', gmClose);
+    document.getElementById('gm-overlay') && document.getElementById('gm-overlay').addEventListener('click', gmClose);
+    document.getElementById('gm-accept') && document.getElementById('gm-accept').addEventListener('click', gmAccept);
+})();
+</script>
+{% endblock %}

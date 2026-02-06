@@ -1,4 +1,5 @@
 import uuid
+from django.conf import settings
 from django.db import models
 from django.core.validators import MinValueValidator
 
@@ -17,6 +18,8 @@ class Entregador(models.Model):
     activo = models.BooleanField(default=True, verbose_name="Activo")
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
     fecha_actualizacion = models.DateTimeField(auto_now=True, verbose_name="Fecha de actualización")
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
     notas = models.TextField(blank=True, null=True, verbose_name="Notas adicionales")
 
     class Meta:
@@ -40,7 +43,15 @@ class Ruta(models.Model):
     activa = models.BooleanField(default=True, verbose_name="Activa")
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
     fecha_actualizacion = models.DateTimeField(auto_now=True, verbose_name="Fecha de actualización")
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
     notas = models.TextField(blank=True, null=True, verbose_name="Notas adicionales")
+    duracion_legs_segundos = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Duración por tramo (seg)",
+        help_text="Lista de duraciones en segundos por tramo (desde API Directions); se usa para tiempo estimado de llegada.",
+    )
 
     clientes = models.ManyToManyField(
         'contracts.Contrato',
@@ -90,6 +101,54 @@ class RutaCliente(models.Model):
         verbose_name="Dirección de entrega",
         help_text="Dirección específica para esta entrega en formato JSON"
     )
+    entregada = models.BooleanField(
+        default=False,
+        verbose_name="Entregada",
+        help_text="Marcado cuando se confirma la entrega en esta parada",
+    )
+    fecha_entrega = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha/hora entrega",
+        help_text="Momento en que se marcó como entregada",
+    )
+    marcadopor_entregada = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='rutas_marcadas_entregada',
+        verbose_name="Marcado entregada por",
+        help_text="Usuario que marcó esta parada como entregada",
+    )
+    no_entregada = models.BooleanField(
+        default=False,
+        verbose_name="No entregada",
+        help_text="Marcado cuando se reporta que no se pudo realizar la entrega",
+    )
+    motivo_no_entrega = models.TextField(
+        blank=True,
+        default='',
+        verbose_name="Motivo no entrega",
+        help_text="Descripción obligatoria del motivo cuando no se pudo entregar",
+    )
+    fecha_no_entrega = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha/hora reporte no entrega",
+        help_text="Momento en que se reportó que no se pudo entregar",
+    )
+    marcadopor_no_entrega = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='rutas_marcadas_no_entregada',
+        verbose_name="Reportado no entrega por",
+        help_text="Usuario que reportó que no se pudo entregar",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
 
     class Meta:
         verbose_name = "Cliente de Ruta"

@@ -1,0 +1,57 @@
+{% extends 'base/base.html' %}
+
+{% block title %}{% if es_edicion %}Editar parámetro{% else %}Nuevo parámetro{% endif %} - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<a href="{% url 'parametros_sistema' %}">Parámetros del sistema</a>
+<span class="sep">/</span>
+<span>{% if es_edicion %}Editar{% else %}Nuevo{% endif %} parámetro</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-layout .form-group { margin-bottom: 16px; }
+    .form-layout label { display: block; margin-bottom: 4px; font-weight: 600; }
+    .form-layout input, .form-layout textarea { width: 100%; max-width: 560px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+    .form-layout .help-text { font-size: 0.85rem; color: #666; margin-top: 4px; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; }
+    .btn:hover { background-color: {{ brand_color_hover }}; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    .form-actions { margin-top: 24px; display: flex; gap: 10px; flex-wrap: wrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>{% if es_edicion %}Editar parámetro{% else %}Nuevo parámetro{% endif %}</h1>
+
+    <form method="post" class="form-layout">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="{{ form.clave.id_for_label }}">{{ form.clave.label }}</label>
+            {{ form.clave }}
+            {% if form.clave.help_text %}<div class="help-text">{{ form.clave.help_text }}</div>{% endif %}
+            {% if form.clave.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.clave.errors }}</div>{% endif %}
+        </div>
+        <div class="form-group">
+            <label for="{{ form.valor.id_for_label }}">{{ form.valor.label }}</label>
+            {{ form.valor }}
+            {% if form.valor.help_text %}<div class="help-text">{{ form.valor.help_text }}</div>{% endif %}
+            {% if form.valor.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.valor.errors }}</div>{% endif %}
+        </div>
+        <div class="form-group">
+            <label for="{{ form.descripcion.id_for_label }}">{{ form.descripcion.label }}</label>
+            {{ form.descripcion }}
+            {% if form.descripcion.help_text %}<div class="help-text">{{ form.descripcion.help_text }}</div>{% endif %}
+            {% if form.descripcion.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.descripcion.errors }}</div>{% endif %}
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn">Guardar</button>
+            <a href="{% url 'parametros_sistema' %}" class="btn btn-secondary">Volver a Parámetros</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

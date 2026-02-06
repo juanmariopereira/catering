@@ -10,6 +10,8 @@ class DetalleCocina(models.Model):
     fecha = models.DateField(verbose_name="Fecha", unique=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
     fecha_actualizacion = models.DateTimeField(auto_now=True, verbose_name="Fecha de actualización")
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
     notas = models.TextField(blank=True, null=True, verbose_name="Notas para el cocinero")
 
     class Meta:

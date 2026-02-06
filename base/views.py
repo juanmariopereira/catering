@@ -11,8 +11,8 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy, reverse
 from datetime import date, timedelta, datetime
 
-from .models import Feriado, es_feriado
-from .forms import FeriadoForm
+from .models import Feriado, ParametroSistema, es_feriado
+from .forms import FeriadoForm, ParametroSistemaForm
 from planning.models import PlanificacionMenu
 from billing.models import Cobro, Pago, _dias_vencimiento_por_frecuencia
 from billing.utils import obtener_cobros_vencidos, periodo_hasta_segun_frecuencia
@@ -315,3 +315,83 @@ class FeriadoDeleteView(LoginRequiredMixin, DeleteView):
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, 'Feriado eliminado.')
         return super().delete(request, *args, **kwargs)
+
+
+# --- Parámetros del sistema ---
+
+@login_required
+def parametros_sistema(request):
+    """
+    Pantalla de configuración: punto de partida de entregas y tabla de parámetros del sistema.
+    """
+    from delivery.models import PuntoPartidaEntrega
+    from delivery.forms import PuntoPartidaEntregaForm
+
+    punto = PuntoPartidaEntrega.objects.filter(activo=True).order_by('-fecha_actualizacion').first()
+    if punto is None:
+        punto = PuntoPartidaEntrega.objects.order_by('-fecha_actualizacion').first()
+
+    form_punto = PuntoPartidaEntregaForm(instance=punto)
+    form_param = ParametroSistemaForm()
+
+    if request.method == 'POST':
+        if request.POST.get('guardar_punto_partida'):
+            form_punto = PuntoPartidaEntregaForm(request.POST, instance=punto)
+            if form_punto.is_valid():
+                form_punto.save()
+                messages.success(
+                    request,
+                    'Punto de partida guardado. El algoritmo de optimización de rutas lo usará como origen y destino.',
+                )
+                return redirect('parametros_sistema')
+        elif request.POST.get('guardar_parametro'):
+            form_param = ParametroSistemaForm(request.POST)
+            if form_param.is_valid():
+                form_param.save()
+                messages.success(request, 'Parámetro añadido correctamente.')
+                return redirect('parametros_sistema')
+
+    parametros = ParametroSistema.objects.all().order_by('clave')
+    return render(request, 'base/parametros_sistema.html', {
+        'form_punto_partida': form_punto,
+        'punto_partida': punto,
+        'form_parametro_nuevo': form_param,
+        'parametros': parametros,
+    })
+
+
+@login_required
+def parametro_editar(request, pk):
+    """Editar un parámetro del sistema."""
+    param = get_object_or_404(ParametroSistema, pk=pk)
+    if request.method == 'POST':
+        form = ParametroSistemaForm(request.POST, instance=param)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Parámetro actualizado correctamente.')
+            return redirect('parametros_sistema')
+    else:
+        form = ParametroSistemaForm(instance=param)
+    return render(request, 'base/parametros_parametro_form.html', {
+        'form': form,
+        'parametro': param,
+        'es_edicion': True,
+    })
+
+
+@login_required
+def parametro_crear(request):
+    """Crear un nuevo parámetro del sistema."""
+    if request.method == 'POST':
+        form = ParametroSistemaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Parámetro creado correctamente.')
+            return redirect('parametros_sistema')
+    else:
+        form = ParametroSistemaForm()
+    return render(request, 'base/parametros_parametro_form.html', {
+        'form': form,
+        'parametro': None,
+        'es_edicion': False,
+    })

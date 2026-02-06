@@ -2,7 +2,25 @@
 Formularios del proyecto base.
 """
 from django import forms
-from .models import Feriado
+from .models import Feriado, ParametroSistema
+
+
+class ParametroSistemaForm(forms.ModelForm):
+    """Formulario para crear o editar un parámetro del sistema."""
+
+    class Meta:
+        model = ParametroSistema
+        fields = ('clave', 'valor', 'descripcion')
+        widgets = {
+            'clave': forms.TextInput(attrs={'placeholder': 'Ej: nombre_empresa', 'maxlength': 100}),
+            'valor': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Valor del parámetro'}),
+            'descripcion': forms.TextInput(attrs={'placeholder': 'Descripción opcional', 'maxlength': 255}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields['clave'].disabled = True
 
 
 class FeriadoForm(forms.ModelForm):

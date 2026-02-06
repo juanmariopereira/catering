@@ -90,7 +90,7 @@ class ClienteListView(LoginRequiredMixin, ListView):
 class ClienteCreateView(LoginRequiredMixin, CreateView):
     model = Cliente
     template_name = 'clients/cliente_form.html'
-    fields = ['nombre', 'email', 'telefono', 'direccion', 'link_maps', 'titular', 'activo', 'notas']
+    fields = ['nombre', 'email', 'telefono', 'direccion', 'link_maps', 'latitud', 'longitud', 'titular', 'activo', 'notas']
     success_url = reverse_lazy('clients:lista')
 
     def form_valid(self, form):
@@ -133,7 +133,7 @@ class ClienteDetailView(LoginRequiredMixin, DetailView):
 class ClienteUpdateView(LoginRequiredMixin, UpdateView):
     model = Cliente
     template_name = 'clients/cliente_form.html'
-    fields = ['nombre', 'email', 'telefono', 'direccion', 'link_maps', 'titular', 'activo', 'notas']
+    fields = ['nombre', 'email', 'telefono', 'direccion', 'link_maps', 'latitud', 'longitud', 'titular', 'activo', 'notas']
     context_object_name = 'cliente'
 
     def get_success_url(self):

@@ -73,6 +73,22 @@ class Contrato(models.Model):
         verbose_name="Enlace Google Maps",
         help_text="URL de Google Maps con la ubicación (opcional)"
     )
+    latitud = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        verbose_name="Latitud",
+        help_text="Coordenada para optimizar el orden de entrega en la ruta (Google Maps)"
+    )
+    longitud = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        verbose_name="Longitud",
+        help_text="Coordenada para optimizar el orden de entrega en la ruta (Google Maps)"
+    )
     horario_entrega = models.TimeField(
         blank=True,
         null=True,
@@ -113,6 +129,8 @@ class Contrato(models.Model):
     )
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
     fecha_actualizacion = models.DateTimeField(auto_now=True, verbose_name="Fecha de actualización")
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
     notas = models.TextField(blank=True, null=True, verbose_name="Notas adicionales")
 
     class Meta:
@@ -316,6 +334,8 @@ class PausaContrato(models.Model):
         help_text="Ej: vacaciones, viaje, etc."
     )
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
 
     class Meta:
         verbose_name = "Pausa de contrato"
@@ -416,6 +436,8 @@ class ExtensionVigencia(models.Model):
         verbose_name="Motivo",
         help_text="Razón de la extensión (ej. cortesía, compensación, etc.).",
     )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
 
     class Meta:
         verbose_name = "Extensión de vigencia"

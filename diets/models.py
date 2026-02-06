@@ -20,6 +20,8 @@ class TipoComida(models.Model):
         null=True,
         verbose_name="Descripción"
     )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
 
     class Meta:
         verbose_name = "Tipo de comida / Momento"
@@ -44,6 +46,8 @@ class Dieta(models.Model):
     activa = models.BooleanField(default=True, verbose_name="Activa")
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
     fecha_actualizacion = models.DateTimeField(auto_now=True, verbose_name="Fecha de actualización")
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
 
     recetas = models.ManyToManyField(
         'recipes.Receta',
@@ -92,6 +96,8 @@ class DietaReceta(models.Model):
         verbose_name="Orden",
         help_text="Orden de la receta dentro de ese momento (ej. 1º té, 2º galleta, 3º cereal)"
     )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
 
     class Meta:
         verbose_name = "Receta de Dieta"

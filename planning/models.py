@@ -18,6 +18,8 @@ class PlanificacionMenu(models.Model):
     )
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
     fecha_actualizacion = models.DateTimeField(auto_now=True, verbose_name="Fecha de actualización")
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
     notas = models.TextField(blank=True, null=True, verbose_name="Notas")
 
     class Meta:
@@ -58,6 +60,8 @@ class PlanificacionMenuReceta(models.Model):
         validators=[MinValueValidator(1)],
         verbose_name="Orden"
     )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
 
     class Meta:
         verbose_name = "Receta del menú planificado"
@@ -100,6 +104,8 @@ class PlanificacionClienteSustituta(models.Model):
         related_name='sustituciones_cliente_sustituta',
         verbose_name="Receta sustituta"
     )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
 
     class Meta:
         verbose_name = "Sustitución por cliente (fecha)"
@@ -140,6 +146,8 @@ class PlanificacionDieta(models.Model):
     )
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
     fecha_actualizacion = models.DateTimeField(auto_now=True, verbose_name="Fecha de actualización")
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
     notas = models.TextField(blank=True, null=True, verbose_name="Notas adicionales")
     recetas_alternativas = models.JSONField(
         default=list,
@@ -205,6 +213,8 @@ class PlanificacionRecetaSustituta(models.Model):
         related_name='sustituciones_como_sustituta',
         verbose_name="Receta sustituta"
     )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
 
     class Meta:
         verbose_name = "Sustitución de receta"

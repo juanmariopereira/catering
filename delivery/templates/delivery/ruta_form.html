@@ -31,6 +31,7 @@
     .formset-table .drag-cell:active { cursor: grabbing; }
     .formset-table .drag-handle { color: #999; font-size: 1.1rem; line-height: 1; }
     .formset-table .orden-input-wrap { display: none; }
+    .aviso-sin-coordenadas { font-size: 0.8rem; color: #e65100; margin-left: 8px; white-space: nowrap; }
 </style>
 {% endblock %}
 
@@ -93,6 +94,9 @@
                             {{ f.id }}
                             {{ f.contrato }}
                             {% if f.contrato.errors %}<div style="color: #c62828; font-size: 11px;">{{ f.contrato.errors }}</div>{% endif %}
+                            {% if formset and f.initial.contrato and f.initial.contrato in contratos_sin_coordenadas %}
+                            <span class="aviso-sin-coordenadas" title="Este contrato no tiene coordenadas (lat/long) para definir un orden óptimo en la ruta.">⚠ Sin coordenadas</span>
+                            {% endif %}
                         </td>
                         <td class="delete">
                             {% if f.DELETE %}{{ f.DELETE }}{% endif %}

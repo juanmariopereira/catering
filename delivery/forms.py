@@ -1,5 +1,20 @@
 from django import forms
 from routes.models import Ruta
+from .models import PuntoPartidaEntrega
+
+
+class PuntoPartidaEntregaForm(forms.ModelForm):
+    """Formulario para configurar el punto de partida (cocina/depósito) de las rutas."""
+
+    class Meta:
+        model = PuntoPartidaEntrega
+        fields = ['nombre', 'direccion', 'latitud', 'longitud', 'activo']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'placeholder': 'Ej: Cocina central'}),
+            'direccion': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Dirección literal (opcional)'}),
+            'latitud': forms.NumberInput(attrs={'step': 'any', 'placeholder': 'Ej: -17.783300'}),
+            'longitud': forms.NumberInput(attrs={'step': 'any', 'placeholder': 'Ej: -63.182100'}),
+        }
 
 
 class RutaForm(forms.ModelForm):

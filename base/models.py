@@ -44,6 +44,8 @@ class AIRequestLog(models.Model):
         blank=True,
         related_name='ai_request_logs',
     )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
 
     class Meta:
         ordering = ['-fecha_hora']
@@ -54,6 +56,55 @@ class AIRequestLog(models.Model):
         return f"{self.accion} ({self.total_tokens} tokens) - {self.fecha_hora}"
 
 
+class ExternalApiRequestLog(models.Model):
+    """
+    Registro de solicitudes a APIs externas (Google Maps, etc.) para auditoría,
+    uso y depuración. Guarda parámetros de request (sin clave API en claro),
+    estado de respuesta y resumen del cuerpo.
+    """
+    API_CHOICES = [
+        ('google_directions', 'Google Directions API'),
+        ('google_geocoding', 'Google Geocoding API'),
+        ('google_places', 'Google Places API'),
+    ]
+
+    fecha_hora = models.DateTimeField(auto_now_add=True, db_index=True)
+    api = models.CharField(max_length=32, choices=API_CHOICES, db_index=True)
+    endpoint = models.CharField(max_length=512, blank=True, help_text='URL base del endpoint (sin query)')
+
+    # Request: sin incluir API key en texto plano
+    request_params = models.JSONField(default=dict, blank=True, help_text='Parámetros enviados (key enmascarada)')
+    request_extra = models.TextField(blank=True, help_text='Otros datos del request (ej. waypoints count)')
+
+    # Response
+    response_status = models.CharField(max_length=64, blank=True, db_index=True)
+    response_body = models.JSONField(default=dict, blank=True, help_text='Resumen o fragmento de la respuesta')
+    exito = models.BooleanField(default=False)
+    mensaje_error = models.TextField(blank=True)
+
+    duracion_ms = models.PositiveIntegerField(null=True, blank=True)
+    objeto_tipo = models.CharField(max_length=32, blank=True, db_index=True)
+    objeto_id = models.PositiveIntegerField(null=True, blank=True)
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='external_api_request_logs',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
+
+    class Meta:
+        ordering = ['-fecha_hora']
+        verbose_name = 'Log de solicitud API externa'
+        verbose_name_plural = 'Logs de solicitudes API externas'
+
+    def __str__(self):
+        return f"{self.api} {self.response_status} - {self.fecha_hora}"
+
+
 class Feriado(models.Model):
     """
     Feriado (día festivo): no hay entregas y no cuenta como día de entrega
@@ -61,6 +112,8 @@ class Feriado(models.Model):
     """
     fecha = models.DateField(unique=True, verbose_name="Fecha", db_index=True)
     nombre = models.CharField(max_length=255, verbose_name="Nombre")
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
 
     class Meta:
         ordering = ['fecha']
@@ -97,3 +150,39 @@ def feriados_en_rango(fecha_inicio, fecha_fin):
             fecha__lte=fecha_fin
         ).values_list('fecha', flat=True)
     )
+
+
+class ParametroSistema(models.Model):
+    """
+    Parámetros básicos del sistema (clave/valor). Permite configurar opciones
+    sin cambiar código (ej. textos, límites, flags).
+    """
+    clave = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name="Clave",
+        help_text="Identificador único del parámetro (ej. nombre_empresa, dias_aviso_vencimiento)",
+    )
+    valor = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Valor",
+        help_text="Valor del parámetro (texto o número)",
+    )
+    descripcion = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Descripción",
+        help_text="Descripción opcional para saber para qué sirve",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
+
+    class Meta:
+        ordering = ["clave"]
+        verbose_name = "Parámetro del sistema"
+        verbose_name_plural = "Parámetros del sistema"
+
+    def __str__(self):
+        return f"{self.clave} = {self.valor[:50]}{'…' if len(self.valor or '') > 50 else ''}"

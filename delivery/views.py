@@ -6,15 +6,19 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.forms import inlineformset_factory
 from django.utils import timezone
-from django.db.models import Case, IntegerField, Max, Value, When
+from django.db.models import Case, IntegerField, Max, Value, When, Q
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 from routes.models import Ruta, RutaCliente, Entregador
 from contracts.models import Contrato, q_filtro_estado, contratos_activos_en_fecha
-from .forms import RutaForm
+from .forms import RutaForm, PuntoPartidaEntregaForm
+from .models import PuntoPartidaEntrega
 from .utils import (
     contratos_con_entrega_en_fecha,
     contratos_sin_ruta_en_fecha,
 )
+from .services.google_maps_ruta import optimizar_orden_entregas
 
 
 BaseRutaClienteFormSet = inlineformset_factory(
@@ -151,6 +155,22 @@ class RutaUpdateView(LoginRequiredMixin, UpdateView):
             )
         else:
             context['formset'] = RutaClienteFormSet(instance=self.object)
+        # Contratos sin coordenadas (para mostrar aviso en cada fila del formset)
+        if self.object and self.object.pk and getattr(self.object, 'fecha', None):
+            ids_en_ruta = set(
+                self.object.ruta_clientes.values_list('contrato_id', flat=True)
+            )
+            ids_disponibles = set(
+                contratos_con_entrega_en_fecha(self.object.fecha).values_list('pk', flat=True)
+            )
+            contract_ids = ids_en_ruta | ids_disponibles
+            context['contratos_sin_coordenadas'] = set(
+                Contrato.objects.filter(pk__in=contract_ids).filter(
+                    Q(latitud__isnull=True) | Q(longitud__isnull=True)
+                ).values_list('pk', flat=True)
+            )
+        else:
+            context['contratos_sin_coordenadas'] = set()
         return context
 
     def form_valid(self, form):
@@ -158,7 +178,34 @@ class RutaUpdateView(LoginRequiredMixin, UpdateView):
         formset = RutaClienteFormSet(self.request.POST, instance=self.object)
         if formset.is_valid():
             formset.save()
+            # Optimizar orden de entrega con Google Maps (solo rutas presente/futuras)
+            hoy = timezone.now().date()
+            res = {}
+            if self.object.fecha >= hoy:
+                res = optimizar_orden_entregas(self.object, request=self.request)
+            else:
+                res = {'optimizados': 0, 'sin_coordenadas': 0}
             messages.success(self.request, 'Ruta y clientes guardados correctamente.')
+            if res.get('optimizados', 0) > 0:
+                messages.success(
+                    self.request,
+                    f"Se optimizó el orden de {res['optimizados']} entrega(s) según Google Maps.",
+                )
+            if res.get('sin_coordenadas', 0) > 0:
+                messages.warning(
+                    self.request,
+                    f"{res['sin_coordenadas']} cliente(s) sin coordenadas: no se pudo definir un orden óptimo para ellos (aparecen al final de la ruta).",
+                )
+            if res.get('error') and res.get('optimizados') == 0 and res.get('sin_coordenadas', 0) == 0:
+                messages.warning(
+                    self.request,
+                    f"No se pudo optimizar la ruta con Google Maps: {res['error']}.",
+                )
+            elif res.get('error') and (res.get('optimizados', 0) > 0 or res.get('sin_coordenadas', 0) > 0):
+                messages.warning(
+                    self.request,
+                    f"Optimización parcial. Aviso de Google Maps: {res['error']}.",
+                )
             return redirect(self.get_success_url())
         return self.render_to_response(
             self.get_context_data(form=form, formset=formset)
@@ -308,6 +355,10 @@ def generar_rutas(request):
             f'Rutas generadas para el {fecha.strftime("%d/%m/%Y")}. '
             'Se creó una ruta por entregador; asigna clientes desde la lista o edita cada ruta.',
         )
+    hoy = timezone.now().date()
+    if fecha >= hoy:
+        for ruta in rutas_fecha:
+            optimizar_orden_entregas(ruta, request=request)
     return redirect(reverse('delivery:lista') + '?fecha=' + fecha_str)
 
 
@@ -346,6 +397,11 @@ def asignar_pendientes(request):
 
     ids_sin_ruta = [c.id for c in sin_ruta]
     asignados = _asignar_contratos_a_rutas(fecha, ids_sin_ruta, rutas_fecha)
+
+    hoy = timezone.now().date()
+    if fecha >= hoy:
+        for ruta in rutas_fecha:
+            optimizar_orden_entregas(ruta, request=request)
 
     messages.success(
         request,
@@ -399,6 +455,9 @@ def ruta_cargar_ultima(request, pk):
         )
         ya_en_ruta.add(rc.contrato_id)
         creados += 1
+    hoy = timezone.now().date()
+    if ruta.fecha >= hoy:
+        optimizar_orden_entregas(ruta, request=request)
     if creados:
         messages.success(
             request,
@@ -413,20 +472,208 @@ def ruta_cargar_ultima(request, pk):
 
 
 @login_required
+def punto_partida_config(request):
+    """
+    Configuración del punto de partida para optimización de rutas (cocina/depósito).
+    Usa el primer registro activo o crea uno si no existe.
+    """
+    punto = PuntoPartidaEntrega.objects.filter(activo=True).order_by('-fecha_actualizacion').first()
+    if punto is None:
+        punto = PuntoPartidaEntrega.objects.order_by('-fecha_actualizacion').first()
+    if request.method == 'POST':
+        form = PuntoPartidaEntregaForm(request.POST, instance=punto)
+        if form.is_valid():
+            form.save()
+            messages.success(
+                request,
+                'Punto de partida guardado. El algoritmo de optimización de rutas lo usará como origen y destino.',
+            )
+            return redirect('delivery:lista')
+    else:
+        form = PuntoPartidaEntregaForm(instance=punto)
+    return render(request, 'delivery/punto_partida_form.html', {
+        'form': form,
+        'punto': punto,
+    })
+
+
+def _formatear_tiempo_estimado(segundos):
+    """Convierte segundos a texto: 'X min' o 'Xh Y min'."""
+    if segundos is None or segundos < 0:
+        return None
+    if segundos < 3600:
+        return f'{int(round(segundos / 60))} min'
+    h = int(segundos // 3600)
+    m = int(round((segundos % 3600) / 60))
+    if m == 0:
+        return f'{h}h'
+    return f'{h}h {m} min'
+
+
+def _datos_recorrido_ruta(ruta, ruta_clientes):
+    """
+    Construye los datos para mostrar el recorrido en un mapa: puntos en orden
+    (punto de partida si existe, luego cada parada con coordenadas).
+    Devuelve un dict con 'puntos' (lista de {lat, lng, label}) y 'tiene_punto_partida'.
+    """
+    from .models import PuntoPartidaEntrega
+    puntos = []
+    punto_partida = PuntoPartidaEntrega.objects.filter(activo=True).order_by('-fecha_actualizacion').first()
+    if punto_partida and punto_partida.latitud is not None and punto_partida.longitud is not None:
+        puntos.append({
+            'lat': float(punto_partida.latitud),
+            'lng': float(punto_partida.longitud),
+            'label': punto_partida.nombre or 'Salida',
+        })
+    for rc in ruta_clientes:
+        c = rc.contrato
+        if c.latitud is not None and c.longitud is not None:
+            puntos.append({
+                'lat': float(c.latitud),
+                'lng': float(c.longitud),
+                'label': f"#{rc.orden_entrega} {rc.codigo_entrega}",
+            })
+    return {
+        'puntos': puntos,
+        'tiene_punto_partida': bool(punto_partida and punto_partida.latitud is not None and punto_partida.longitud is not None),
+    }
+
+
+def _tiempos_estimados_ruta(ruta, ruta_clientes):
+    """
+    Calcula tiempo estimado de llegada por punto (1 min espera por punto)
+    y total estimado. Devuelve (clientes_con_tiempo, total_str).
+    clientes_con_tiempo: lista de (ruta_cliente, tiempo_llegada_str o None)
+    """
+    legs = getattr(ruta, 'duracion_legs_segundos', None) or []
+    n = len(ruta_clientes)
+    clientes_con_tiempo = []
+    total_estimado_seg = None
+    if legs and n > 0:
+        # legs[0] = hasta 1er punto, legs[1] = hasta 2do, ... Tiempo llegada punto i = sum(legs[0:i+1]) + i*60
+        for i, rc in enumerate(ruta_clientes):
+            if i < len(legs):
+                acum = sum(legs[: i + 1]) + i * 60  # i min espera en los i puntos anteriores
+                clientes_con_tiempo.append((rc, _formatear_tiempo_estimado(acum)))
+            else:
+                clientes_con_tiempo.append((rc, None))
+        total_estimado_seg = sum(legs) + n * 60
+    else:
+        clientes_con_tiempo = [(rc, None) for rc in ruta_clientes]
+    total_str = _formatear_tiempo_estimado(total_estimado_seg) if total_estimado_seg is not None else None
+    return clientes_con_tiempo, total_str
+
+
+@login_required
+@require_POST
+def ruta_cliente_marcar_entregada(request, pk):
+    """
+    Marca un RutaCliente como entregado (AJAX). Requiere confirmación en el cliente.
+    """
+    rc = get_object_or_404(RutaCliente, pk=pk)
+    rc.entregada = True
+    rc.fecha_entrega = timezone.now()
+    rc.marcadopor_entregada = request.user
+    rc.no_entregada = False
+    rc.motivo_no_entrega = ''
+    rc.fecha_no_entrega = None
+    rc.marcadopor_no_entrega = None
+    rc.save(update_fields=[
+        'entregada', 'fecha_entrega', 'marcadopor_entregada',
+        'no_entregada', 'motivo_no_entrega', 'fecha_no_entrega', 'marcadopor_no_entrega',
+    ])
+    nombre_usuario = (request.user.get_full_name().strip() or request.user.username) if request.user else ''
+    return JsonResponse({
+        'ok': True,
+        'fecha_entrega': rc.fecha_entrega.isoformat() if rc.fecha_entrega else None,
+        'marcado_por': nombre_usuario,
+    })
+
+
+@login_required
+@require_POST
+def ruta_cliente_reportar_no_entrega(request, pk):
+    """
+    Reporta que no se pudo realizar la entrega (AJAX). Requiere motivo en el body (JSON).
+    """
+    import json
+    rc = get_object_or_404(RutaCliente, pk=pk)
+    try:
+        body = json.loads(request.body.decode('utf-8')) if request.body else {}
+    except (ValueError, TypeError):
+        body = {}
+    motivo = (body.get('motivo') or '').strip()
+    if not motivo:
+        return JsonResponse({'ok': False, 'error': 'El motivo es obligatorio.'}, status=400)
+    rc.no_entregada = True
+    rc.motivo_no_entrega = motivo[:2000]
+    rc.fecha_no_entrega = timezone.now()
+    rc.marcadopor_no_entrega = request.user
+    rc.entregada = False
+    rc.fecha_entrega = None
+    rc.marcadopor_entregada = None
+    rc.save(update_fields=[
+        'no_entregada', 'motivo_no_entrega', 'fecha_no_entrega', 'marcadopor_no_entrega',
+        'entregada', 'fecha_entrega', 'marcadopor_entregada',
+    ])
+    nombre_usuario = (request.user.get_full_name().strip() or request.user.username) if request.user else ''
+    return JsonResponse({
+        'ok': True,
+        'marcado_por': nombre_usuario,
+        'fecha_no_entrega': rc.fecha_no_entrega.isoformat() if rc.fecha_no_entrega else None,
+    })
+
+
+@login_required
+@require_POST
+def ruta_recalcular_recorrido(request, ruta_id):
+    """
+    Recalcula el orden de entregas de la ruta (optimización con punto de partida)
+    y devuelve los nuevos datos del recorrido para actualizar el mapa en el modal.
+    """
+    ruta = get_object_or_404(
+        Ruta.objects.prefetch_related('ruta_clientes__contrato'),
+        id=ruta_id,
+    )
+    result = optimizar_orden_entregas(ruta, request=request)
+    if result.get('error'):
+        return JsonResponse({
+            'ok': False,
+            'error': result['error'],
+        }, status=400)
+    ruta_clientes = list(ruta.ruta_clientes.select_related('contrato__cliente').order_by('orden_entrega'))
+    mapa_recorrido = _datos_recorrido_ruta(ruta, ruta_clientes)
+    return JsonResponse({
+        'ok': True,
+        'mapa_recorrido': mapa_recorrido,
+        'optimizados': result.get('optimizados', 0),
+        'sin_coordenadas': result.get('sin_coordenadas', 0),
+    })
+
+
+@login_required
 def ruta_imprimible(request, ruta_id):
     """
     Vista para mostrar una ruta de entrega en formato imprimible
     """
-    ruta = get_object_or_404(Ruta, id=ruta_id)
-    
-    # Obtener clientes de la ruta ordenados por orden de entrega
+    ruta = get_object_or_404(
+        Ruta.objects.prefetch_related(
+            'ruta_clientes__contrato__cliente',
+            'ruta_clientes__marcadopor_entregada',
+            'ruta_clientes__marcadopor_no_entrega',
+        ),
+        id=ruta_id,
+    )
     ruta_clientes = ruta.ruta_clientes.all().order_by('orden_entrega')
-    
+    clientes_con_tiempo, total_estimado_str = _tiempos_estimados_ruta(ruta, list(ruta_clientes))
+    mapa_recorrido = _datos_recorrido_ruta(ruta, list(ruta_clientes))
     context = {
         'ruta': ruta,
         'ruta_clientes': ruta_clientes,
+        'clientes_con_tiempo': clientes_con_tiempo,
+        'total_estimado_str': total_estimado_str,
+        'mapa_recorrido': mapa_recorrido,
     }
-    
     return render(request, 'delivery/ruta_imprimible.html', context)
 
 
@@ -448,9 +695,11 @@ def ruta_por_fecha_entregador(request, fecha_str, entregador_id):
         entregador=entregador,
         defaults={'activa': True}
     )
-    
-    # Obtener clientes de la ruta ordenados por orden de entrega
-    ruta_clientes = ruta.ruta_clientes.all().order_by('orden_entrega')
+    ruta_clientes = ruta.ruta_clientes.select_related(
+        'marcadopor_entregada', 'marcadopor_no_entrega', 'contrato__cliente'
+    ).order_by('orden_entrega')
+    clientes_con_tiempo, total_estimado_str = _tiempos_estimados_ruta(ruta, list(ruta_clientes))
+    mapa_recorrido = _datos_recorrido_ruta(ruta, list(ruta_clientes))
 
     from base.models import es_feriado, get_feriado
     context = {
@@ -458,8 +707,10 @@ def ruta_por_fecha_entregador(request, fecha_str, entregador_id):
         'entregador': entregador,
         'fecha': fecha,
         'ruta_clientes': ruta_clientes,
+        'clientes_con_tiempo': clientes_con_tiempo,
+        'total_estimado_str': total_estimado_str,
+        'mapa_recorrido': mapa_recorrido,
         'es_feriado': es_feriado(fecha),
         'feriado': get_feriado(fecha),
     }
-    
     return render(request, 'delivery/ruta_imprimible.html', context)

@@ -20,6 +20,22 @@ class Cliente(models.Model):
         verbose_name="Enlace Google Maps",
         help_text="URL de Google Maps con la ubicación (opcional)"
     )
+    latitud = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        verbose_name="Latitud",
+        help_text="Coordenada para mapas y optimización de rutas (Google Maps)"
+    )
+    longitud = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        verbose_name="Longitud",
+        help_text="Coordenada para mapas y optimización de rutas (Google Maps)"
+    )
     titular = models.ForeignKey(
         'self',
         on_delete=models.SET_NULL,
@@ -32,6 +48,8 @@ class Cliente(models.Model):
     activo = models.BooleanField(default=True, verbose_name="Activo")
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
     fecha_actualizacion = models.DateTimeField(auto_now=True, verbose_name="Fecha de actualización")
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
     notas = models.TextField(blank=True, null=True, verbose_name="Notas adicionales")
 
     class Meta:
@@ -67,6 +85,8 @@ class IngredienteNoGustado(models.Model):
         verbose_name="Ingrediente"
     )
     fecha_agregado = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de agregado")
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
     motivo = models.TextField(blank=True, null=True, verbose_name="Motivo", help_text="Razón por la que no le gusta este ingrediente")
 
     class Meta:

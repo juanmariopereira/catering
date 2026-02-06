@@ -228,7 +228,7 @@ class ContratoListView(LoginRequiredMixin, ListView):
                 'direction': current_dir,
                 'next_sort': next_sort,
             })
-        # Orden de la tabla: Cliente, Plan, Fecha Inicio, Fecha vencimiento, Precio, Estado, Acciones
+        # Orden de la tabla: Cliente, Plan, Fecha Inicio, Fecha vencimiento, Precio, Estado, Coordenadas, Acciones
         context['table_headers'] = [
             sort_headers[0],
             sort_headers[1],
@@ -236,6 +236,7 @@ class ContratoListView(LoginRequiredMixin, ListView):
             sort_headers[3],
             sort_headers[4],
             sort_headers[5],
+            {'sortable': False, 'label': 'Coordenadas'},
             {'sortable': False, 'label': 'Acciones'},
         ]
         context['sort_headers'] = sort_headers
@@ -301,6 +302,53 @@ def generar_mensaje_cliente_view(request):
         return JsonResponse({'ok': False, 'error': str(e)}, status=400)
     except Exception as e:
         return JsonResponse({'ok': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(['GET'])
+def ajax_direccion_cliente(request, cliente_id):
+    """
+    Devuelve la dirección y link_maps del cliente (para rellenar el formulario de contrato).
+    GET: /contracts/ajax/cliente/<id>/direccion/
+    """
+    cliente = get_object_or_404(Cliente, pk=cliente_id)
+    return JsonResponse({
+        'direccion': cliente.direccion or '',
+        'link_maps': cliente.link_maps or '',
+        'latitud': str(cliente.latitud) if cliente.latitud is not None else '',
+        'longitud': str(cliente.longitud) if cliente.longitud is not None else '',
+    })
+
+
+@login_required
+@require_http_methods(['GET'])
+def ajax_ultimo_contrato_direccion(request, cliente_id):
+    """
+    Devuelve la dirección del último contrato activo del cliente (para copiar en nuevo contrato).
+    GET: /contracts/ajax/cliente/<id>/ultimo-contrato-direccion/?exclude_contrato=<pk>
+    """
+    cliente = get_object_or_404(Cliente, pk=cliente_id)
+    qs = Contrato.objects.filter(cliente=cliente).filter(q_filtro_estado('activo'))
+    exclude_pk = request.GET.get('exclude_contrato')
+    if exclude_pk:
+        try:
+            qs = qs.exclude(pk=int(exclude_pk))
+        except (ValueError, TypeError):
+            pass
+    ultimo = qs.order_by('-fecha_creacion').first()
+    if not ultimo:
+        return JsonResponse({
+            'direccion_entrega': '',
+            'link_maps': '',
+            'latitud': '',
+            'longitud': '',
+        })
+    return JsonResponse({
+        'direccion_entrega': ultimo.direccion_entrega or '',
+        'link_maps': ultimo.link_maps or '',
+        'latitud': str(ultimo.latitud) if ultimo.latitud is not None else '',
+        'longitud': str(ultimo.longitud) if ultimo.longitud is not None else '',
+    })
 
 
 class ContratoDetailView(LoginRequiredMixin, DetailView):

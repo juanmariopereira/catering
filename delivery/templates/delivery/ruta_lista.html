@@ -55,6 +55,7 @@
     <div style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
         <a href="{% url 'delivery:ruta_crear' %}" class="btn btn-primary">Nueva Ruta</a>
         <a href="{% url 'delivery:generar_rutas' %}" class="btn btn-success">Generar rutas para una fecha</a>
+        <a href="{% url 'delivery:punto_partida_config' %}" class="btn btn-secondary">Configurar punto de partida</a>
     </div>
 
     {% if fecha_seleccionada %}

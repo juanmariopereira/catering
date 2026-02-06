@@ -18,11 +18,27 @@
     .btn:hover { background-color: #689F38; }
     .btn-secondary { background-color: #6c757d; }
     .btn-secondary:hover { background-color: #5a6268; }
+    .btn-sm { padding: 6px 12px; font-size: 0.9rem; }
     .form-layout ul.checkbox-list { list-style: none; margin: 0; padding: 0; }
     .form-layout ul.checkbox-list li { margin: 6px 0; }
     .form-layout ul.checkbox-list label { font-weight: normal; margin-left: 6px; }
     .form-layout .form-group.checkbox-group label { font-weight: normal; margin-left: 8px; }
     .form-layout .form-group.checkbox-group input { width: auto; }
+
+    /* Modal selector de ubicación (Google Maps) */
+    .gm-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: none; z-index: 2000; }
+    .gm-modal { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(980px, 96vw); max-height: 92vh; background: #fff; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: none; z-index: 2001; overflow: hidden; }
+    .gm-modal-header { padding: 14px 18px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .gm-modal-title { margin: 0; font-size: 1.05rem; }
+    .gm-modal-close { background: transparent; border: none; font-size: 1.3rem; cursor: pointer; color: #666; }
+    .gm-modal-close:hover { color: #111; }
+    .gm-modal-body { padding: 14px 18px; display: grid; gap: 10px; }
+    .gm-map { width: 100%; height: 420px; border: 1px solid #e5e5e5; border-radius: 8px; }
+    .gm-hint { font-size: 0.9rem; color: #666; margin: 0; }
+    .gm-modal-footer { padding: 14px 18px; border-top: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .gm-coords { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 0.92rem; color: #333; }
+    .gm-error-msg { background: #ffebee; border: 1px solid #ef5350; color: #c62828; padding: 12px; border-radius: 8px; font-size: 0.9rem; margin-top: 8px; display: none; }
+    .gm-error-msg ul { margin: 8px 0 0 0; padding-left: 20px; }
 </style>
 {% endblock %}
 
@@ -31,7 +47,7 @@
     <h1>{% if object %}Editar{% else %}Nuevo{% endif %} Contrato</h1>
     <p class="help-text">Indique la dirección completa de entrega y, si lo desea, un enlace de Google Maps a la ubicación.</p>
     
-    <form method="post" class="form-layout">
+    <form method="post" class="form-layout" id="contrato-form" data-exclude-contrato="{{ object.pk|default:'' }}">
         {% csrf_token %}
         <div class="form-row form-row-2">
             <div class="form-group">
@@ -75,6 +91,11 @@
         <div class="form-row form-row-1">
             <div class="form-group">
                 <label for="{{ form.direccion_entrega.id_for_label }}">{{ form.direccion_entrega.label }}</label>
+                <p class="help-text" style="margin-bottom: 8px;">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-usar-direccion-cliente" title="Rellena dirección y enlace Maps con los datos del cliente seleccionado">Usar dirección del cliente</button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-copiar-ultimo-contrato" title="Copia dirección y coordenadas del último contrato activo de este cliente">Copiar del último contrato activo</button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-seleccionar-en-mapa" title="Buscar y ajustar la ubicación en el mapa para rellenar dirección, link, latitud y longitud">Seleccionar en mapa</button>
+                </p>
                 {{ form.direccion_entrega }}
                 {% if form.direccion_entrega.help_text %}<div class="help-text">{{ form.direccion_entrega.help_text }}</div>{% endif %}
                 {% if form.direccion_entrega.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.direccion_entrega.errors }}</div>{% endif %}
@@ -91,6 +112,20 @@
                 <label for="{{ form.horario_entrega.id_for_label }}">{{ form.horario_entrega.label }}</label>
                 {{ form.horario_entrega }}
                 {% if form.horario_entrega.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.horario_entrega.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.latitud.id_for_label }}">{{ form.latitud.label }}</label>
+                {{ form.latitud }}
+                {% if form.latitud.help_text %}<div class="help-text">{{ form.latitud.help_text }}</div>{% endif %}
+                {% if form.latitud.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.latitud.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.longitud.id_for_label }}">{{ form.longitud.label }}</label>
+                {{ form.longitud }}
+                {% if form.longitud.help_text %}<div class="help-text">{{ form.longitud.help_text }}</div>{% endif %}
+                {% if form.longitud.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.longitud.errors }}</div>{% endif %}
             </div>
         </div>
         <div class="form-row form-row-1">
@@ -126,6 +161,38 @@
     </form>
 </div>
 
+<!-- Modal Google Maps -->
+<div class="gm-modal-overlay" id="gm-overlay" aria-hidden="true"></div>
+<div class="gm-modal" id="gm-modal" role="dialog" aria-modal="true" aria-labelledby="gm-modal-title" aria-hidden="true">
+    <div class="gm-modal-header">
+        <h3 class="gm-modal-title" id="gm-modal-title">Seleccionar ubicación (Santa Cruz, Bolivia)</h3>
+        <button type="button" class="gm-modal-close" id="gm-close" aria-label="Cerrar">×</button>
+    </div>
+    <div class="gm-modal-body">
+        <p class="gm-hint">Mueve el pin en el mapa para elegir la ubicación. Al aceptar se llenarán dirección, enlace de Google Maps, latitud y longitud.</p>
+        <div class="gm-error-msg" id="gm-error-msg">
+            <strong>El mapa no pudo cargarse.</strong> Revisa en <a href="https://console.cloud.google.com/google/maps-apis" target="_blank" rel="noopener">Google Cloud Console</a>:
+            <ul>
+                <li><strong>Facturación:</strong> el proyecto debe tener una cuenta de facturación asociada (hay crédito gratuito mensual).</li>
+                <li><strong>APIs habilitadas:</strong> Maps JavaScript API y Places API.</li>
+                <li><strong>Clave API:</strong> en tu <code>.env</code> define <code>GOOGLE_MAPS_BROWSER_API_KEY</code> (o <code>GOOGLE_MAPS_API_KEY</code>).</li>
+                <li><strong>Restricciones:</strong> si la clave tiene restricción por “Sitios web”, agrega <code>http://localhost:8000/*</code> y <code>http://127.0.0.1:8000/*</code> para desarrollo, y tu dominio en producción.</li>
+            </ul>
+        </div>
+        <div class="gm-map" id="gm-map"></div>
+    </div>
+    <div class="gm-modal-footer">
+        <div class="gm-coords">
+            <strong>Lat:</strong> <span id="gm-lat">—</span> &nbsp; <strong>Lng:</strong> <span id="gm-lng">—</span>
+            <span id="gm-address-display" class="gm-address-display" style="display: none; margin-left: 12px; font-style: italic; color: #666;"></span>
+        </div>
+        <div>
+            <button type="button" class="btn btn-secondary btn-sm" id="gm-cancel">Cancelar</button>
+            <button type="button" class="btn btn-sm" id="gm-accept">Usar esta ubicación</button>
+        </div>
+    </div>
+</div>
+
 {% if not object %}
 {{ plan_precios|json_script:"plan-precios" }}
 {{ clientes_datos|json_script:"clientes-datos" }}
@@ -146,6 +213,219 @@
         if (!sel) return null;
         return sel.tagName === 'SELECT' ? sel.value : (sel.closest('.choices') && (sel.querySelector('select') || sel).value) || sel.value;
     }
+
+    var urlDireccionCliente = "{% url 'contracts:ajax_direccion_cliente' cliente_id=0 %}";
+    var urlUltimoContrato = "{% url 'contracts:ajax_ultimo_contrato_direccion' cliente_id=0 %}";
+    var excludeContratoPk = (form.dataset && form.dataset.excludeContrato) ? form.dataset.excludeContrato : '';
+
+    document.getElementById('btn-usar-direccion-cliente') && document.getElementById('btn-usar-direccion-cliente').addEventListener('click', function() {
+        var clienteId = getSelectValue('cliente');
+        if (!clienteId) { alert('Seleccione primero un cliente.'); return; }
+        var url = urlDireccionCliente.replace('/0/', '/' + clienteId + '/');
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var dir = byName('direccion_entrega');
+                var link = byName('link_maps');
+                var lat = byName('latitud');
+                var lng = byName('longitud');
+                if (dir) dir.value = data.direccion || '';
+                if (link) link.value = data.link_maps || '';
+                if (lat) lat.value = data.latitud || '';
+                if (lng) lng.value = data.longitud || '';
+            })
+            .catch(function() { alert('No se pudo cargar la dirección del cliente.'); });
+    });
+
+    document.getElementById('btn-copiar-ultimo-contrato') && document.getElementById('btn-copiar-ultimo-contrato').addEventListener('click', function() {
+        var clienteId = getSelectValue('cliente');
+        if (!clienteId) { alert('Seleccione primero un cliente.'); return; }
+        var url = urlUltimoContrato.replace('/0/', '/' + clienteId + '/');
+        if (excludeContratoPk) url += (url.indexOf('?') !== -1 ? '&' : '?') + 'exclude_contrato=' + encodeURIComponent(excludeContratoPk);
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var dir = byName('direccion_entrega');
+                var link = byName('link_maps');
+                var lat = byName('latitud');
+                var lng = byName('longitud');
+                if (dir) dir.value = data.direccion_entrega || '';
+                if (link) link.value = data.link_maps || '';
+                if (lat) lat.value = data.latitud || '';
+                if (lng) lng.value = data.longitud || '';
+            })
+            .catch(function() { alert('No se pudo cargar la dirección del último contrato.'); });
+    });
+
+    // Selector en mapa (Google Maps JS API)
+    var mapsKey = "{{ google_maps_browser_key|default:'' }}";
+    var gm = {
+        loaded: false,
+        loading: false,
+        map: null,
+        marker: null,
+        geocoder: null,
+        lastLatLng: null,
+        lastFormattedAddress: '',
+    };
+
+    function gmSetCoords(latLng) {
+        if (!latLng) return;
+        var lat = typeof latLng.lat === 'function' ? latLng.lat() : latLng.lat;
+        var lng = typeof latLng.lng === 'function' ? latLng.lng() : latLng.lng;
+        gm.lastLatLng = { lat: lat, lng: lng };
+        var latEl = document.getElementById('gm-lat');
+        var lngEl = document.getElementById('gm-lng');
+        if (latEl) latEl.textContent = lat.toFixed(6);
+        if (lngEl) lngEl.textContent = lng.toFixed(6);
+    }
+
+    function gmOpen() {
+        var overlay = document.getElementById('gm-overlay');
+        var modal = document.getElementById('gm-modal');
+        if (!overlay || !modal) return;
+        overlay.style.display = 'block';
+        modal.style.display = 'block';
+        overlay.setAttribute('aria-hidden', 'false');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+    function gmClose() {
+        var overlay = document.getElementById('gm-overlay');
+        var modal = document.getElementById('gm-modal');
+        if (!overlay || !modal) return;
+        overlay.style.display = 'none';
+        modal.style.display = 'none';
+        overlay.setAttribute('aria-hidden', 'true');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    function gmShowError() {
+        var el = document.getElementById('gm-error-msg');
+        if (el) { el.style.display = 'block'; el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+    }
+    function gmHideError() {
+        var el = document.getElementById('gm-error-msg');
+        if (el) el.style.display = 'none';
+    }
+
+    function loadGoogleMaps(cb) {
+        if (gm.loaded) { gmHideError(); cb && cb(); return; }
+        if (gm.loading) { return; }
+        if (!mapsKey || !mapsKey.trim()) {
+            alert('Falta configurar GOOGLE_MAPS_BROWSER_API_KEY en el archivo .env del proyecto.');
+            return;
+        }
+        gm.loading = true;
+        gmHideError();
+        window.gm_authFailure = function() {
+            gm.loading = false;
+            gm.loaded = false;
+            gmShowError();
+        };
+        var script = document.createElement('script');
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(mapsKey) + '&libraries=places';
+        script.async = true;
+        script.defer = true;
+        script.onload = function() { gm.loaded = true; gm.loading = false; gmHideError(); cb && cb(); };
+        script.onerror = function() { gm.loading = false; gmShowError(); };
+        document.head.appendChild(script);
+    }
+
+    function initMapIfNeeded() {
+        if (gm.map || !window.google || !window.google.maps) return;
+        gmHideError();
+
+        // Santa Cruz de la Sierra (aprox.)
+        var defaultCenter = { lat: -17.783300, lng: -63.182100 };
+
+        try {
+            gm.geocoder = new google.maps.Geocoder();
+            gm.map = new google.maps.Map(document.getElementById('gm-map'), {
+            center: defaultCenter,
+            zoom: 13,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+        });
+        gm.marker = new google.maps.Marker({
+            position: defaultCenter,
+            map: gm.map,
+            draggable: true,
+        });
+        gmSetCoords(defaultCenter);
+
+        gm.marker.addListener('dragend', function() {
+            var p = gm.marker.getPosition();
+            gmSetCoords(p);
+            if (gm.geocoder) {
+                gm.geocoder.geocode({ location: p }, function(results, status) {
+                    if (status === 'OK' && results && results[0]) {
+                        gm.lastFormattedAddress = results[0].formatted_address || '';
+                        var disp = document.getElementById('gm-address-display');
+                        if (disp) { disp.textContent = gm.lastFormattedAddress; disp.style.display = gm.lastFormattedAddress ? 'inline' : 'none'; }
+                    }
+                });
+            }
+        });
+
+        var latInput = byName('latitud');
+        var lngInput = byName('longitud');
+        var dirInput = byName('direccion_entrega');
+        if (dirInput && dirInput.value) gm.lastFormattedAddress = dirInput.value;
+        var addrDisp = document.getElementById('gm-address-display');
+        if (addrDisp && gm.lastFormattedAddress) { addrDisp.textContent = gm.lastFormattedAddress; addrDisp.style.display = 'inline'; }
+
+        if (latInput && latInput.value && lngInput && lngInput.value) {
+            var existingLat = parseFloat(latInput.value);
+            var existingLng = parseFloat(lngInput.value);
+            var pos = { lat: existingLat, lng: existingLng };
+            gm.map.setCenter(pos);
+            gm.map.setZoom(16);
+            gm.marker.setPosition(pos);
+            gmSetCoords(pos);
+        }
+        } catch (err) {
+            gmShowError();
+        }
+    }
+
+    function gmAccept() {
+        var addr = (gm.lastFormattedAddress || '').trim();
+        if (!gm.lastLatLng) { alert('No hay coordenadas seleccionadas.'); return; }
+        var lat = gm.lastLatLng.lat;
+        var lng = gm.lastLatLng.lng;
+        var dir = byName('direccion_entrega');
+        var link = byName('link_maps');
+        var latInput = byName('latitud');
+        var lngInput = byName('longitud');
+
+        if (dir && addr) dir.value = addr;
+        if (latInput) latInput.value = lat.toFixed(6);
+        if (lngInput) lngInput.value = lng.toFixed(6);
+        if (link) link.value = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(lat.toFixed(6) + ',' + lng.toFixed(6));
+        gmClose();
+    }
+
+    var openBtn = document.getElementById('btn-seleccionar-en-mapa');
+    if (openBtn) {
+        openBtn.addEventListener('click', function() {
+            loadGoogleMaps(function() {
+                gmOpen();
+                // Map necesita layout visible
+                setTimeout(function() {
+                    initMapIfNeeded();
+                    if (gm.map) google.maps.event.trigger(gm.map, 'resize');
+                    if (gm.map && gm.marker) gm.map.setCenter(gm.marker.getPosition());
+                }, 50);
+            });
+        });
+    }
+    document.getElementById('gm-cancel') && document.getElementById('gm-cancel').addEventListener('click', gmClose);
+    document.getElementById('gm-close') && document.getElementById('gm-close').addEventListener('click', gmClose);
+    document.getElementById('gm-overlay') && document.getElementById('gm-overlay').addEventListener('click', gmClose);
+    document.getElementById('gm-accept') && document.getElementById('gm-accept').addEventListener('click', gmAccept);
 
     {% if not object %}
     var planPreciosEl = document.getElementById('plan-precios');

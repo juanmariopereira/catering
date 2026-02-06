@@ -13,7 +13,7 @@ class ClienteAdmin(admin.ModelAdmin):
             'fields': ('nombre', 'email', 'telefono', 'titular', 'activo')
         }),
         ('Dirección', {
-            'fields': ('direccion', 'link_maps')
+            'fields': ('direccion', 'link_maps', 'latitud', 'longitud')
         }),
         ('Información Adicional', {
             'fields': ('notas', 'fecha_creacion', 'fecha_actualizacion')

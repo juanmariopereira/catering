@@ -6,6 +6,8 @@ from recipes.models import RecetaIngrediente, Ingrediente, UnidadMedida
 class PrevisionCompra(models.Model):
     """Modelo para gestionar previsiones de compra de insumos"""
     fecha_generacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de generación")
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
     fecha_desde = models.DateField(verbose_name="Fecha desde")
     fecha_hasta = models.DateField(verbose_name="Fecha hasta")
     notas = models.TextField(blank=True, null=True, verbose_name="Notas adicionales")
@@ -64,6 +66,8 @@ class PrevisionCompraItem(models.Model):
         related_name='prevision_items',
         verbose_name="Unidad de medida"
     )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
 
     class Meta:
         verbose_name = "Item de Previsión de Compra"

@@ -23,6 +23,15 @@ load_dotenv(BASE_DIR.parent / '.env')
 # OpenAI - clave desde variable de entorno o .env (obligatoria para sugerir menús con IA)
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 
+# Google Maps API - para optimizar orden de entregas en rutas (Directions API, servidor).
+# Esta clave NO debe tener restricción por HTTP referrer (solo aplica a peticiones desde navegador).
+# Usar "Ninguna" o "Direcciones IP" en restricciones de aplicación en Google Cloud Console.
+GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+
+# Google Maps JS API (frontend). Idealmente usar una key con restricción por HTTP referrer.
+# Si no se define, se reutiliza GOOGLE_MAPS_API_KEY.
+GOOGLE_MAPS_BROWSER_API_KEY = os.environ.get('GOOGLE_MAPS_BROWSER_API_KEY', '') or GOOGLE_MAPS_API_KEY
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/

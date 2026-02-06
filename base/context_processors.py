@@ -8,11 +8,13 @@ from django.utils import timezone
 def catering_context(request):
     """Expone el nombre y colores de marca del catering a todas las plantillas."""
     openai_key = getattr(settings, 'OPENAI_API_KEY', '') or ''
+    maps_key = getattr(settings, 'GOOGLE_MAPS_BROWSER_API_KEY', '') or ''
     ctx = {
         'catering_name': getattr(settings, 'CATERING_NAME', 'Catering'),
         'brand_color': getattr(settings, 'BRAND_COLOR', '#7CB342'),
         'brand_color_hover': getattr(settings, 'BRAND_COLOR_HOVER', '#689F38'),
         'openai_available': bool(openai_key.strip()),
+        'google_maps_browser_key': maps_key,
     }
     # Contratos vigentes con entrega hoy que no están en ninguna ruta (para banner global)
     if getattr(request, 'user', None) and request.user.is_authenticated:

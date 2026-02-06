@@ -2,6 +2,16 @@
 
 {% block title %}Ruta de Entrega {{ ruta.fecha }} - {{ catering_name }}{% endblock %}
 
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Producción</span>
+<span class="sep">/</span>
+<a href="{% url 'delivery:lista' %}">Entregas</a>
+<span class="sep">/</span>
+<span>Ruta {{ ruta.fecha|date:"d/m/Y" }}{% if ruta.entregador %} — {{ ruta.entregador.nombre }}{% endif %}</span>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .ruta-print .header {
@@ -23,6 +33,8 @@
     .ruta-print .info-item { text-align: center; }
     .ruta-print .info-label { font-size: 0.65rem; color: #666; text-transform: uppercase; }
     .ruta-print .info-value { font-size: 0.9rem; font-weight: bold; color: #333; margin-top: 2px; }
+    .ruta-print .info-note { font-size: 0.65rem; color: #666; margin-left: 4px; font-weight: normal; }
+    .ruta-print .tiempo-llegada { font-size: 0.7rem; color: #1565c0; font-weight: 600; margin-left: 6px; }
     .ruta-print .clientes-lista { margin-top: 8px; }
     .ruta-print .cliente-item {
         border-bottom: 1px solid #e0e0e0;
@@ -57,25 +69,73 @@
         font-weight: 600;
         border-radius: 2px;
     }
+    .ruta-print .codigo-entrega a { color: inherit; text-decoration: none; }
+    .ruta-print .codigo-entrega a:hover { text-decoration: underline; }
     .ruta-print .cliente-nombre { font-size: 0.8rem; font-weight: bold; color: #333; }
+    .ruta-print .cliente-nombre a { color: #1565c0; text-decoration: none; }
+    .ruta-print .cliente-nombre a:hover { text-decoration: underline; }
     .ruta-print .direccion-wrap { margin-top: 2px; padding-left: 8px; border-left: 2px solid #2196F3; }
     .ruta-print .direccion-label { font-size: 0.65rem; color: #666; }
     .ruta-print .direccion-texto { font-size: 0.7rem; color: #333; }
+    .ruta-print .direccion-texto .direccion-link { color: #1565c0; text-decoration: none; }
+    .ruta-print .direccion-texto .direccion-link:hover { text-decoration: underline; }
     .ruta-print .notas { margin-top: 2px; padding: 2px 4px; font-size: 0.65rem; background: #fff3cd; border-left: 2px solid #ffc107; }
     .ruta-print .notas-entregador { margin-top: 2px; padding: 2px 4px; font-size: 0.65rem; color: #1565c0; border-left: 2px solid #2196F3; }
     .ruta-print .sin-clientes { text-align: center; padding: 16px; color: #999; font-size: 0.9rem; }
+    .ruta-print .entregada-badge { font-size: 0.7rem; font-weight: 600; color: #2e7d32; background: #e8f5e9; padding: 2px 8px; border-radius: 4px; margin-left: 8px; }
+    .ruta-print .registro-marcado { font-size: 0.65rem; color: #666; margin-top: 2px; margin-left: 8px; }
+    .ruta-print .btn-marcar-entregada { font-size: 0.75rem; padding: 4px 10px; margin-left: 8px; cursor: pointer; background: #e3f2fd; color: #1565c0; border: 1px solid #2196F3; border-radius: 4px; }
+    .ruta-print .btn-marcar-entregada:hover { background: #bbdefb; }
+    .ruta-print .cliente-item.entregada { background: #f1f8e9; }
+    .ruta-print .cliente-item.no-entregada { background: #ffebee; }
+    .ruta-print .no-entregada-badge { font-size: 0.7rem; font-weight: 600; color: #c62828; background: #ffcdd2; padding: 2px 8px; border-radius: 4px; margin-left: 8px; }
+    .ruta-print .motivo-no-entrega { font-size: 0.7rem; color: #b71c1c; margin-top: 4px; padding-left: 8px; border-left: 2px solid #ef5350; font-style: italic; }
+    .ruta-print .btn-reportar-no-entrega { font-size: 0.75rem; padding: 4px 10px; margin-left: 6px; cursor: pointer; background: #ffebee; color: #c62828; border: 1px solid #ef5350; border-radius: 4px; }
+    .ruta-print .btn-reportar-no-entrega:hover { background: #ffcdd2; }
+    .modal-entregada-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; z-index: 2000; }
+    .modal-entregada { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); min-width: 320px; max-width: 90vw; display: none; z-index: 2001; }
+    .modal-entregada .modal-header { padding: 14px 18px; border-bottom: 1px solid #eee; font-weight: 600; }
+    .modal-entregada .modal-body { padding: 18px; }
+    .modal-entregada .modal-footer { padding: 12px 18px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; }
+    .modal-entregada .modal-footer button { padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
+    .modal-entregada .btn-cancel { background: #f5f5f5; border: 1px solid #ddd; color: #333; }
+    .modal-entregada .btn-confirm { background: #2e7d32; color: white; border: none; }
+    .modal-entregada .btn-confirm:hover { background: #1b5e20; }
     @media print {
         .ruta-print { font-size: 10px; }
         .ruta-print .cliente-item { page-break-inside: avoid; }
+        .ruta-print .codigo-entrega a, .ruta-print .cliente-nombre a { color: #333; }
+        .ruta-print .direccion-texto .direccion-link { color: #333; }
+        .ruta-print .btn-marcar-entregada, .ruta-print .btn-reportar-no-entrega { display: none !important; }
     }
+    .modal-no-entrega .modal-body textarea { width: 100%; min-height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-family: inherit; resize: vertical; }
+    .modal-no-entrega .modal-body .motivo-error { color: #c62828; font-size: 0.85rem; margin-top: 4px; display: none; }
+    .btn-ver-recorrido { padding: 8px 16px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; margin-bottom: 12px; }
+    .btn-ver-recorrido:hover { background: #1976D2; }
+    .modal-recorrido { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(95vw, 900px); height: min(85vh, 600px); background: #fff; border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); display: none; z-index: 2001; overflow: hidden; flex-direction: column; }
+    .modal-recorrido.show { display: flex; }
+    .modal-recorrido .modal-recorrido-header { padding: 12px 16px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; }
+    .modal-recorrido .modal-recorrido-header h3 { margin: 0; font-size: 1.1rem; }
+    .modal-recorrido .modal-recorrido-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666; }
+    .modal-recorrido .modal-recorrido-header .btn-recalcular { padding: 6px 14px; font-size: 0.9rem; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 8px; }
+    .modal-recorrido .modal-recorrido-header .btn-recalcular:hover { background: #1976D2; }
+    .modal-recorrido .modal-recorrido-header .btn-recalcular:disabled { opacity: 0.7; cursor: not-allowed; }
+    .modal-recorrido .modal-recorrido-body { flex: 1; min-height: 0; position: relative; }
+    .modal-recorrido #mapa-recorrido { width: 100%; height: 100%; min-height: 400px; }
+    .modal-recorrido .sin-puntos { padding: 24px; text-align: center; color: #666; }
+    @media print { .btn-ver-recorrido { display: none !important; } }
 </style>
 {% endblock %}
 
 {% block content %}
+{% if mapa_recorrido %}{{ mapa_recorrido|json_script:"mapa-recorrido-data" }}{% endif %}
 <div class="container ruta-print">
     <div class="header">
         <h1>Ruta de Entrega</h1>
     </div>
+    {% if mapa_recorrido and mapa_recorrido.puntos %}
+    <div><button type="button" class="btn-ver-recorrido" id="btn-ver-recorrido" title="Ver el recorrido en el mapa">🗺️ Ver recorrido</button></div>
+    {% endif %}
     {% if es_feriado %}
     <div style="padding: 8px 12px; margin-bottom: 10px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; font-size: 0.9rem;">
         <strong>Feriado:</strong> {{ feriado.nombre }} — Sin entregas este día.
@@ -94,26 +154,59 @@
             <span class="info-label">Total</span>
             <span class="info-value">{{ ruta_clientes.count }}</span>
         </div>
+        {% if total_estimado_str %}
+        <div class="info-item">
+            <span class="info-label">Tiempo total est.</span>
+            <span class="info-value">{{ total_estimado_str }}</span>
+            <span class="info-note">(1 min espera por punto)</span>
+        </div>
+        {% endif %}
     </div>
 
     {% if ruta_clientes %}
         <div class="clientes-lista">
-            {% for ruta_cliente in ruta_clientes %}
-                <div class="cliente-item">
+            {% for ruta_cliente, tiempo_llegada in clientes_con_tiempo %}
+                <div class="cliente-item{% if ruta_cliente.entregada %} entregada{% elif ruta_cliente.no_entregada %} no-entregada{% endif %}" data-ruta-cliente-id="{{ ruta_cliente.pk }}">
                     <div class="cliente-fila">
                         <span class="orden-entrega">#{{ ruta_cliente.orden_entrega }}</span>
-                        <span class="codigo-entrega" title="Código de entrega">{{ ruta_cliente.codigo_entrega }}</span>
-                        <span class="cliente-nombre">{% if ruta_cliente.contrato.cliente.telefono %}{{ ruta_cliente.contrato.cliente.nombre }} · {{ ruta_cliente.contrato.cliente.telefono }}{% else %}{{ ruta_cliente.contrato.cliente.nombre }}{% endif %}</span>
+                        <span class="codigo-entrega" title="Código de entrega"><a href="{% url 'contracts:detalle' ruta_cliente.contrato_id %}">{{ ruta_cliente.codigo_entrega }}</a></span>
+                        <span class="cliente-nombre">{% if ruta_cliente.contrato.cliente.telefono %}<a href="{% url 'contracts:detalle' ruta_cliente.contrato_id %}">{{ ruta_cliente.contrato.cliente.nombre }}</a> · {{ ruta_cliente.contrato.cliente.telefono }}{% else %}<a href="{% url 'contracts:detalle' ruta_cliente.contrato_id %}">{{ ruta_cliente.contrato.cliente.nombre }}</a>{% endif %}</span>
+                        {% if tiempo_llegada %}<span class="tiempo-llegada" title="Tiempo estimado desde salida">Llegada est.: {{ tiempo_llegada }}</span>{% endif %}
+                        {% if ruta_cliente.entregada %}
+                            <span class="entregada-badge">✓ Entregada</span>
+                            {% if ruta_cliente.marcadopor_entregada or ruta_cliente.fecha_entrega %}
+                            <span class="registro-marcado">por {% if ruta_cliente.marcadopor_entregada %}{{ ruta_cliente.marcadopor_entregada.get_full_name|default:ruta_cliente.marcadopor_entregada.username }}{% else %}—{% endif %}{% if ruta_cliente.fecha_entrega %} el {{ ruta_cliente.fecha_entrega|date:"d/m/Y H:i" }}{% endif %}</span>
+                            {% endif %}
+                        {% elif ruta_cliente.no_entregada %}
+                            <span class="no-entregada-badge">No entregada</span>
+                            {% if ruta_cliente.marcadopor_no_entrega or ruta_cliente.fecha_no_entrega %}
+                            <span class="registro-marcado">por {% if ruta_cliente.marcadopor_no_entrega %}{{ ruta_cliente.marcadopor_no_entrega.get_full_name|default:ruta_cliente.marcadopor_no_entrega.username }}{% else %}—{% endif %}{% if ruta_cliente.fecha_no_entrega %} el {{ ruta_cliente.fecha_no_entrega|date:"d/m/Y H:i" }}{% endif %}</span>
+                            {% endif %}
+                        {% else %}
+                            <button type="button" class="btn-marcar-entregada" data-pk="{{ ruta_cliente.pk }}" data-cliente="{{ ruta_cliente.contrato.cliente.nombre }}" data-codigo="{{ ruta_cliente.codigo_entrega }}" title="Marcar como entregada">Marcar entregada</button>
+                            <button type="button" class="btn-reportar-no-entrega" data-pk="{{ ruta_cliente.pk }}" data-cliente="{{ ruta_cliente.contrato.cliente.nombre }}" data-codigo="{{ ruta_cliente.codigo_entrega }}" title="Reportar que no se pudo entregar">⚠ No entregada</button>
+                        {% endif %}
                     </div>
+                    {% if ruta_cliente.no_entregada and ruta_cliente.motivo_no_entrega %}
+                    <div class="motivo-no-entrega">Motivo: {{ ruta_cliente.motivo_no_entrega }}</div>
+                    {% endif %}
                     <div class="direccion-wrap">
                         <span class="direccion-label">Dir. </span>
                         <span class="direccion-texto">
+                            {% if ruta_cliente.contrato.link_maps %}
+                                <a href="{{ ruta_cliente.contrato.link_maps }}" target="_blank" rel="noopener noreferrer" class="direccion-link" title="Abrir en Google Maps">
+                            {% elif ruta_cliente.contrato.latitud and ruta_cliente.contrato.longitud %}
+                                <a href="https://www.google.com/maps/search/?api=1&query={{ ruta_cliente.contrato.latitud }},{{ ruta_cliente.contrato.longitud }}" target="_blank" rel="noopener noreferrer" class="direccion-link" title="Abrir en Google Maps">
+                            {% elif ruta_cliente.contrato.direccion_entrega %}
+                                <a href="https://www.google.com/maps/search/?api=1&query={{ ruta_cliente.contrato.direccion_entrega|urlencode }}" target="_blank" rel="noopener noreferrer" class="direccion-link" title="Abrir en Google Maps">
+                            {% endif %}
                             {% if ruta_cliente.direccion_entrega and ruta_cliente.direccion_entrega.calle %}
                                 {{ ruta_cliente.direccion_entrega.calle }}{% if ruta_cliente.direccion_entrega.numero %} #{{ ruta_cliente.direccion_entrega.numero }}{% endif %}{% if ruta_cliente.direccion_entrega.colonia %}, {{ ruta_cliente.direccion_entrega.colonia }}{% endif %}{% if ruta_cliente.direccion_entrega.ciudad %} — {{ ruta_cliente.direccion_entrega.ciudad }}{% if ruta_cliente.direccion_entrega.codigo_postal %} C.P. {{ ruta_cliente.direccion_entrega.codigo_postal }}{% endif %}{% endif %}
                             {% else %}
                                 {{ ruta_cliente.contrato.direccion_entrega|default:"—" }}
                             {% endif %}
                             {% if ruta_cliente.contrato.horario_entrega %} · {{ ruta_cliente.contrato.horario_entrega|time:"H:i" }}{% endif %}
+                            {% if ruta_cliente.contrato.link_maps or ruta_cliente.contrato.latitud and ruta_cliente.contrato.longitud or ruta_cliente.contrato.direccion_entrega %}</a>{% endif %}
                         </span>
                     </div>
                     {% if ruta_cliente.contrato.notas_entregador %}
@@ -129,4 +222,385 @@
         <div class="sin-clientes">No hay clientes asignados a esta ruta.</div>
     {% endif %}
 </div>
+
+<div class="modal-entregada-overlay" id="modal-recorrido-overlay" aria-hidden="true" style="z-index: 2000;"></div>
+<div class="modal-recorrido" id="modal-recorrido" role="dialog" aria-labelledby="modal-recorrido-title" aria-hidden="true">
+    <div class="modal-recorrido-header">
+        <h3 id="modal-recorrido-title">Recorrido de la ruta</h3>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <button type="button" class="btn-recalcular" id="btn-recalcular-recorrido" data-ruta-id="{{ ruta.id }}" data-url="{% url 'delivery:ruta_recalcular_recorrido' ruta.id %}" aria-label="Recalcular recorrido usando el punto de partida">🔄 Recalcular recorrido</button>
+            <button type="button" class="modal-recorrido-close" id="modal-recorrido-close" aria-label="Cerrar">×</button>
+        </div>
+    </div>
+    <div class="modal-recorrido-body">
+        <div id="mapa-recorrido"></div>
+        <div class="sin-puntos" id="mapa-recorrido-sin-puntos" style="display: none;">No hay suficientes puntos con coordenadas para mostrar el recorrido.</div>
+    </div>
+</div>
+<div class="modal-entregada-overlay" id="modal-entregada-overlay" aria-hidden="true"></div>
+<div class="modal-entregada" id="modal-entregada" role="dialog" aria-labelledby="modal-entregada-title" aria-hidden="true">
+    <div class="modal-header" id="modal-entregada-title">Confirmar entrega</div>
+    <div class="modal-body">
+        <p id="modal-entregada-texto">¿Marcar como entregada la entrega a <strong id="modal-entregada-cliente"></strong> (código <strong id="modal-entregada-codigo"></strong>)?</p>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn-cancel" id="modal-entregada-cancel">Cancelar</button>
+        <button type="button" class="btn-confirm" id="modal-entregada-confirm">Confirmar</button>
+    </div>
+</div>
+
+<div class="modal-entregada-overlay" id="modal-no-entrega-overlay" aria-hidden="true"></div>
+<div class="modal-entregada modal-no-entrega" id="modal-no-entrega" role="dialog" aria-labelledby="modal-no-entrega-title" aria-hidden="true">
+    <div class="modal-header" id="modal-no-entrega-title">Reportar no entrega</div>
+    <div class="modal-body">
+        <p>No se pudo realizar la entrega a <strong id="modal-no-entrega-cliente"></strong> (código <strong id="modal-no-entrega-codigo"></strong>).</p>
+        <label for="modal-no-entrega-motivo" style="display:block; margin-top: 10px; font-weight: 600;">Motivo (obligatorio)</label>
+        <textarea id="modal-no-entrega-motivo" placeholder="Ej: Cliente no estaba, dirección incorrecta, negocio cerrado..." maxlength="2000"></textarea>
+        <p class="motivo-error" id="modal-no-entrega-motivo-error">Escriba el motivo de la no entrega.</p>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn-cancel" id="modal-no-entrega-cancel">Cancelar</button>
+        <button type="button" class="btn-confirm" id="modal-no-entrega-confirm">Confirmar</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    var btnRecorrido = document.getElementById('btn-ver-recorrido');
+    if (btnRecorrido) {
+        var mapsKey = "{{ google_maps_browser_key|default:'' }}";
+        var overlayRecorrido = document.getElementById('modal-recorrido-overlay');
+        var modalRecorrido = document.getElementById('modal-recorrido');
+        var closeRecorrido = document.getElementById('modal-recorrido-close');
+        var mapRecorridoEl = document.getElementById('mapa-recorrido');
+        var sinPuntosEl = document.getElementById('mapa-recorrido-sin-puntos');
+        var mapRecorridoInstance = null;
+        var mapRecorridoMarkers = [];
+
+        function getRecorridoData() {
+            var el = document.getElementById('mapa-recorrido-data');
+            if (!el || !el.textContent) return { puntos: [], tiene_punto_partida: false };
+            try { return JSON.parse(el.textContent); } catch (e) { return { puntos: [], tiene_punto_partida: false }; }
+        }
+        function openModalRecorrido() {
+            if (overlayRecorrido) overlayRecorrido.style.display = 'block';
+            if (modalRecorrido) { modalRecorrido.style.display = 'flex'; modalRecorrido.classList.add('show'); modalRecorrido.setAttribute('aria-hidden', 'false'); }
+            document.body.style.overflow = 'hidden';
+            var data = getRecorridoData();
+            if (!data.puntos || data.puntos.length === 0) {
+                if (mapRecorridoEl) mapRecorridoEl.style.display = 'none';
+                if (sinPuntosEl) sinPuntosEl.style.display = 'block';
+                return;
+            }
+            if (mapRecorridoEl) mapRecorridoEl.style.display = 'block';
+            if (sinPuntosEl) sinPuntosEl.style.display = 'none';
+            if (!mapsKey || !mapsKey.trim()) { if (sinPuntosEl) { sinPuntosEl.textContent = 'No está configurada la clave de Google Maps.'; sinPuntosEl.style.display = 'block'; } if (mapRecorridoEl) mapRecorridoEl.style.display = 'none'; return; }
+            loadMapRecorrido(data);
+        }
+        function closeModalRecorrido() {
+            if (overlayRecorrido) overlayRecorrido.style.display = 'none';
+            if (modalRecorrido) { modalRecorrido.style.display = 'none'; modalRecorrido.classList.remove('show'); modalRecorrido.setAttribute('aria-hidden', 'true'); }
+            document.body.style.overflow = '';
+        }
+        function loadMapRecorrido(data) {
+            if (!window.google || !window.google.maps) {
+                var s = document.createElement('script');
+                s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(mapsKey);
+                s.async = true; s.defer = true;
+                s.onload = function() { initMapRecorrido(data); };
+                document.head.appendChild(s);
+            } else {
+                initMapRecorrido(data);
+            }
+        }
+        function initMapRecorrido(data) {
+            if (!mapRecorridoEl || !data.puntos || data.puntos.length === 0) return;
+            var puntos = data.puntos;
+            var bounds = new google.maps.LatLngBounds();
+            var path = [];
+            for (var i = 0; i < puntos.length; i++) {
+                var pt = new google.maps.LatLng(puntos[i].lat, puntos[i].lng);
+                path.push(pt);
+                bounds.extend(pt);
+            }
+            if (!mapRecorridoInstance) {
+                mapRecorridoInstance = new google.maps.Map(mapRecorridoEl, {
+                    center: path[0] || { lat: -17.78, lng: -63.18 },
+                    zoom: 13,
+                    mapTypeControl: true,
+                    streetViewControl: false,
+                    fullscreenControl: true,
+                });
+            }
+            mapRecorridoMarkers.forEach(function(m) { m.setMap(null); });
+            mapRecorridoMarkers = [];
+            for (var j = 0; j < puntos.length; j++) {
+                var opts = { position: path[j], map: mapRecorridoInstance, title: puntos[j].label };
+                if (j === 0 && data.tiene_punto_partida) opts.icon = { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#4CAF50', fillOpacity: 1, strokeColor: '#2E7D32', strokeWeight: 2 };
+                var marker = new google.maps.Marker(opts);
+                mapRecorridoMarkers.push(marker);
+            }
+            if (path.length > 1) {
+                if (window.polylineRecorrido) window.polylineRecorrido.setMap(null);
+                window.polylineRecorrido = new google.maps.Polyline({ path: path, geodesic: true, strokeColor: '#2196F3', strokeOpacity: 0.8, strokeWeight: 4 });
+                window.polylineRecorrido.setMap(mapRecorridoInstance);
+            }
+            if (path.length === 1) {
+                mapRecorridoInstance.setCenter(path[0]);
+                mapRecorridoInstance.setZoom(16);
+            } else {
+                mapRecorridoInstance.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 });
+            }
+            setTimeout(function() {
+                if (mapRecorridoInstance) {
+                    google.maps.event.trigger(mapRecorridoInstance, 'resize');
+                    if (path.length === 1) { mapRecorridoInstance.setCenter(path[0]); mapRecorridoInstance.setZoom(16); }
+                    else mapRecorridoInstance.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 });
+                }
+            }, 300);
+        }
+        function getCookie(name) {
+            var v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+            return v ? v[2] : null;
+        }
+        function recalcularRecorrido() {
+            var btnRecalcular = document.getElementById('btn-recalcular-recorrido');
+            if (!btnRecalcular) return;
+            var url = btnRecalcular.getAttribute('data-url');
+            if (!url) return;
+            var originalText = btnRecalcular.textContent;
+            btnRecalcular.disabled = true;
+            btnRecalcular.textContent = 'Recalculando…';
+            var csrf = getCookie('csrftoken');
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrf || '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
+                }
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                btnRecalcular.disabled = false;
+                btnRecalcular.textContent = originalText;
+                if (data && data.ok && data.mapa_recorrido) {
+                    var dataEl = document.getElementById('mapa-recorrido-data');
+                    if (dataEl) dataEl.textContent = JSON.stringify(data.mapa_recorrido);
+                    initMapRecorrido(data.mapa_recorrido);
+                    location.reload();
+                } else {
+                    alert(data && data.error ? data.error : 'No se pudo recalcular el recorrido.');
+                }
+            }).catch(function() {
+                btnRecalcular.disabled = false;
+                btnRecalcular.textContent = originalText;
+                alert('Error de conexión. Intente de nuevo.');
+            });
+        }
+        btnRecorrido.addEventListener('click', openModalRecorrido);
+        if (closeRecorrido) closeRecorrido.addEventListener('click', closeModalRecorrido);
+        if (overlayRecorrido) overlayRecorrido.addEventListener('click', closeModalRecorrido);
+        var btnRecalcular = document.getElementById('btn-recalcular-recorrido');
+        if (btnRecalcular) btnRecalcular.addEventListener('click', recalcularRecorrido);
+    }
+})();
+</script>
+{% if ruta_clientes %}
+<script>
+(function() {
+    function getCookie(name) {
+        var v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+        return v ? v[2] : null;
+    }
+    var overlay = document.getElementById('modal-entregada-overlay');
+    var modal = document.getElementById('modal-entregada');
+    var textoCliente = document.getElementById('modal-entregada-cliente');
+    var textoCodigo = document.getElementById('modal-entregada-codigo');
+    var btnCancel = document.getElementById('modal-entregada-cancel');
+    var btnConfirm = document.getElementById('modal-entregada-confirm');
+    var pendingPk = null;
+    var urlBase = "{% url 'delivery:ruta_cliente_marcar_entregada' pk=0 %}";
+
+    function openModal(pk, cliente, codigo) {
+        pendingPk = pk;
+        if (textoCliente) textoCliente.textContent = cliente || '';
+        if (textoCodigo) textoCodigo.textContent = codigo || '';
+        if (overlay) overlay.style.display = 'block';
+        if (modal) { modal.style.display = 'block'; modal.setAttribute('aria-hidden', 'false'); }
+        document.body.style.overflow = 'hidden';
+    }
+    function closeModal() {
+        pendingPk = null;
+        if (overlay) overlay.style.display = 'none';
+        if (modal) { modal.style.display = 'none'; modal.setAttribute('aria-hidden', 'true'); }
+        document.body.style.overflow = '';
+    }
+    function formatFechaISO(iso) {
+        if (!iso) return '';
+        try {
+            var d = new Date(iso);
+            var day = ('0' + d.getDate()).slice(-2);
+            var month = ('0' + (d.getMonth() + 1)).slice(-2);
+            var year = d.getFullYear();
+            var h = ('0' + d.getHours()).slice(-2);
+            var m = ('0' + d.getMinutes()).slice(-2);
+            return day + '/' + month + '/' + year + ' ' + h + ':' + m;
+        } catch (e) { return ''; }
+    }
+    function markRowEntregada(pk, marcadopor, fechaEntrega) {
+        var row = document.querySelector('.cliente-item[data-ruta-cliente-id="' + pk + '"]');
+        if (!row) return;
+        row.classList.add('entregada');
+        row.classList.remove('no-entregada');
+        var fila = row.querySelector('.cliente-fila');
+        var btn = row.querySelector('.btn-marcar-entregada');
+        var btnNo = row.querySelector('.btn-reportar-no-entrega');
+        if (btn) {
+            var badge = document.createElement('span');
+            badge.className = 'entregada-badge';
+            badge.textContent = '✓ Entregada';
+            fila.insertBefore(badge, btn);
+            btn.remove();
+        }
+        if (btnNo) btnNo.remove();
+        if ((marcadopor || fechaEntrega) && fila) {
+            var reg = document.createElement('span');
+            reg.className = 'registro-marcado';
+            reg.textContent = 'por ' + (marcadopor || '—') + ' el ' + formatFechaISO(fechaEntrega);
+            fila.appendChild(reg);
+        }
+    }
+
+    document.querySelectorAll('.btn-marcar-entregada').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var pk = this.getAttribute('data-pk');
+            var cliente = this.getAttribute('data-cliente');
+            var codigo = this.getAttribute('data-codigo');
+            openModal(pk, cliente, codigo);
+        });
+    });
+    if (btnCancel) btnCancel.addEventListener('click', closeModal);
+    if (overlay) overlay.addEventListener('click', closeModal);
+    if (btnConfirm) btnConfirm.addEventListener('click', function() {
+        if (!pendingPk) return;
+        var url = urlBase.replace('/0/', '/' + pendingPk + '/');
+        var csrf = getCookie('csrftoken');
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrf || '',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data && data.ok) {
+                markRowEntregada(pendingPk, data.marcado_por, data.fecha_entrega);
+                closeModal();
+            } else {
+                alert('No se pudo marcar la entrega.');
+            }
+        }).catch(function() {
+            alert('Error de conexión. Intente de nuevo.');
+        });
+    });
+
+    var overlayNo = document.getElementById('modal-no-entrega-overlay');
+    var modalNo = document.getElementById('modal-no-entrega');
+    var textoClienteNo = document.getElementById('modal-no-entrega-cliente');
+    var textoCodigoNo = document.getElementById('modal-no-entrega-codigo');
+    var inputMotivo = document.getElementById('modal-no-entrega-motivo');
+    var motivoError = document.getElementById('modal-no-entrega-motivo-error');
+    var btnCancelNo = document.getElementById('modal-no-entrega-cancel');
+    var btnConfirmNo = document.getElementById('modal-no-entrega-confirm');
+    var pendingPkNo = null;
+    var urlNoBase = "{% url 'delivery:ruta_cliente_reportar_no_entrega' pk=0 %}";
+
+    function openModalNoEntrega(pk, cliente, codigo) {
+        pendingPkNo = pk;
+        if (textoClienteNo) textoClienteNo.textContent = cliente || '';
+        if (textoCodigoNo) textoCodigoNo.textContent = codigo || '';
+        if (inputMotivo) { inputMotivo.value = ''; inputMotivo.removeAttribute('aria-invalid'); }
+        if (motivoError) motivoError.style.display = 'none';
+        if (overlayNo) overlayNo.style.display = 'block';
+        if (modalNo) { modalNo.style.display = 'block'; modalNo.setAttribute('aria-hidden', 'false'); }
+        document.body.style.overflow = 'hidden';
+        if (inputMotivo) setTimeout(function() { inputMotivo.focus(); }, 100);
+    }
+    function closeModalNoEntrega() {
+        pendingPkNo = null;
+        if (overlayNo) overlayNo.style.display = 'none';
+        if (modalNo) { modalNo.style.display = 'none'; modalNo.setAttribute('aria-hidden', 'true'); }
+        document.body.style.overflow = '';
+    }
+    function markRowNoEntregada(pk, motivo, marcadopor, fechaNoEntrega) {
+        var row = document.querySelector('.cliente-item[data-ruta-cliente-id="' + pk + '"]');
+        if (!row) return;
+        row.classList.remove('entregada');
+        row.classList.add('no-entregada');
+        var wrap = row.querySelector('.cliente-fila');
+        var btnEntregada = row.querySelector('.btn-marcar-entregada');
+        var btnNo = row.querySelector('.btn-reportar-no-entrega');
+        if (btnEntregada) btnEntregada.remove();
+        if (btnNo) btnNo.remove();
+        var badge = document.createElement('span');
+        badge.className = 'no-entregada-badge';
+        badge.textContent = 'No entregada';
+        if (wrap) wrap.appendChild(badge);
+        if ((marcadopor || fechaNoEntrega) && wrap) {
+            var reg = document.createElement('span');
+            reg.className = 'registro-marcado';
+            reg.textContent = 'por ' + (marcadopor || '—') + ' el ' + formatFechaISO(fechaNoEntrega);
+            wrap.appendChild(reg);
+        }
+        if (motivo) {
+            var divMotivo = document.createElement('div');
+            divMotivo.className = 'motivo-no-entrega';
+            divMotivo.textContent = 'Motivo: ' + motivo;
+            row.appendChild(divMotivo);
+        }
+    }
+
+    document.querySelectorAll('.btn-reportar-no-entrega').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var pk = this.getAttribute('data-pk');
+            var cliente = this.getAttribute('data-cliente');
+            var codigo = this.getAttribute('data-codigo');
+            openModalNoEntrega(pk, cliente, codigo);
+        });
+    });
+    if (btnCancelNo) btnCancelNo.addEventListener('click', closeModalNoEntrega);
+    if (overlayNo) overlayNo.addEventListener('click', closeModalNoEntrega);
+    if (btnConfirmNo) btnConfirmNo.addEventListener('click', function() {
+        if (!pendingPkNo) return;
+        var motivo = inputMotivo ? inputMotivo.value.trim() : '';
+        if (!motivo) {
+            if (motivoError) motivoError.style.display = 'block';
+            if (inputMotivo) inputMotivo.setAttribute('aria-invalid', 'true');
+            return;
+        }
+        var url = urlNoBase.replace('/0/', '/' + pendingPkNo + '/');
+        var csrf = getCookie('csrftoken');
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrf || '',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ motivo: motivo })
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data && data.ok) {
+                markRowNoEntregada(pendingPkNo, motivo, data.marcado_por, data.fecha_no_entrega);
+                closeModalNoEntrega();
+            } else {
+                alert(data && data.error ? data.error : 'No se pudo registrar.');
+            }
+        }).catch(function() {
+            alert('Error de conexión. Intente de nuevo.');
+        });
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}
