@@ -668,6 +668,42 @@ def reporte_ventas(request):
 
     total_pagos = sum(p.monto for p in pagos)
 
+    # Ventas por día por plan (pagos cobrados) para el gráfico
+    from collections import defaultdict
+    ventas_por_dia_plan = defaultdict(lambda: defaultdict(float))
+    plan_ids_en_pagos = set()
+    for p in pagos:
+        pid = p.cobro.contrato.plan_id
+        ventas_por_dia_plan[p.fecha_pago][pid] += float(p.monto)
+        plan_ids_en_pagos.add(pid)
+    days = []
+    d = fecha_desde
+    while d <= fecha_hasta:
+        days.append(d)
+        d += timedelta(days=1)
+    if plan_id:
+        planes_chart = list(Plan.objects.filter(pk=plan_id).values('id', 'nombre'))
+    else:
+        planes_chart = list(
+            Plan.objects.filter(pk__in=plan_ids_en_pagos).order_by('nombre').values('id', 'nombre')
+        )
+    chart_labels = [d.strftime('%d/%m') for d in days]
+    chart_datasets = []
+    colores = ['#2196F3', '#7CB342', '#FF9800', '#9C27B0', '#00BCD4', '#E91E63', '#8BC34A', '#673AB7']
+    for i, pl in enumerate(planes_chart):
+        data = [ventas_por_dia_plan[d].get(pl['id'], 0) for d in days]
+        chart_datasets.append({
+            'label': pl['nombre'],
+            'data': data,
+            'backgroundColor': colores[i % len(colores)] + '99',
+            'borderColor': colores[i % len(colores)],
+            'borderWidth': 1,
+        })
+    chart_ventas_por_dia = {
+        'labels': chart_labels,
+        'datasets': chart_datasets,
+    }
+
     context = {
         'contratos': contratos,
         'pagos': pagos,
@@ -680,5 +716,6 @@ def reporte_ventas(request):
         'planes': Plan.objects.filter(activo=True).order_by('nombre'),
         'cliente_id': cliente_id or '',
         'plan_id': plan_id or '',
+        'chart_ventas_por_dia': chart_ventas_por_dia,
     }
     return render(request, 'billing/reporte_ventas.html', context)

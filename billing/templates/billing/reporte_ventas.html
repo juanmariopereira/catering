@@ -68,6 +68,9 @@
     .sin-datos { text-align: center; padding: 24px; color: #999; font-size: 0.95rem; }
     .link-cell a { color: #1976d2; text-decoration: none; }
     .link-cell a:hover { text-decoration: underline; }
+    .grafico-ventas-wrap { margin-bottom: 32px; padding: 20px; background: #fff; border-radius: 8px; border: 1px solid #eee; }
+    .grafico-ventas-wrap h2 { margin: 0 0 16px 0; font-size: 1.15rem; color: #333; padding-bottom: 8px; border-bottom: 2px solid #F44336; }
+    .grafico-ventas-wrap canvas { max-height: 360px; }
 </style>
 {% endblock %}
 
@@ -120,6 +123,14 @@
             <div style="font-size: 0.85rem; color: #666;">{{ pagos|length }} pago(s)</div>
         </div>
     </div>
+
+    {% if chart_ventas_por_dia %}
+    <section class="seccion-ventas grafico-ventas-wrap">
+        <h2>Ventas por día por plan</h2>
+        <p class="help-text" style="margin-bottom: 12px; font-size: 0.9rem; color: #666;">Pagos cobrados (Bs.) en el rango seleccionado, desglosados por plan.</p>
+        <canvas id="chart-ventas-por-dia" width="800" height="360"></canvas>
+    </section>
+    {% endif %}
 
     <section class="seccion-ventas">
         <h2>Contratos creados en el período</h2>
@@ -189,4 +200,53 @@
         {% endif %}
     </section>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if chart_ventas_por_dia %}
+{{ chart_ventas_por_dia|json_script:"chart-ventas-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+    var el = document.getElementById('chart-ventas-data');
+    var canvas = document.getElementById('chart-ventas-por-dia');
+    if (!el || !canvas) return;
+    var config;
+    try {
+        config = JSON.parse(el.textContent);
+    } catch (e) { return; }
+    if (!config.labels || !config.datasets) return;
+    new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: config.labels,
+            datasets: config.datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            var v = ctx.raw;
+                            return (ctx.dataset.label || '') + ': Bs. ' + (v ? Number(v).toFixed(2) : '0.00');
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { stacked: true },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: { callback: function(v) { return 'Bs. ' + v; } }
+                }
+            }
+        }
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}
