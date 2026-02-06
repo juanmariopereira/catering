@@ -60,6 +60,12 @@
         padding-bottom: 8px;
         border-bottom: 2px solid #F44336;
     }
+    .seccion-ventas details { border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa; margin-bottom: 20px; }
+    .seccion-ventas details summary { padding: 12px 16px; font-size: 1.15rem; font-weight: 600; color: #333; cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #F44336; }
+    .seccion-ventas details summary::-webkit-details-marker { display: none; }
+    .seccion-ventas details summary::before { content: '▶'; font-size: 0.75rem; color: #666; transition: transform 0.2s; flex-shrink: 0; }
+    .seccion-ventas details[open] summary::before { transform: rotate(90deg); }
+    .seccion-ventas details .seccion-ventas-body { padding: 16px; }
     .tabla-ventas { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
     .tabla-ventas th, .tabla-ventas td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
     .tabla-ventas th { background-color: #f5f5f5; font-weight: 600; color: #555; }
@@ -133,71 +139,79 @@
     {% endif %}
 
     <section class="seccion-ventas">
-        <h2>Contratos creados en el período</h2>
-        {% if contratos %}
-        <table class="tabla-ventas">
-            <thead>
-                <tr>
-                    <th>Fecha creación</th>
-                    <th>Cliente</th>
-                    <th>Plan</th>
-                    <th>Frecuencia</th>
-                    <th class="text-right">Precio</th>
-                    <th>Inicio</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for c in contratos %}
-                <tr>
-                    <td>{{ c.fecha_creacion|date:"d/m/Y H:i" }}</td>
-                    <td class="link-cell"><a href="{% url 'clients:detalle' c.cliente_id %}">{{ c.cliente.nombre }}</a></td>
-                    <td>{{ c.plan.nombre }}</td>
-                    <td>{{ c.get_frecuencia_pago_display }}</td>
-                    <td class="text-right">Bs. {{ c.precio|floatformat:2 }}</td>
-                    <td>{{ c.fecha_inicio|date:"d/m/Y" }}</td>
-                    <td class="link-cell"><a href="{% url 'contracts:detalle' c.pk %}">Ver contrato</a></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p class="sin-datos">No hay contratos creados en el período con los filtros aplicados.</p>
-        {% endif %}
+        <details>
+            <summary>Contratos creados en el período ({{ total_contratos }})</summary>
+            <div class="seccion-ventas-body">
+                {% if contratos %}
+                <table class="tabla-ventas">
+                    <thead>
+                        <tr>
+                            <th>Fecha creación</th>
+                            <th>Cliente</th>
+                            <th>Plan</th>
+                            <th>Frecuencia</th>
+                            <th class="text-right">Precio</th>
+                            <th>Inicio</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in contratos %}
+                        <tr>
+                            <td>{{ c.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                            <td class="link-cell"><a href="{% url 'clients:detalle' c.cliente_id %}">{{ c.cliente.nombre }}</a></td>
+                            <td>{{ c.plan.nombre }}</td>
+                            <td>{{ c.get_frecuencia_pago_display }}</td>
+                            <td class="text-right">Bs. {{ c.precio|floatformat:2 }}</td>
+                            <td>{{ c.fecha_inicio|date:"d/m/Y" }}</td>
+                            <td class="link-cell"><a href="{% url 'contracts:detalle' c.pk %}">Ver contrato</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="sin-datos">No hay contratos creados en el período con los filtros aplicados.</p>
+                {% endif %}
+            </div>
+        </details>
     </section>
 
     <section class="seccion-ventas">
-        <h2>Pagos cobrados en el período</h2>
-        {% if pagos %}
-        <table class="tabla-ventas">
-            <thead>
-                <tr>
-                    <th>Fecha pago</th>
-                    <th>Cliente</th>
-                    <th>Plan</th>
-                    <th>Cobro / Período</th>
-                    <th class="text-right">Monto</th>
-                    <th>Método</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in pagos %}
-                <tr>
-                    <td>{{ p.fecha_pago|date:"d/m/Y" }}</td>
-                    <td class="link-cell"><a href="{% url 'clients:detalle' p.cobro.contrato.cliente_id %}">{{ p.cobro.contrato.cliente.nombre }}</a></td>
-                    <td>{{ p.cobro.contrato.plan.nombre }}</td>
-                    <td>{{ p.cobro.numero_cobro|default:p.cobro.id }} · {{ p.cobro.periodo_desde|date:"d/m/Y" }} – {{ p.cobro.periodo_hasta|date:"d/m/Y" }}</td>
-                    <td class="text-right">Bs. {{ p.monto|floatformat:2 }}</td>
-                    <td>{{ p.get_metodo_pago_display }}</td>
-                    <td class="link-cell"><a href="{% url 'billing:cobro_detalle' p.cobro_id %}">Ver cobro</a></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p class="sin-datos">No hay pagos en el período con los filtros aplicados.</p>
-        {% endif %}
+        <details>
+            <summary>Pagos cobrados en el período ({{ pagos|length }})</summary>
+            <div class="seccion-ventas-body">
+                {% if pagos %}
+                <table class="tabla-ventas">
+                    <thead>
+                        <tr>
+                            <th>Fecha pago</th>
+                            <th>Cliente</th>
+                            <th>Plan</th>
+                            <th>Cobro / Período</th>
+                            <th class="text-right">Monto</th>
+                            <th>Método</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in pagos %}
+                        <tr>
+                            <td>{{ p.fecha_pago|date:"d/m/Y" }}</td>
+                            <td class="link-cell"><a href="{% url 'clients:detalle' p.cobro.contrato.cliente_id %}">{{ p.cobro.contrato.cliente.nombre }}</a></td>
+                            <td>{{ p.cobro.contrato.plan.nombre }}</td>
+                            <td>{{ p.cobro.numero_cobro|default:p.cobro.id }} · {{ p.cobro.periodo_desde|date:"d/m/Y" }} – {{ p.cobro.periodo_hasta|date:"d/m/Y" }}</td>
+                            <td class="text-right">Bs. {{ p.monto|floatformat:2 }}</td>
+                            <td>{{ p.get_metodo_pago_display }}</td>
+                            <td class="link-cell"><a href="{% url 'billing:cobro_detalle' p.cobro_id %}">Ver cobro</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="sin-datos">No hay pagos en el período con los filtros aplicados.</p>
+                {% endif %}
+            </div>
+        </details>
     </section>
 </div>
 {% endblock %}
