@@ -37,11 +37,11 @@
         {% csrf_token %}
         <div class="form-row">
             <label for="fecha">Fecha para la que generar rutas *</label>
-            <input type="date" name="fecha" id="fecha" required value="{{ request.POST.fecha }}">
+            <input type="date" name="fecha" id="fecha" required value="{{ request.POST.fecha|default:fecha_default }}">
         </div>
         <div class="form-row">
             <label for="fecha_origen">Copiar desde fecha (opcional)</label>
-            <input type="date" name="fecha_origen" id="fecha_origen" value="{{ request.POST.fecha_origen }}">
+            <input type="date" name="fecha_origen" id="fecha_origen" value="{{ request.POST.fecha_origen|default:fecha_origen_default }}">
             <p class="help">Si indicas una fecha, se copiarán entregadores y clientes desde esa fecha. Los contratos que ya no apliquen se omiten; los nuevos se asignan a alguna ruta.</p>
         </div>
         <div class="form-actions">

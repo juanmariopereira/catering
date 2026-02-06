@@ -1,0 +1,8 @@
+{% comment %}
+Uso: {% include "base/page_title.html" with title="Título de la página" icon="📋" %}
+O con variable: {% include "base/page_title.html" with title=page_title icon=page_icon %}
+{% endcomment %}
+<h1 class="page-title">
+    {% if icon %}<span class="page-title-icon" aria-hidden="true">{{ icon }}</span>{% endif %}
+    <span class="page-title-text">{{ title }}</span>
+</h1>

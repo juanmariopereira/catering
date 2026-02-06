@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.forms import inlineformset_factory
 from django.utils import timezone
 from django.db.models import Max
-from datetime import date
+from datetime import date, timedelta
 from routes.models import Ruta, RutaCliente, Entregador
 from contracts.models import Contrato, q_filtro_estado, contratos_activos_en_fecha
 from .forms import RutaForm
@@ -51,9 +51,11 @@ class RutaClienteFormSet(BaseRutaClienteFormSet):
             disponibles = activos.exclude(pk__in=ya_otra_ruta)
             # Incluir siempre los que ya están en esta ruta para que no salga "obligatorio" / invalid choice
             if ids_en_esta_ruta:
-                ya_en_ruta = Contrato.objects.filter(pk__in=ids_en_esta_ruta).select_related('cliente', 'plan')
-                disponibles = (disponibles | ya_en_ruta).distinct()
-            qs = disponibles.order_by('cliente__nombre')
+                ids_disponibles = set(disponibles.values_list('pk', flat=True))
+                todos_los_ids = ids_disponibles | ids_en_esta_ruta
+                qs = Contrato.objects.filter(pk__in=todos_los_ids).select_related('cliente', 'plan').order_by('cliente__nombre')
+            else:
+                qs = disponibles.order_by('cliente__nombre')
             self.form.base_fields['contrato'].queryset = qs
         super().__init__(*args, **kwargs)
 
@@ -212,9 +214,13 @@ def generar_rutas(request):
     se reparten entre las rutas existentes.
     """
     if request.method != 'POST':
-        # GET: formulario con fecha y opcional fecha_origen
+        # GET: formulario con fecha (mañana) y fecha_origen (última fecha con rutas)
+        manana = timezone.now().date() + timedelta(days=1)
+        ultima_ruta = Ruta.objects.order_by('-fecha').values_list('fecha', flat=True).first()
         return render(request, 'delivery/generar_rutas_form.html', {
             'entregadores': Entregador.objects.filter(activo=True).order_by('nombre'),
+            'fecha_default': manana.isoformat(),
+            'fecha_origen_default': ultima_ruta.isoformat() if ultima_ruta else '',
         })
 
     fecha_str = request.POST.get('fecha')
