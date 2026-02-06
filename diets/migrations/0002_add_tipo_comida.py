@@ -5,30 +5,8 @@ import django.db.models.deletion
 from django.db import migrations, models
 
 
-def crear_tipos_comida_y_asignar(apps, schema_editor):
-    TipoComida = apps.get_model('diets', 'TipoComida')
-    DietaReceta = apps.get_model('diets', 'DietaReceta')
-    momentos = [
-        (1, 'Desayuno', 'Primera comida del día'),
-        (2, 'Media mañana', 'Tentempié a media mañana'),
-        (3, 'Comida', 'Comida principal del mediodía'),
-        (4, 'Merienda', 'Tentempié de tarde'),
-        (5, 'Cena', 'Última comida del día'),
-    ]
-    tipo_comida_default = None
-    for orden, nombre, desc in momentos:
-        tc, _ = TipoComida.objects.get_or_create(
-            nombre=nombre,
-            defaults={'orden': orden, 'descripcion': desc}
-        )
-        if orden == 3:
-            tipo_comida_default = tc
-    # Asignar "Comida" a todas las DietaReceta existentes sin tipo_comida
-    if tipo_comida_default:
-        DietaReceta.objects.filter(tipo_comida__isnull=True).update(tipo_comida=tipo_comida_default)
-
-
 def noop(apps, schema_editor):
+    """Sin datos ficticios: los tipos de comida se crean desde la app."""
     pass
 
 
@@ -76,5 +54,5 @@ class Migration(migrations.Migration):
             name='dietareceta',
             unique_together={('dieta', 'tipo_comida', 'receta')},
         ),
-        migrations.RunPython(crear_tipos_comida_y_asignar, noop),
+        migrations.RunPython(noop, noop),
     ]

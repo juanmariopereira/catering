@@ -7,6 +7,22 @@ from .models import Cobro, _dias_vencimiento_por_frecuencia
 from contracts.models import Contrato, q_filtro_estado
 
 
+def dias_vencimiento_para_contrato(contrato) -> int:
+    """
+    Días después de periodo_hasta para la fecha de vencimiento del cobro.
+    Usa el valor del plan (dias_vencimiento_cobro) si está definido; si no, la regla por frecuencia.
+    """
+    if contrato.plan_id and getattr(contrato.plan, 'dias_vencimiento_cobro', None) is not None:
+        return contrato.plan.dias_vencimiento_cobro
+    return _dias_vencimiento_por_frecuencia(contrato.frecuencia_pago)
+
+
+def fecha_vencimiento_default(contrato, periodo_hasta: date) -> date:
+    """Fecha de vencimiento por defecto para un cobro según plan o frecuencia del contrato."""
+    dias = dias_vencimiento_para_contrato(contrato)
+    return periodo_hasta + timedelta(days=dias)
+
+
 def periodo_hasta_segun_frecuencia(periodo_desde: date, frecuencia_pago: str) -> date:
     """
     Calcula la fecha de fin de período a partir de la fecha de inicio
@@ -50,7 +66,7 @@ def generar_cobro_automatico(contrato: Contrato, periodo_desde, periodo_hasta):
         periodo_desde=periodo_desde,
         periodo_hasta=periodo_hasta,
         monto=monto,
-        fecha_vencimiento=periodo_hasta + timedelta(days=_dias_vencimiento_por_frecuencia(contrato.frecuencia_pago)),
+        fecha_vencimiento=fecha_vencimiento_default(contrato, periodo_hasta),
         estado='pendiente',
     )
     return cobro

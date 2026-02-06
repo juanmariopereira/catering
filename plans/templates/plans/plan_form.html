@@ -25,8 +25,7 @@
 {% block content %}
 <div class="container">
     <h1>{% if object %}Editar{% else %}Nuevo{% endif %} Plan</h1>
-    <p class="help-text">Características: use formato JSON. Ej: {"calorias": 2000, "proteinas": 80}</p>
-    
+
     <form method="post" class="form-layout">
         {% csrf_token %}
         <div class="form-row form-row-2">
@@ -50,11 +49,13 @@
         </div>
         <div class="form-row form-row-2">
             <div class="form-group">
-                <label for="{{ form.caracteristicas.id_for_label }}">{{ form.caracteristicas.label }}</label>
-                {{ form.caracteristicas }}
-                {% if form.caracteristicas.help_text %}<div class="help-text">{{ form.caracteristicas.help_text }}</div>{% endif %}
-                {% if form.caracteristicas.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.caracteristicas.errors }}</div>{% endif %}
+                <label for="{{ form.dias_vencimiento_cobro.id_for_label }}">{{ form.dias_vencimiento_cobro.label }}</label>
+                {{ form.dias_vencimiento_cobro }}
+                {% if form.dias_vencimiento_cobro.help_text %}<div class="help-text">{{ form.dias_vencimiento_cobro.help_text }}</div>{% endif %}
+                {% if form.dias_vencimiento_cobro.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.dias_vencimiento_cobro.errors }}</div>{% endif %}
             </div>
+        </div>
+        <div class="form-row form-row-2">
             <div class="form-group checkbox-group">
                 <label for="{{ form.activo.id_for_label }}">{{ form.activo }} {{ form.activo.label }}</label>
                 {% if form.activo.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.activo.errors }}</div>{% endif %}

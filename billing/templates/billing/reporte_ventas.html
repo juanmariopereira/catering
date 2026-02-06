@@ -1,0 +1,192 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Reporte de ventas - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Finanzas</span>
+<span class="sep">/</span>
+<a href="{% url 'billing:cobro_lista' %}">Cobranza</a>
+<span class="sep">/</span>
+<span>Reporte de ventas</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .reporte-ventas h1 { margin-bottom: 16px; }
+    .filtros-ventas {
+        margin-bottom: 24px;
+        padding: 16px;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        border: 1px solid #eee;
+    }
+    .filtros-ventas form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    .filtros-ventas label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; color: #555; }
+    .filtros-ventas input[type="date"], .filtros-ventas select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; min-width: 140px; }
+    .filtros-ventas button {
+        padding: 10px 20px;
+        background-color: #F44336;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+    }
+    .filtros-ventas button:hover { background-color: #D32F2F; }
+    .resumen-ventas {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 28px;
+    }
+    .resumen-card {
+        padding: 16px 20px;
+        background-color: #fff;
+        border-radius: 8px;
+        border-left: 4px solid #2196F3;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .resumen-card.contratos { border-left-color: #7CB342; }
+    .resumen-card.pagos { border-left-color: #FF9800; }
+    .resumen-card h3 { margin: 0 0 8px 0; font-size: 0.9rem; color: #666; text-transform: uppercase; }
+    .resumen-card .valor { font-size: 1.4rem; font-weight: bold; color: #333; }
+    .seccion-ventas { margin-bottom: 32px; }
+    .seccion-ventas h2 {
+        margin: 0 0 12px 0;
+        font-size: 1.15rem;
+        color: #333;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #F44336;
+    }
+    .tabla-ventas { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .tabla-ventas th, .tabla-ventas td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
+    .tabla-ventas th { background-color: #f5f5f5; font-weight: 600; color: #555; }
+    .tabla-ventas tbody tr:hover { background-color: #fafafa; }
+    .tabla-ventas .text-right { text-align: right; }
+    .sin-datos { text-align: center; padding: 24px; color: #999; font-size: 0.95rem; }
+    .link-cell a { color: #1976d2; text-decoration: none; }
+    .link-cell a:hover { text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container reporte-ventas">
+    <h1>Reporte de ventas</h1>
+    <p class="help-text" style="margin-bottom: 16px;">Contratos creados y pagos cobrados en el rango de fechas. Por defecto: últimos 30 días.</p>
+
+    <div class="filtros-ventas">
+        <form method="get">
+            <label>
+                Desde
+                <input type="date" name="fecha_desde" value="{{ fecha_desde }}">
+            </label>
+            <label>
+                Hasta
+                <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}">
+            </label>
+            <label>
+                Cliente
+                <select name="cliente">
+                    <option value="">Todos</option>
+                    {% for c in clientes %}
+                    <option value="{{ c.pk }}" {% if cliente_id == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                Plan
+                <select name="plan">
+                    <option value="">Todos</option>
+                    {% for p in planes %}
+                    <option value="{{ p.pk }}" {% if plan_id == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <button type="submit">Filtrar</button>
+        </form>
+    </div>
+
+    <div class="resumen-ventas">
+        <div class="resumen-card contratos">
+            <h3>Contratos creados</h3>
+            <div class="valor">{{ total_contratos }}</div>
+            <div style="font-size: 0.85rem; color: #666;">Suma precios: Bs. {{ total_contratos_precio|floatformat:2 }}</div>
+        </div>
+        <div class="resumen-card pagos">
+            <h3>Pagos cobrados</h3>
+            <div class="valor">Bs. {{ total_pagos|floatformat:2 }}</div>
+            <div style="font-size: 0.85rem; color: #666;">{{ pagos|length }} pago(s)</div>
+        </div>
+    </div>
+
+    <section class="seccion-ventas">
+        <h2>Contratos creados en el período</h2>
+        {% if contratos %}
+        <table class="tabla-ventas">
+            <thead>
+                <tr>
+                    <th>Fecha creación</th>
+                    <th>Cliente</th>
+                    <th>Plan</th>
+                    <th>Frecuencia</th>
+                    <th class="text-right">Precio</th>
+                    <th>Inicio</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in contratos %}
+                <tr>
+                    <td>{{ c.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                    <td class="link-cell"><a href="{% url 'clients:detalle' c.cliente_id %}">{{ c.cliente.nombre }}</a></td>
+                    <td>{{ c.plan.nombre }}</td>
+                    <td>{{ c.get_frecuencia_pago_display }}</td>
+                    <td class="text-right">Bs. {{ c.precio|floatformat:2 }}</td>
+                    <td>{{ c.fecha_inicio|date:"d/m/Y" }}</td>
+                    <td class="link-cell"><a href="{% url 'contracts:detalle' c.pk %}">Ver contrato</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="sin-datos">No hay contratos creados en el período con los filtros aplicados.</p>
+        {% endif %}
+    </section>
+
+    <section class="seccion-ventas">
+        <h2>Pagos cobrados en el período</h2>
+        {% if pagos %}
+        <table class="tabla-ventas">
+            <thead>
+                <tr>
+                    <th>Fecha pago</th>
+                    <th>Cliente</th>
+                    <th>Plan</th>
+                    <th>Cobro / Período</th>
+                    <th class="text-right">Monto</th>
+                    <th>Método</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pagos %}
+                <tr>
+                    <td>{{ p.fecha_pago|date:"d/m/Y" }}</td>
+                    <td class="link-cell"><a href="{% url 'clients:detalle' p.cobro.contrato.cliente_id %}">{{ p.cobro.contrato.cliente.nombre }}</a></td>
+                    <td>{{ p.cobro.contrato.plan.nombre }}</td>
+                    <td>{{ p.cobro.numero_cobro|default:p.cobro.id }} · {{ p.cobro.periodo_desde|date:"d/m/Y" }} – {{ p.cobro.periodo_hasta|date:"d/m/Y" }}</td>
+                    <td class="text-right">Bs. {{ p.monto|floatformat:2 }}</td>
+                    <td>{{ p.get_metodo_pago_display }}</td>
+                    <td class="link-cell"><a href="{% url 'billing:cobro_detalle' p.cobro_id %}">Ver cobro</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="sin-datos">No hay pagos en el período con los filtros aplicados.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

@@ -42,6 +42,15 @@ class Cliente(models.Model):
     def __str__(self):
         return self.nombre
 
+    def tiene_contratos_vigentes(self):
+        """
+        True si el cliente tiene al menos un contrato no cancelado (activo, pausado o vencido).
+        Usado para mostrar estado "Sin Contrato" cuando no tiene contratos vigentes.
+        """
+        from contracts.models import Contrato, q_filtro_estado
+        q = q_filtro_estado('activo') | q_filtro_estado('pausado') | q_filtro_estado('vencido')
+        return self.contratos.filter(q).exists()
+
 
 class IngredienteNoGustado(models.Model):
     """Relación entre Cliente e Ingrediente para ingredientes que no le gustan al cliente"""

@@ -50,7 +50,7 @@
         <thead>
             <tr>
                 <th>Nombre</th>
-                <th>Precio Base</th>
+                <th class="text-right">Precio Base</th>
                 <th>Estado</th>
                 <th>Acciones</th>
             </tr>
@@ -59,7 +59,7 @@
             {% for plan in planes %}
                 <tr>
                     <td>{{ plan.nombre }}</td>
-                    <td>Bs. {{ plan.precio_base|floatformat:2 }}</td>
+                    <td class="text-right">Bs. {{ plan.precio_base|floatformat:2 }}</td>
                     <td><span class="badge badge-{% if plan.activo %}activo{% else %}inactivo{% endif %}">{% if plan.activo %}Activo{% else %}Inactivo{% endif %}</span></td>
                     <td class="table-actions">
                         <a href="{% url 'plans:editar' plan.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>

@@ -10,10 +10,7 @@ class PlanAdmin(admin.ModelAdmin):
     readonly_fields = ['fecha_creacion', 'fecha_actualizacion']
     fieldsets = (
         ('Información Básica', {
-            'fields': ('nombre', 'descripcion', 'precio_base', 'activo')
-        }),
-        ('Características', {
-            'fields': ('caracteristicas',)
+            'fields': ('nombre', 'descripcion', 'precio_base', 'dias_vencimiento_cobro', 'activo')
         }),
         ('Fechas', {
             'fields': ('fecha_creacion', 'fecha_actualizacion')

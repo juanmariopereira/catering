@@ -4,16 +4,8 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
-def asegurar_tipo_comida(apps, schema_editor):
-    """Asigna 'Comida' a cualquier DietaReceta que aún tenga tipo_comida null."""
-    TipoComida = apps.get_model('diets', 'TipoComida')
-    DietaReceta = apps.get_model('diets', 'DietaReceta')
-    comida = TipoComida.objects.filter(nombre='Comida').first()
-    if comida:
-        DietaReceta.objects.filter(tipo_comida__isnull=True).update(tipo_comida=comida)
-
-
 def noop(apps, schema_editor):
+    """Sin datos ficticios: no se asigna tipo_comida por defecto."""
     pass
 
 
@@ -24,11 +16,13 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(asegurar_tipo_comida, noop),
+        migrations.RunPython(noop, noop),
         migrations.AlterField(
             model_name='dietareceta',
             name='tipo_comida',
             field=models.ForeignKey(
+                blank=True,
+                null=True,
                 on_delete=django.db.models.deletion.PROTECT,
                 related_name='dieta_recetas',
                 to='diets.tipocomida',

@@ -27,7 +27,7 @@ class PlanListView(LoginRequiredMixin, ListView):
 class PlanCreateView(LoginRequiredMixin, CreateView):
     model = Plan
     template_name = 'plans/plan_form.html'
-    fields = ['nombre', 'descripcion', 'precio_base', 'caracteristicas', 'activo']
+    fields = ['nombre', 'descripcion', 'precio_base', 'dias_vencimiento_cobro', 'activo']
     success_url = reverse_lazy('plans:lista')
 
     def form_valid(self, form):
@@ -38,7 +38,7 @@ class PlanCreateView(LoginRequiredMixin, CreateView):
 class PlanUpdateView(LoginRequiredMixin, UpdateView):
     model = Plan
     template_name = 'plans/plan_form.html'
-    fields = ['nombre', 'descripcion', 'precio_base', 'caracteristicas', 'activo']
+    fields = ['nombre', 'descripcion', 'precio_base', 'dias_vencimiento_cobro', 'activo']
     success_url = reverse_lazy('plans:lista')
 
     def form_valid(self, form):

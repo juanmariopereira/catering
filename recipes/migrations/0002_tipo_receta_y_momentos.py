@@ -4,18 +4,9 @@ import django.core.validators
 from django.db import migrations, models
 
 
-def crear_tipos_receta_iniciales(apps, schema_editor):
-    TipoReceta = apps.get_model('recipes', 'TipoReceta')
-    datos = [
-        (1, 'Comida'),
-        (2, 'Masa'),
-        (3, 'Postre'),
-        (4, 'Complemento'),
-        (5, 'Bebida'),
-        (6, 'Fruta'),
-    ]
-    for orden, nombre in datos:
-        TipoReceta.objects.get_or_create(nombre=nombre, defaults={'orden': orden})
+def noop(apps, schema_editor):
+    """Sin datos ficticios: los tipos de receta se crean desde la app."""
+    pass
 
 
 class Migration(migrations.Migration):
@@ -64,5 +55,5 @@ class Migration(migrations.Migration):
             name='tipos_receta',
             field=models.ManyToManyField(blank=True, help_text='Ej: Comida, Masa, Postre, Complemento, Bebida, Fruta (selección múltiple)', related_name='recetas', to='recipes.tiporeceta', verbose_name='Tipo de receta'),
         ),
-        migrations.RunPython(crear_tipos_receta_iniciales, migrations.RunPython.noop),
+        migrations.RunPython(noop, migrations.RunPython.noop),
     ]

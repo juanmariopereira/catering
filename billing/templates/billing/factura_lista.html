@@ -58,7 +58,7 @@
                 <th>Cliente</th>
                 <th>Fecha Emisión</th>
                 <th>Fecha Vencimiento</th>
-                <th>Monto</th>
+                <th class="text-right">Monto</th>
                 <th>Estado</th>
                 <th>Acciones</th>
             </tr>
@@ -70,7 +70,7 @@
                     <td>{{ factura.contrato.cliente.nombre }}</td>
                     <td>{{ factura.fecha_emision|date:"d/m/Y" }}</td>
                     <td>{{ factura.fecha_vencimiento|date:"d/m/Y" }}</td>
-                    <td>Bs. {{ factura.monto|floatformat:2 }}</td>
+                    <td class="text-right">Bs. {{ factura.monto|floatformat:2 }}</td>
                     <td>
                         <span class="badge badge-{{ factura.estado }}">
                             {{ factura.get_estado_display }}

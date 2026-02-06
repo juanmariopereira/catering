@@ -12,11 +12,11 @@ class Plan(models.Model):
         validators=[MinValueValidator(0)],
         verbose_name="Precio base"
     )
-    caracteristicas = models.JSONField(
-        default=dict,
+    dias_vencimiento_cobro = models.IntegerField(
+        null=True,
         blank=True,
-        verbose_name="Características",
-        help_text="Características del plan en formato JSON"
+        verbose_name="Días para vencimiento del cobro",
+        help_text="Días después de «período hasta» para la fecha de vencimiento del cobro. Positivo = después, negativo = antes. Si está vacío se usa la regla por frecuencia del contrato (mensual: 15, resto: 7)."
     )
     activo = models.BooleanField(default=True, verbose_name="Activo")
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")

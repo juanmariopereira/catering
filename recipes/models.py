@@ -133,7 +133,9 @@ class Ingrediente(models.Model):
         on_delete=models.PROTECT,
         related_name='ingredientes',
         verbose_name="Unidad de medida",
-        help_text="Unidad por defecto para este ingrediente"
+        help_text="Unidad por defecto para este ingrediente",
+        blank=True,
+        null=True,
     )
     equivalencia_por_unidad = models.DecimalField(
         max_digits=10,
@@ -253,7 +255,9 @@ class RecetaIngrediente(models.Model):
         on_delete=models.PROTECT,
         related_name='receta_ingredientes',
         verbose_name="Unidad de medida",
-        help_text="Unidad para esta cantidad en la receta"
+        help_text="Unidad para esta cantidad en la receta",
+        blank=True,
+        null=True,
     )
 
     class Meta:
@@ -263,4 +267,5 @@ class RecetaIngrediente(models.Model):
         ordering = ['receta', 'ingrediente']
 
     def __str__(self):
-        return f"{self.receta.nombre} - {self.ingrediente.nombre}: {self.cantidad} {self.unidad_medida}"
+        um = getattr(self.unidad_medida, 'nombre', None) or getattr(self.unidad_medida, 'simbolo', None) or '—'
+        return f"{self.receta.nombre} - {self.ingrediente.nombre}: {self.cantidad} {um}"

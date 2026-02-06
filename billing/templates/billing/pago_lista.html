@@ -51,7 +51,7 @@
                 <th>Fecha</th>
                 <th>Cobro</th>
                 <th>Cliente</th>
-                <th>Monto</th>
+                <th class="text-right">Monto</th>
                 <th>Método</th>
                 <th>Referencia</th>
                 <th>Acciones</th>
@@ -63,7 +63,7 @@
                 <td>{{ pago.fecha_pago|date:"d/m/Y" }}</td>
                 <td><a href="{% url 'billing:cobro_detalle' pago.cobro_id %}">{{ pago.cobro.numero_cobro }}</a></td>
                 <td>{{ pago.cobro.contrato.cliente.nombre }}</td>
-                <td>Bs. {{ pago.monto|floatformat:2 }}</td>
+                <td class="text-right">Bs. {{ pago.monto|floatformat:2 }}</td>
                 <td>{{ pago.get_metodo_pago_display }}</td>
                 <td>{{ pago.referencia|default:"—" }}</td>
                 <td class="table-actions">

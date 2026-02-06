@@ -158,7 +158,7 @@
             <tr>
                 <th>Fecha</th>
                 <th>Cliente</th>
-                <th>Monto</th>
+                <th class="text-right">Monto</th>
                 <th>Método</th>
                 <th>Cobro</th>
             </tr>
@@ -168,7 +168,7 @@
             <tr>
                 <td>{{ pago.fecha_pago|date:"d/m/Y" }}</td>
                 <td><a href="{% url 'clients:detalle' pago.cobro.contrato.cliente_id %}">{{ pago.cobro.contrato.cliente.nombre }}</a></td>
-                <td>Bs. {{ pago.monto|separador_miles:2 }}</td>
+                <td class="text-right">Bs. {{ pago.monto|separador_miles:2 }}</td>
                 <td>{{ pago.get_metodo_pago_display }}</td>
                 <td><a href="{% url 'billing:cobro_detalle' pago.cobro_id %}">{{ pago.cobro.numero_cobro|default:pago.cobro_id }}</a></td>
             </tr>
@@ -189,7 +189,7 @@
             <tr>
                 <th>Número</th>
                 <th>Cliente</th>
-                <th>Monto</th>
+                <th class="text-right">Monto</th>
                 <th>Vencimiento</th>
                 <th>Acciones</th>
             </tr>
@@ -199,11 +199,13 @@
             <tr>
                 <td><a href="{% url 'billing:cobro_detalle' cobro.pk %}">{{ cobro.numero_cobro|default:cobro.id }}</a></td>
                 <td><a href="{% url 'clients:detalle' cobro.contrato.cliente_id %}">{{ cobro.contrato.cliente.nombre }}</a></td>
-                <td>Bs. {{ cobro.monto|separador_miles:2 }}</td>
+                <td class="text-right">Bs. {{ cobro.monto|separador_miles:2 }}</td>
                 <td>{{ cobro.fecha_vencimiento|date:"d/m/Y" }}</td>
                 <td class="table-actions">
                     <a href="{% url 'billing:cobro_detalle' cobro.pk %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
+                    {% if cobro.estado != 'pagada' %}
                     <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.pk }}" class="btn-cobrar" title="Registrar pago" aria-label="Registrar pago"><span aria-hidden="true">💰</span></a>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
@@ -223,7 +225,7 @@
             <tr>
                 <th>Número</th>
                 <th>Cliente</th>
-                <th>Monto</th>
+                <th class="text-right">Monto</th>
                 <th>Vencimiento</th>
                 <th>Acciones</th>
             </tr>
@@ -233,11 +235,13 @@
             <tr>
                 <td><a href="{% url 'billing:cobro_detalle' cobro.pk %}">{{ cobro.numero_cobro|default:cobro.id }}</a></td>
                 <td><a href="{% url 'clients:detalle' cobro.contrato.cliente_id %}">{{ cobro.contrato.cliente.nombre }}</a></td>
-                <td>Bs. {{ cobro.monto|separador_miles:2 }}</td>
+                <td class="text-right">Bs. {{ cobro.monto|separador_miles:2 }}</td>
                 <td>{{ cobro.fecha_vencimiento|date:"d/m/Y" }}</td>
                 <td class="table-actions">
                     <a href="{% url 'billing:cobro_detalle' cobro.pk %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
+                    {% if cobro.estado != 'pagada' %}
                     <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.pk }}" class="btn-cobrar" title="Registrar pago" aria-label="Registrar pago"><span aria-hidden="true">💰</span></a>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
@@ -254,6 +258,8 @@
         <a href="{% url 'billing:cobro_crear' %}">Crear nuevo cobro</a>
         <a href="{% url 'billing:pago_crear' %}">Registrar un pago</a>
         <a href="{% url 'billing:reporte' %}">Reporte por período / cliente</a>
+        <a href="{% url 'billing:estado_cuentas' %}">Estado de cuentas por cliente</a>
+        <a href="{% url 'billing:reporte_ventas' %}">Reporte de ventas (contratos y pagos)</a>
         <a href="{% url 'clients:lista' %}">Lista de clientes</a>
         <a href="{% url 'contracts:lista' %}?estado=activo">Contratos activos</a>
         <a href="{% url 'dashboard' %}">Dashboard principal</a>

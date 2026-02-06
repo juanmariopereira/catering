@@ -1,6 +1,6 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
-from django.db.models import Q, Max
+from django.db.models import Q, Max, Exists, OuterRef
 from django.urls import reverse_lazy, reverse
 from django.shortcuts import redirect
 from django.contrib import messages
@@ -37,19 +37,26 @@ class ClienteListView(LoginRequiredMixin, ListView):
     }
 
     def get_queryset(self):
+        from contracts.models import Contrato, q_filtro_estado
         queryset = super().get_queryset()
         busqueda = self.request.GET.get('q')
         if busqueda:
             queryset = queryset.filter(
                 Q(nombre__icontains=busqueda) | Q(email__icontains=busqueda) | Q(telefono__icontains=busqueda)
             )
+        q_vigentes = q_filtro_estado('activo') | q_filtro_estado('pausado') | q_filtro_estado('vencido')
+        subq = Contrato.objects.filter(cliente_id=OuterRef('pk')).filter(q_vigentes)
+        queryset = queryset.annotate(
+            ultimo_contrato_fecha=Max('contratos__fecha_creacion'),
+            tiene_contrato_vigente=Exists(subq),
+        )
         activo = self.request.GET.get('activo')
         if activo is not None and activo != '':
-            queryset = queryset.filter(activo=activo == '1')
+            if activo == 'sin_contrato':
+                queryset = queryset.filter(tiene_contrato_vigente=False)
+            else:
+                queryset = queryset.filter(activo=activo == '1')
 
-        queryset = queryset.annotate(
-            ultimo_contrato_fecha=Max('contratos__fecha_creacion')
-        )
         order = (self.request.GET.get('order') or 'nombre').strip()
         if order in self.ORDER_FIELDS:
             order_field = self.ORDER_FIELDS[order]

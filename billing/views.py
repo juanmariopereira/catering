@@ -5,12 +5,18 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView, D
 from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from django.utils import timezone
+import json
 from django.db.models import Q, Sum, F, Case, When, Value, IntegerField
 from django.db.models.functions import Coalesce
 from datetime import date, timedelta
 
 from .models import Cobro, Pago
-from .utils import obtener_cobros_vencidos, periodo_hasta_segun_frecuencia
+from .utils import (
+    fecha_vencimiento_default,
+    dias_vencimiento_para_contrato,
+    obtener_cobros_vencidos,
+    periodo_hasta_segun_frecuencia,
+)
 from contracts.models import Contrato, q_filtro_estado
 from plans.models import Plan
 from clients.models import Cliente
@@ -203,12 +209,12 @@ class CobroCreateView(LoginRequiredMixin, CreateView):
         contrato_id = self.request.GET.get('contrato')
         if contrato_id:
             try:
-                contrato = Contrato.objects.get(pk=contrato_id)
+                contrato = Contrato.objects.select_related('plan').get(pk=contrato_id)
                 initial['contrato'] = contrato
-                initial['periodo_hasta'] = periodo_hasta_segun_frecuencia(
-                    hoy, contrato.frecuencia_pago
-                )
+                periodo_hasta = periodo_hasta_segun_frecuencia(hoy, contrato.frecuencia_pago)
+                initial['periodo_hasta'] = periodo_hasta
                 initial['monto'] = contrato.precio
+                initial['fecha_vencimiento'] = fecha_vencimiento_default(contrato, periodo_hasta)
             except (Contrato.DoesNotExist, ValueError, TypeError):
                 pass
         return initial
@@ -219,7 +225,11 @@ class CobroCreateView(LoginRequiredMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['contratos'] = Contrato.objects.filter(q_filtro_estado('activo'))
+        contratos = Contrato.objects.filter(q_filtro_estado('activo')).select_related('plan')
+        context['contratos'] = contratos
+        context['contratos_dias_vencimiento_json'] = json.dumps(
+            {str(c.id): dias_vencimiento_para_contrato(c) for c in contratos}
+        )
         return context
 
 
@@ -236,6 +246,14 @@ class CobroUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_success_url(self):
         return reverse('billing:cobro_detalle', args=[self.object.pk])
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        contratos = Contrato.objects.filter(q_filtro_estado('activo')).select_related('plan')
+        context['contratos_dias_vencimiento_json'] = json.dumps(
+            {str(c.id): dias_vencimiento_para_contrato(c) for c in contratos}
+        )
+        return context
 
     def form_valid(self, form):
         messages.success(self.request, 'Cobro actualizado correctamente.')
@@ -431,3 +449,236 @@ def reporte_cobranza(request):
     }
 
     return render(request, 'billing/reporte.html', context)
+
+
+@login_required
+def estado_cuentas_por_cliente(request):
+    """Reporte detallado de estado de cuentas agrupado por cliente."""
+    from decimal import Decimal
+
+    cliente_id = request.GET.get('cliente')
+    fecha_desde = request.GET.get('fecha_desde')
+    fecha_hasta = request.GET.get('fecha_hasta')
+
+    # Clientes que tienen al menos un contrato con cobros
+    contratos = (
+        Contrato.objects.select_related('cliente', 'plan')
+        .prefetch_related('cobros__pagos')
+        .order_by('cliente__nombre', '-fecha_inicio')
+    )
+    if cliente_id:
+        contratos = contratos.filter(cliente_id=cliente_id)
+
+    fd = None
+    fh = None
+    if fecha_desde:
+        try:
+            fd = date.fromisoformat(fecha_desde)
+        except ValueError:
+            pass
+    if fecha_hasta:
+        try:
+            fh = date.fromisoformat(fecha_hasta)
+        except ValueError:
+            pass
+
+    def cobros_filtrados(contrato):
+        cobros = sorted(contrato.cobros.all(), key=lambda c: (c.periodo_hasta or date.min, c.pk), reverse=True)
+        if fd is not None:
+            cobros = [c for c in cobros if c.periodo_desde >= fd]
+        if fh is not None:
+            cobros = [c for c in cobros if (c.periodo_hasta or date.min) <= fh]
+        return cobros
+
+    # Agrupar por cliente
+    clientes_data = []
+    cliente_actual = None
+    bloque_cliente = None
+
+    for contrato in contratos:
+        cobros = cobros_filtrados(contrato)
+        if not cobros and not cliente_id:
+            continue
+        if contrato.cliente != cliente_actual:
+            if bloque_cliente and (bloque_cliente['contratos'] or cliente_id):
+                clientes_data.append(bloque_cliente)
+            cliente_actual = contrato.cliente
+            bloque_cliente = {
+                'cliente': contrato.cliente,
+                'contratos': [],
+                'total_monto': Decimal('0'),
+                'total_pagado': Decimal('0'),
+                'total_pendiente': Decimal('0'),
+            }
+        sub_monto = sum(c.monto for c in cobros)
+        sub_pagado = sum(c.calcular_monto_pagado() for c in cobros)
+        sub_pendiente = sub_monto - sub_pagado
+        bloque_cliente['contratos'].append({
+            'contrato': contrato,
+            'cobros': cobros,
+            'subtotal_monto': sub_monto,
+            'subtotal_pagado': sub_pagado,
+            'subtotal_pendiente': sub_pendiente,
+        })
+        bloque_cliente['total_monto'] += sub_monto
+        bloque_cliente['total_pagado'] += sub_pagado
+        bloque_cliente['total_pendiente'] += sub_pendiente
+    if bloque_cliente and (bloque_cliente['contratos'] or cliente_id):
+        clientes_data.append(bloque_cliente)
+
+    total_general_monto = sum(b['total_monto'] for b in clientes_data)
+    total_general_pagado = sum(b['total_pagado'] for b in clientes_data)
+    total_general_pendiente = sum(b['total_pendiente'] for b in clientes_data)
+
+    context = {
+        'clientes_data': clientes_data,
+        'total_general_monto': total_general_monto,
+        'total_general_pagado': total_general_pagado,
+        'total_general_pendiente': total_general_pendiente,
+        'clientes': Cliente.objects.order_by('nombre'),
+        'fecha_desde': fecha_desde or '',
+        'fecha_hasta': fecha_hasta or '',
+        'cliente_id': cliente_id or '',
+    }
+    return render(request, 'billing/estado_cuentas.html', context)
+
+
+@login_required
+def estado_cuentas_cliente_detalle(request, cliente_id):
+    """Detalle de estado de cuentas para un cliente: contratos, cobros y pagos."""
+    from decimal import Decimal
+
+    cliente = get_object_or_404(Cliente, pk=cliente_id)
+    fecha_desde = request.GET.get('fecha_desde')
+    fecha_hasta = request.GET.get('fecha_hasta')
+
+    contratos = (
+        Contrato.objects.filter(cliente=cliente)
+        .select_related('plan')
+        .prefetch_related('cobros__pagos')
+        .order_by('-fecha_inicio')
+    )
+
+    fd = None
+    fh = None
+    if fecha_desde:
+        try:
+            fd = date.fromisoformat(fecha_desde)
+        except ValueError:
+            pass
+    if fecha_hasta:
+        try:
+            fh = date.fromisoformat(fecha_hasta)
+        except ValueError:
+            pass
+
+    def cobros_filtrados(contrato):
+        cobros = sorted(contrato.cobros.all(), key=lambda c: (c.periodo_hasta or date.min, c.pk), reverse=True)
+        if fd is not None:
+            cobros = [c for c in cobros if c.periodo_desde >= fd]
+        if fh is not None:
+            cobros = [c for c in cobros if (c.periodo_hasta or date.min) <= fh]
+        return cobros
+
+    bloque_cliente = {
+        'cliente': cliente,
+        'contratos': [],
+        'total_monto': Decimal('0'),
+        'total_pagado': Decimal('0'),
+        'total_pendiente': Decimal('0'),
+    }
+    for contrato in contratos:
+        cobros = cobros_filtrados(contrato)
+        sub_monto = sum(c.monto for c in cobros)
+        sub_pagado = sum(c.calcular_monto_pagado() for c in cobros)
+        sub_pendiente = sub_monto - sub_pagado
+        bloque_cliente['contratos'].append({
+            'contrato': contrato,
+            'cobros': cobros,
+            'subtotal_monto': sub_monto,
+            'subtotal_pagado': sub_pagado,
+            'subtotal_pendiente': sub_pendiente,
+        })
+        bloque_cliente['total_monto'] += sub_monto
+        bloque_cliente['total_pagado'] += sub_pagado
+        bloque_cliente['total_pendiente'] += sub_pendiente
+
+    context = {
+        'cliente': cliente,
+        'bloque': bloque_cliente,
+        'fecha_desde': fecha_desde or '',
+        'fecha_hasta': fecha_hasta or '',
+    }
+    return render(request, 'billing/estado_cuentas_cliente_detalle.html', context)
+
+
+@login_required
+def reporte_ventas(request):
+    """Reporte detallado de ventas: contratos creados y pagos en el rango de fechas. Por defecto últimos 30 días."""
+    hoy = timezone.now().date()
+    default_desde = hoy - timedelta(days=30)
+
+    fecha_desde_str = request.GET.get('fecha_desde')
+    fecha_hasta_str = request.GET.get('fecha_hasta')
+    cliente_id = request.GET.get('cliente')
+    plan_id = request.GET.get('plan')
+
+    try:
+        fecha_desde = date.fromisoformat(fecha_desde_str) if fecha_desde_str else default_desde
+    except ValueError:
+        fecha_desde = default_desde
+    try:
+        fecha_hasta = date.fromisoformat(fecha_hasta_str) if fecha_hasta_str else hoy
+    except ValueError:
+        fecha_hasta = hoy
+    if fecha_desde > fecha_hasta:
+        fecha_desde, fecha_hasta = fecha_hasta, fecha_desde
+
+    # Contratos creados en el período
+    contratos = (
+        Contrato.objects.select_related('cliente', 'plan')
+        .filter(
+            fecha_creacion__date__gte=fecha_desde,
+            fecha_creacion__date__lte=fecha_hasta,
+        )
+        .order_by('-fecha_creacion')
+    )
+    if cliente_id:
+        contratos = contratos.filter(cliente_id=cliente_id)
+    if plan_id:
+        contratos = contratos.filter(plan_id=plan_id)
+    contratos = list(contratos)
+
+    total_contratos_precio = sum(c.precio for c in contratos)
+
+    # Pagos en el período
+    pagos = (
+        Pago.objects.select_related('cobro', 'cobro__contrato', 'cobro__contrato__cliente', 'cobro__contrato__plan')
+        .filter(
+            fecha_pago__gte=fecha_desde,
+            fecha_pago__lte=fecha_hasta,
+        )
+        .order_by('-fecha_pago', '-fecha_creacion')
+    )
+    if cliente_id:
+        pagos = pagos.filter(cobro__contrato__cliente_id=cliente_id)
+    if plan_id:
+        pagos = pagos.filter(cobro__contrato__plan_id=plan_id)
+    pagos = list(pagos)
+
+    total_pagos = sum(p.monto for p in pagos)
+
+    context = {
+        'contratos': contratos,
+        'pagos': pagos,
+        'total_contratos': len(contratos),
+        'total_contratos_precio': total_contratos_precio,
+        'total_pagos': total_pagos,
+        'fecha_desde': fecha_desde.isoformat(),
+        'fecha_hasta': fecha_hasta.isoformat(),
+        'clientes': Cliente.objects.order_by('nombre'),
+        'planes': Plan.objects.filter(activo=True).order_by('nombre'),
+        'cliente_id': cliente_id or '',
+        'plan_id': plan_id or '',
+    }
+    return render(request, 'billing/reporte_ventas.html', context)

@@ -22,6 +22,11 @@ class Cobro(models.Model):
         ('pagada', 'Pagada'),
         ('vencida', 'Vencida'),
     ]
+    ESTADO_TOOLTIPS = {
+        'pendiente': 'Cobro por cobrar; la fecha de vencimiento aún no ha pasado (o es hoy).',
+        'vencida': 'Cobro por cobrar y la fecha de vencimiento ya pasó (deuda atrasada).',
+        'pagada': 'El monto pagado cubre el monto del cobro.',
+    }
 
     contrato = models.ForeignKey(
         'contracts.Contrato',
@@ -41,7 +46,7 @@ class Cobro(models.Model):
         null=True,
         blank=True,
         verbose_name="Fecha de vencimiento",
-        help_text="Se calcula automáticamente si se deja vacío (según período y frecuencia del contrato)."
+        help_text="Se calcula automáticamente si se deja vacío (según período, plan y frecuencia del contrato)."
     )
     estado = models.CharField(
         max_length=20,
@@ -85,6 +90,10 @@ class Cobro(models.Model):
         """Calcula el monto pendiente de pago."""
         return self.monto - self.calcular_monto_pagado()
 
+    def get_estado_tooltip(self):
+        """Descripción del estado para mostrar como tooltip en el badge."""
+        return self.ESTADO_TOOLTIPS.get(self.estado, '')
+
     def actualizar_estado(self):
         """Actualiza el estado del cobro según pagos y fecha de vencimiento."""
         monto_pagado = self.calcular_monto_pagado()
@@ -104,14 +113,16 @@ class Cobro(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.fecha_vencimiento and self.periodo_hasta and self.contrato_id:
+            from contracts.models import Contrato
             contrato = self.contrato if hasattr(self, 'contrato') else None
             if contrato is None:
-                from contracts.models import Contrato
-                contrato = Contrato.objects.filter(pk=self.contrato_id).first()
+                contrato = Contrato.objects.select_related('plan').filter(pk=self.contrato_id).first()
+            elif not hasattr(contrato, 'plan') or contrato.plan is None:
+                contrato = Contrato.objects.select_related('plan').filter(pk=self.contrato_id).first()
             if contrato:
-                self.fecha_vencimiento = self.periodo_hasta + timedelta(
-                    days=_dias_vencimiento_por_frecuencia(contrato.frecuencia_pago)
-                )
+                from .utils import dias_vencimiento_para_contrato
+                dias = dias_vencimiento_para_contrato(contrato)
+                self.fecha_vencimiento = self.periodo_hasta + timedelta(days=dias)
         if not self.fecha_generacion:
             self.fecha_generacion = timezone.now().date()
         if not self.numero_cobro:

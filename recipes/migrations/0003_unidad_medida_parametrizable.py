@@ -7,61 +7,33 @@ from django.db import migrations, models
 
 
 def crear_unidades_y_migrar_ingredientes(apps, schema_editor):
-    """Crea UnidadMedida a partir de valores existentes y asigna FK en Ingrediente."""
+    """Crea UnidadMedida solo a partir de valores existentes en Ingrediente y asigna FK. Sin datos ficticios."""
     UnidadMedida = apps.get_model('recipes', 'UnidadMedida')
     Ingrediente = apps.get_model('recipes', 'Ingrediente')
-    # Unidades iniciales por defecto
-    defaults = [
-        ('Kilogramo', 'kg', 1),
-        ('Gramo', 'gr', 2),
-        ('Litro', 'lt', 3),
-        ('Unidad', 'un', 4),
-        ('Taza', 'taza', 5),
-        ('Cucharada', 'cda', 6),
-        ('Cucharadita', 'cdta', 7),
-    ]
-    for nombre, simbolo, orden in defaults:
-        UnidadMedida.objects.get_or_create(
-            nombre=nombre,
-            defaults={'simbolo': simbolo, 'orden': orden}
-        )
-    # Crear unidad para cada valor distinto en ingredientes
-    for nombre_str in Ingrediente.objects.values_list('unidad_medida_old', flat=True).distinct():
+    valores = list(Ingrediente.objects.values_list('unidad_medida_old', flat=True).distinct())
+    for nombre_str in valores:
         if nombre_str:
-            UnidadMedida.objects.get_or_create(
-                nombre=nombre_str,
-                defaults={'orden': 99}
-            )
-    # Asignar FK (fallback a "Unidad" si viene vacío)
-    unidad_default = UnidadMedida.objects.filter(nombre='Unidad').first()
-    if not unidad_default:
-        unidad_default = UnidadMedida.objects.create(nombre='Unidad', orden=4)
+            UnidadMedida.objects.get_or_create(nombre=nombre_str, defaults={'orden': 99})
     for ing in Ingrediente.objects.all():
         if ing.unidad_medida_old:
-            um = UnidadMedida.objects.get(nombre=ing.unidad_medida_old)
-        else:
-            um = unidad_default
-        ing.unidad_medida_id = um.id
-        ing.save(update_fields=['unidad_medida_id'])
+            um = UnidadMedida.objects.filter(nombre=ing.unidad_medida_old).first()
+            if um:
+                ing.unidad_medida_id = um.id
+                ing.save(update_fields=['unidad_medida_id'])
 
 
 def migrar_receta_ingredientes(apps, schema_editor):
-    """Asigna FK UnidadMedida en RecetaIngrediente a partir del string existente."""
+    """Crea UnidadMedida solo a partir de valores existentes en RecetaIngrediente y asigna FK. Sin datos ficticios."""
     UnidadMedida = apps.get_model('recipes', 'UnidadMedida')
     RecetaIngrediente = apps.get_model('recipes', 'RecetaIngrediente')
-    unidad_default = UnidadMedida.objects.filter(nombre='Unidad').first()
-    if not unidad_default:
-        unidad_default = UnidadMedida.objects.create(nombre='Unidad', orden=4)
     for ri in RecetaIngrediente.objects.all():
         if ri.unidad_medida_old:
             um, _ = UnidadMedida.objects.get_or_create(
                 nombre=ri.unidad_medida_old,
                 defaults={'orden': 99}
             )
-        else:
-            um = unidad_default
-        ri.unidad_medida_id = um.id
-        ri.save(update_fields=['unidad_medida_id'])
+            ri.unidad_medida_id = um.id
+            ri.save(update_fields=['unidad_medida_id'])
 
 
 def noop(apps, schema_editor):
@@ -107,7 +79,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='ingrediente',
             name='unidad_medida',
-            field=models.ForeignKey(help_text='Unidad por defecto para este ingrediente', on_delete=django.db.models.deletion.PROTECT, related_name='ingredientes', to='recipes.unidadmedida', verbose_name='Unidad de medida'),
+            field=models.ForeignKey(blank=True, help_text='Unidad por defecto para este ingrediente', null=True, on_delete=django.db.models.deletion.PROTECT, related_name='ingredientes', to='recipes.unidadmedida', verbose_name='Unidad de medida'),
         ),
         # RecetaIngrediente: igual
         migrations.RenameField(
@@ -125,6 +97,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='recetaingrediente',
             name='unidad_medida',
-            field=models.ForeignKey(help_text='Unidad para esta cantidad en la receta', on_delete=django.db.models.deletion.PROTECT, related_name='receta_ingredientes', to='recipes.unidadmedida', verbose_name='Unidad de medida'),
+            field=models.ForeignKey(blank=True, help_text='Unidad para esta cantidad en la receta', null=True, on_delete=django.db.models.deletion.PROTECT, related_name='receta_ingredientes', to='recipes.unidadmedida', verbose_name='Unidad de medida'),
         ),
     ]

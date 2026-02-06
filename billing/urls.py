@@ -15,4 +15,7 @@ urlpatterns = [
     path('pago/<int:pk>/eliminar/', views.PagoDeleteView.as_view(), name='pago_eliminar'),
     path('dashboard/', views.dashboard_cobranza, name='dashboard'),
     path('reporte/', views.reporte_cobranza, name='reporte'),
+    path('estado-cuentas/', views.estado_cuentas_por_cliente, name='estado_cuentas'),
+    path('estado-cuentas/cliente/<int:cliente_id>/', views.estado_cuentas_cliente_detalle, name='estado_cuentas_cliente'),
+    path('reporte-ventas/', views.reporte_ventas, name='reporte_ventas'),
 ]

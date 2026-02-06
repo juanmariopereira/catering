@@ -35,7 +35,8 @@
 {% block content %}
 <div class="container">
     <h1>Reporte de Cobranza</h1>
-    
+    <p style="margin-bottom: 16px;"><a href="{% url 'billing:estado_cuentas' %}">Ver estado de cuentas por cliente</a></p>
+
     <div class="filtros">
         <form method="get">
             <label>Período desde: <input type="date" name="fecha_desde" value="{{ fecha_desde }}"></label>
@@ -75,9 +76,9 @@
                 <th>Período desde</th>
                 <th>Período hasta</th>
                 <th>Vencimiento</th>
-                <th>Monto</th>
-                <th>Pagado</th>
-                <th>Pendiente</th>
+                <th class="text-right">Monto</th>
+                <th class="text-right">Pagado</th>
+                <th class="text-right">Pendiente</th>
                 <th>Estado</th>
             </tr>
         </thead>
@@ -89,11 +90,11 @@
                     <td>{{ cobro.periodo_desde|date:"d/m/Y" }}</td>
                     <td>{{ cobro.periodo_hasta|date:"d/m/Y" }}</td>
                     <td>{% if cobro.fecha_vencimiento %}{{ cobro.fecha_vencimiento|date:"d/m/Y" }}{% else %}—{% endif %}</td>
-                    <td>Bs. {{ cobro.monto|floatformat:2 }}</td>
-                    <td>Bs. {{ cobro.calcular_monto_pagado|floatformat:2 }}</td>
-                    <td>Bs. {{ cobro.monto_pendiente|floatformat:2 }}</td>
+                    <td class="text-right">Bs. {{ cobro.monto|floatformat:2 }}</td>
+                    <td class="text-right">Bs. {{ cobro.calcular_monto_pagado|floatformat:2 }}</td>
+                    <td class="text-right">Bs. {{ cobro.monto_pendiente|floatformat:2 }}</td>
                     <td>
-                        <span class="badge badge-{{ cobro.estado }}">
+                        <span class="badge badge-{{ cobro.estado }}" title="{{ cobro.get_estado_tooltip }}">
                             {{ cobro.get_estado_display }}
                         </span>
                     </td>

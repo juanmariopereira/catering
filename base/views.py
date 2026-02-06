@@ -52,7 +52,11 @@ def dashboard(request):
     ).count()
 
     # Clientes y contratos activos
-    clientes_activos = Cliente.objects.filter(activo=True).count()
+    # Clientes con al menos un contrato activo, pausado o vencido (no cancelado)
+    contratos_no_cancelados = Contrato.objects.filter(
+        q_filtro_estado('activo') | q_filtro_estado('pausado') | q_filtro_estado('vencido')
+    )
+    clientes_activos = Cliente.objects.filter(contratos__in=contratos_no_cancelados).distinct().count()
     contratos_activos = Contrato.objects.filter(q_filtro_estado('activo')).count()
 
     # Días útiles consecutivos a partir de mañana con menú para todos los planes que tienen entrega ese día.

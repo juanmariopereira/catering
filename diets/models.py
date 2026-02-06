@@ -76,7 +76,9 @@ class DietaReceta(models.Model):
         TipoComida,
         on_delete=models.PROTECT,
         related_name='dieta_recetas',
-        verbose_name="Momento / Tipo de comida"
+        verbose_name="Momento / Tipo de comida",
+        blank=True,
+        null=True,
     )
     receta = models.ForeignKey(
         'recipes.Receta',
@@ -98,4 +100,5 @@ class DietaReceta(models.Model):
         ordering = ['dieta', 'tipo_comida', 'orden', 'receta']
 
     def __str__(self):
-        return f"{self.dieta.nombre} - {self.tipo_comida.nombre}: {self.receta.nombre} (#{self.orden})"
+        tipo = getattr(self.tipo_comida, 'nombre', None) or '—'
+        return f"{self.dieta.nombre} - {tipo}: {self.receta.nombre} (#{self.orden})"

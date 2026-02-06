@@ -33,6 +33,7 @@
     .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
     .badge-activo { background-color: #4CAF50; color: white; }
     .badge-inactivo { background-color: #9e9e9e; color: white; }
+    .badge-sin-contrato { background-color: #FF9800; color: white; }
     .direccion-cell { max-width: 220px; font-size: 0.9rem; color: #555; }
     .btn-cobrar { padding: 4px 10px; font-size: 0.85rem; margin: 0; background-color: #2e7d32; color: white; text-decoration: none; border-radius: 4px; }
     .btn-cobrar:hover { background-color: #1b5e20; color: white; }
@@ -44,12 +45,13 @@
     <div class="actions">
         <a href="{% url 'clients:lista' %}" class="btn btn-secondary">← Clientes</a>
         <a href="{% url 'clients:editar' cliente.pk %}" class="btn btn-primary">Editar</a>
+        <a href="{% url 'billing:estado_cuentas_cliente' cliente.pk %}" class="btn btn-secondary" title="Ver contratos, cobros y pagos">Estado de cuentas</a>
         <a href="{% url 'clients:eliminar' cliente.pk %}" class="btn btn-danger">Eliminar</a>
     </div>
 
     <div class="card">
         <h1>{{ cliente.nombre }}</h1>
-        <p><span class="badge badge-{% if cliente.activo %}activo{% else %}inactivo{% endif %}">{% if cliente.activo %}Activo{% else %}Inactivo{% endif %}</span></p>
+        <p><span class="badge badge-{% if cliente.tiene_contratos_vigentes %}{% if cliente.activo %}activo{% else %}inactivo{% endif %}{% else %}sin-contrato{% endif %}">{% if cliente.tiene_contratos_vigentes %}{% if cliente.activo %}Activo{% else %}Inactivo{% endif %}{% else %}Sin contrato{% endif %}</span></p>
         <dl class="dl-horizontal">
             <dt>Email</dt>
             <dd>{{ cliente.email }}</dd>
@@ -100,7 +102,7 @@
                     <th>Dirección</th>
                     <th>Fecha inicio</th>
                     <th>Fecha fin</th>
-                    <th>Precio</th>
+                    <th class="text-right">Precio</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -119,7 +121,7 @@
                     <td class="direccion-cell">{% if c.direccion_entrega %}{{ c.direccion_entrega|truncatewords:10 }}{% else %}—{% endif %}</td>
                     <td>{{ c.fecha_inicio|date:"d/m/Y" }}</td>
                     <td>{% if c.fecha_fin %}{{ c.fecha_fin|date:"d/m/Y" }}{% else %}—{% endif %}</td>
-                    <td>Bs. {{ c.precio|floatformat:2 }}</td>
+                    <td class="text-right">Bs. {{ c.precio|floatformat:2 }}</td>
                     <td class="table-actions">
                         <a href="{% url 'contracts:detalle' c.pk %}" title="Ver contrato" aria-label="Ver contrato"><span aria-hidden="true">🔍</span></a>
                         {% if c.pk in cobro_pendiente_por_contrato %}

@@ -56,14 +56,16 @@
     <div class="actions">
         <a href="{% url 'billing:cobro_lista' %}" class="btn btn-secondary">← Cobros</a>
         <a href="{% url 'billing:cobro_editar' cobro.pk %}" class="btn btn-primary">Editar</a>
+        {% if cobro.estado != 'pagada' %}
         <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.id }}" class="btn btn-primary">Registrar pago</a>
+        {% endif %}
         <a href="{% url 'billing:cobro_eliminar' cobro.pk %}" class="btn btn-danger">Eliminar</a>
     </div>
 
     <div class="card">
         <h1>Cobro {{ cobro.numero_cobro|default:cobro.id }}</h1>
         <p>
-            <span class="badge badge-{{ cobro.estado }}">{{ cobro.get_estado_display }}</span>
+            <span class="badge badge-{{ cobro.estado }}" title="{{ cobro.get_estado_tooltip }}">{{ cobro.get_estado_display }}</span>
         </p>
         <dl class="dl-horizontal">
             <dt>Cliente</dt>
@@ -95,7 +97,7 @@
             <thead>
                 <tr>
                     <th>Fecha</th>
-                    <th>Monto</th>
+                    <th class="text-right">Monto</th>
                     <th>Método</th>
                     <th>Referencia</th>
                     <th>Acciones</th>
@@ -105,7 +107,7 @@
                 {% for pago in cobro.pagos.all %}
                 <tr>
                     <td>{{ pago.fecha_pago|date:"d/m/Y" }}</td>
-                    <td>Bs. {{ pago.monto|floatformat:2 }}</td>
+                    <td class="text-right">Bs. {{ pago.monto|floatformat:2 }}</td>
                     <td>{{ pago.get_metodo_pago_display }}</td>
                     <td>{{ pago.referencia|default:"—" }}</td>
                     <td class="table-actions">

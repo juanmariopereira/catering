@@ -87,6 +87,8 @@
             </dd>
             <dt>Días de entrega</dt>
             <dd>{% if contrato.dias_entrega %}{{ contrato.dias_entrega|join:", " }}{% else %}—{% endif %}</dd>
+            <dt>No incluye delivery</dt>
+            <dd>{% if contrato.no_incluye_delivery %}Sí{% else %}No{% endif %}</dd>
             <dt>Horario entrega</dt>
             <dd>{% if contrato.horario_entrega %}{{ contrato.horario_entrega|time:"H:i" }}{% else %}—{% endif %}</dd>
             {% if contrato.notas_entregador %}
@@ -115,7 +117,7 @@
                     <th>Número</th>
                     <th>Período</th>
                     <th>Vencimiento</th>
-                    <th>Monto</th>
+                    <th class="text-right">Monto</th>
                     <th>Estado</th>
                     <th>Pagos</th>
                     <th>Acciones</th>
@@ -127,9 +129,9 @@
                     <td><a href="{% url 'billing:cobro_detalle' cobro.pk %}">{{ cobro.numero_cobro|default:cobro.id }}</a></td>
                     <td>{{ cobro.periodo_desde|date:"d/m/Y" }} – {{ cobro.periodo_hasta|date:"d/m/Y" }}</td>
                     <td>{{ cobro.fecha_vencimiento|date:"d/m/Y" }}</td>
-                    <td>Bs. {{ cobro.monto|floatformat:2 }}</td>
+                    <td class="text-right">Bs. {{ cobro.monto|floatformat:2 }}</td>
                     <td><span class="badge badge-{{ cobro.estado }}">{{ cobro.get_estado_display }}</span></td>
-                    <td>
+                    <td class="text-right">
                         <ul class="cobros-pagos" style="list-style: none; padding: 0; margin: 0;">
                             {% for pago in cobro.pagos.all %}
                             <li>Bs. {{ pago.monto|floatformat:2 }} — {{ pago.fecha_pago|date:"d/m/Y" }} ({{ pago.get_metodo_pago_display }})</li>

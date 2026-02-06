@@ -50,7 +50,7 @@ class ContratoAdmin(admin.ModelAdmin):
             'fields': ('precio', 'frecuencia_pago')
         }),
         ('Entrega', {
-            'fields': ('direccion_entrega', 'link_maps', 'horario_entrega', 'dias_entrega')
+            'fields': ('direccion_entrega', 'link_maps', 'horario_entrega', 'dias_entrega', 'no_incluye_delivery')
         }),
         ('Pausa global', {
             'fields': ('fecha_pausa', 'fecha_reanudacion'),

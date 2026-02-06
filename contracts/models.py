@@ -84,6 +84,11 @@ class Contrato(models.Model):
         verbose_name="Días de entrega",
         help_text="Días de la semana en que se entrega el servicio (lunes, martes, …)"
     )
+    no_incluye_delivery = models.BooleanField(
+        default=False,
+        verbose_name="No incluye delivery",
+        help_text="Si está marcado, este contrato no incluye servicio de entrega a domicilio."
+    )
     notas_entregador = models.TextField(
         blank=True,
         null=True,

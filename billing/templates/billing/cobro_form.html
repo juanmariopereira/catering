@@ -73,4 +73,37 @@
         </div>
     </form>
 </div>
+{% if contratos_dias_vencimiento_json %}
+<script>
+(function() {
+    var diasPorContrato = {{ contratos_dias_vencimiento_json|safe }};
+    var form = document.querySelector('.form-layout');
+    if (!form) return;
+    var contratoSelect = form.querySelector('select[name="contrato"]');
+    var periodoHastaInput = form.querySelector('input[name="periodo_hasta"]');
+    var vencimientoInput = form.querySelector('input[name="fecha_vencimiento"]');
+    if (!contratoSelect || !periodoHastaInput || !vencimientoInput) return;
+
+    function actualizarVencimiento() {
+        var contratoId = contratoSelect.value;
+        var periodoHastaStr = periodoHastaInput.value;
+        if (!contratoId || !periodoHastaStr) return;
+        var dias = diasPorContrato[contratoId];
+        if (dias === undefined) return;
+        var partes = periodoHastaStr.split('-');
+        if (partes.length !== 3) return;
+        var d = new Date(parseInt(partes[0], 10), parseInt(partes[1], 10) - 1, parseInt(partes[2], 10));
+        if (isNaN(d.getTime())) return;
+        d.setDate(d.getDate() + dias);
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        vencimientoInput.value = y + '-' + m + '-' + day;
+    }
+
+    contratoSelect.addEventListener('change', actualizarVencimiento);
+    periodoHastaInput.addEventListener('change', actualizarVencimiento);
+})();
+</script>
+{% endif %}
 {% endblock %}

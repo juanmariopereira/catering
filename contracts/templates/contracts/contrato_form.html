@@ -21,6 +21,8 @@
     .form-layout ul.checkbox-list { list-style: none; margin: 0; padding: 0; }
     .form-layout ul.checkbox-list li { margin: 6px 0; }
     .form-layout ul.checkbox-list label { font-weight: normal; margin-left: 6px; }
+    .form-layout .form-group.checkbox-group label { font-weight: normal; margin-left: 8px; }
+    .form-layout .form-group.checkbox-group input { width: auto; }
 </style>
 {% endblock %}
 
@@ -98,6 +100,13 @@
                 {% if form.dias_entrega.help_text %}<div class="help-text">{{ form.dias_entrega.help_text }}</div>{% endif %}
                 {% if form.dias_entrega.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.dias_entrega.errors }}</div>{% endif %}
                 <p class="help-text" style="margin-top: 6px;">Si las rutas ya están creadas para fechas en las que este contrato tiene entrega, asígnalo desde <a href="{% url 'delivery:lista' %}">Producción &gt; Entregas</a> (filtrar por fecha y usar «Asignar contratos pendientes»).</p>
+            </div>
+        </div>
+        <div class="form-row form-row-2">
+            <div class="form-group checkbox-group">
+                <label for="{{ form.no_incluye_delivery.id_for_label }}">{{ form.no_incluye_delivery }} {{ form.no_incluye_delivery.label }}</label>
+                {% if form.no_incluye_delivery.help_text %}<div class="help-text">{{ form.no_incluye_delivery.help_text }}</div>{% endif %}
+                {% if form.no_incluye_delivery.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.no_incluye_delivery.errors }}</div>{% endif %}
             </div>
         </div>
         <div class="form-row form-row-1">

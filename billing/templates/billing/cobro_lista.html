@@ -79,6 +79,8 @@
         <a href="{% url 'billing:pago_crear' %}" class="btn">Registrar pago</a>
         <a href="{% url 'billing:dashboard' %}" class="btn btn-secondary">Dashboard</a>
         <a href="{% url 'billing:reporte' %}" class="btn btn-secondary">Reporte</a>
+        <a href="{% url 'billing:estado_cuentas' %}" class="btn btn-secondary">Estado de cuentas</a>
+        <a href="{% url 'billing:reporte_ventas' %}" class="btn btn-secondary">Reporte ventas</a>
     </div>
 
     <form method="get" class="filtros-form">
@@ -133,12 +135,12 @@
             <tr>
                 {% for header in table_headers %}
                 {% if header.sortable %}
-                <th class="th-sortable">
+                <th class="th-sortable{% if header.label == 'Monto' %} text-right{% endif %}">
                     <a href="?{% if query_base_no_sort %}{{ query_base_no_sort }}&{% endif %}{% if header.next_sort %}sort={{ header.next_sort }}{% endif %}">{{ header.label }}</a>
                     {% if header.direction == 'desc' %} ↓{% elif header.direction == 'asc' %} ↑{% endif %}
                 </th>
                 {% else %}
-                <th>{{ header.label }}</th>
+                <th class="{% if header.label == 'Monto' %}text-right{% endif %}">{{ header.label }}</th>
                 {% endif %}
                 {% endfor %}
             </tr>
@@ -150,16 +152,18 @@
                     <td><a href="{% url 'contracts:detalle' cobro.contrato_id %}">{{ cobro.contrato.cliente.nombre }}</a></td>
                     <td>{{ cobro.periodo_desde|date:"d/m/Y" }} – {{ cobro.periodo_hasta|date:"d/m/Y" }}</td>
                     <td>{% if cobro.fecha_vencimiento %}{{ cobro.fecha_vencimiento|date:"d/m/Y" }}{% else %}—{% endif %}</td>
-                    <td>Bs. {{ cobro.monto|floatformat:2 }}</td>
+                    <td class="text-right">Bs. {{ cobro.monto|floatformat:2 }}</td>
                     <td>
-                        <span class="badge badge-{{ cobro.estado }}">
+                        <span class="badge badge-{{ cobro.estado }}" title="{{ cobro.get_estado_tooltip }}">
                             {{ cobro.get_estado_display }}
                         </span>
                     </td>
                     <td class="table-actions">
                         <a href="{% url 'billing:cobro_detalle' cobro.pk %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
                         <a href="{% url 'contracts:detalle' cobro.contrato_id %}" title="Ver contrato" aria-label="Ver contrato"><span aria-hidden="true">📋</span></a>
+                        {% if cobro.estado != 'pagada' %}
                         <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.id }}" title="Registrar pago" aria-label="Registrar pago"><span aria-hidden="true">💰</span></a>
+                        {% endif %}
                     </td>
                 </tr>
             {% empty %}
