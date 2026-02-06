@@ -23,6 +23,9 @@
             flex-wrap: wrap;
         }
         .navbar-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
             font-size: 1.25rem;
             font-weight: bold;
             color: #7CB342;
@@ -30,6 +33,14 @@
             padding: 15px 0;
         }
         .navbar-brand:hover { color: #689F38; }
+        .navbar-logo {
+            max-height: 40px;
+            width: auto;
+            object-fit: contain;
+            vertical-align: middle;
+        }
+        .navbar a,
+        .navbar a:hover { text-decoration: none; }
         .navbar-nav {
             display: flex;
             gap: 2px;
@@ -478,7 +489,10 @@
 </head>
 <body>
     <nav class="navbar no-print">
-        <a href="{% url 'dashboard' %}" class="navbar-brand">{{ catering_name }}</a>
+        <a href="{% url 'dashboard' %}" class="navbar-brand">
+            {% if logo_empresa_url %}<img src="{{ logo_empresa_url }}" alt="{{ catering_name }}" class="navbar-logo" />{% endif %}
+            <span class="navbar-brand-text">{{ catering_name }}</span>
+        </a>
         <ul class="navbar-nav">
             <li class="nav-item">
                 <a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/dashboard/' or request.path == '/' %}active{% endif %}">🏠 Inicio</a>

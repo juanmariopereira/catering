@@ -44,3 +44,19 @@ class FeriadoForm(forms.ModelForm):
         if qs.exists():
             raise forms.ValidationError('Ya existe un feriado registrado para esta fecha.')
         return fecha
+
+
+class LogoEmpresaForm(forms.Form):
+    """Formulario para subir el logo de la empresa (archivo de imagen)."""
+    logo = forms.ImageField(
+        required=False,
+        label="Archivo del logo",
+        help_text="Imagen del logo (PNG, JPG, etc.). Se mostrará en la barra superior. Tamaño recomendado: altura ~40px.",
+        widget=forms.FileInput(attrs={'accept': 'image/*', 'class': 'form-control'}),
+    )
+    quitar_logo = forms.BooleanField(
+        required=False,
+        initial=False,
+        label="Quitar logo actual",
+        help_text="Marque para eliminar el logo actual (no suba ningún archivo).",
+    )

@@ -25,8 +25,8 @@ DATABASES = {
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Media files (uploads)
-MEDIA_URL = 'media/'
+# Media files (uploads). MEDIA_URL con barra inicial para que img src funcione en todas las rutas.
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Email backend para desarrollo (consola)

@@ -58,6 +58,37 @@
     </ul>
     {% endif %}
 
+    <!-- Logo de la empresa -->
+    <section class="param-section">
+        <h2>Logo de la empresa</h2>
+        <p class="help-text" style="margin-bottom: 16px;">
+            Imagen del logo que se muestra en la barra superior junto al nombre del sistema. Suba un archivo de imagen (PNG, JPG, etc.). Para quitar el logo, marque la opción y guarde.
+        </p>
+        {% if logo_empresa_url %}
+        <p class="help-text" style="margin-bottom: 12px;">Logo actual: <img src="{{ logo_empresa_url }}" alt="Logo actual" style="max-height: 40px; vertical-align: middle;" /></p>
+        {% endif %}
+        <form method="post" class="form-layout" id="logo-empresa-form" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="guardar_logo_empresa" value="1">
+            <div class="form-group">
+                <label for="{{ form_logo_empresa.logo.id_for_label }}">{{ form_logo_empresa.logo.label }}</label>
+                {{ form_logo_empresa.logo }}
+                <p class="help-text">{{ form_logo_empresa.logo.help_text }}</p>
+                {% if form_logo_empresa.logo.errors %}<div style="color: #c62828; font-size: 12px;">{{ form_logo_empresa.logo.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    {{ form_logo_empresa.quitar_logo }}
+                    {{ form_logo_empresa.quitar_logo.label }}
+                </label>
+                <p class="help-text">{{ form_logo_empresa.quitar_logo.help_text }}</p>
+            </div>
+            <div style="margin-top: 16px;">
+                <button type="submit" class="btn">Guardar logo</button>
+            </div>
+        </form>
+    </section>
+
     <!-- Punto de partida de entregas -->
     <section class="param-section">
         <h2>Punto de partida de entregas</h2>

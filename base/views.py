@@ -12,7 +12,7 @@ from django.urls import reverse_lazy, reverse
 from datetime import date, timedelta, datetime
 
 from .models import Feriado, ParametroSistema, es_feriado
-from .forms import FeriadoForm, ParametroSistemaForm
+from .forms import FeriadoForm, LogoEmpresaForm, ParametroSistemaForm
 from planning.models import PlanificacionMenu
 from billing.models import Cobro, Pago, _dias_vencimiento_por_frecuencia
 from billing.utils import obtener_cobros_vencidos, periodo_hasta_segun_frecuencia
@@ -334,6 +334,10 @@ def parametros_sistema(request):
     form_punto = PuntoPartidaEntregaForm(instance=punto)
     form_param = ParametroSistemaForm()
 
+    # Logo de la empresa: parámetro clave "logo_empresa" (valor = path relativo en MEDIA)
+    param_logo = ParametroSistema.objects.filter(clave='logo_empresa').first()
+    form_logo = LogoEmpresaForm()
+
     if request.method == 'POST':
         if request.POST.get('guardar_punto_partida'):
             form_punto = PuntoPartidaEntregaForm(request.POST, instance=punto)
@@ -350,11 +354,54 @@ def parametros_sistema(request):
                 form_param.save()
                 messages.success(request, 'Parámetro añadido correctamente.')
                 return redirect('parametros_sistema')
+        elif request.POST.get('guardar_logo_empresa'):
+            form_logo = LogoEmpresaForm(request.POST, request.FILES)
+            if form_logo.is_valid():
+                from django.conf import settings
+                import os
 
-    parametros = ParametroSistema.objects.all().order_by('clave')
+                quitar = form_logo.cleaned_data.get('quitar_logo')
+                nuevo_archivo = form_logo.cleaned_data.get('logo')
+
+                if quitar or nuevo_archivo:
+                    # Eliminar archivo anterior si existe
+                    if param_logo and param_logo.valor:
+                        path_antiguo = os.path.join(settings.MEDIA_ROOT, param_logo.valor)
+                        if os.path.isfile(path_antiguo):
+                            try:
+                                os.remove(path_antiguo)
+                            except OSError:
+                                pass
+
+                valor_final = ''
+                if nuevo_archivo and not quitar:
+                    # Guardar nuevo archivo en media/logos/
+                    subdir = 'logos'
+                    dir_logos = os.path.join(settings.MEDIA_ROOT, subdir)
+                    os.makedirs(dir_logos, exist_ok=True)
+                    ext = os.path.splitext(nuevo_archivo.name)[1] or '.png'
+                    nombre = 'logo_empresa' + ext
+                    path_destino = os.path.join(dir_logos, nombre)
+                    with open(path_destino, 'wb') as f:
+                        for chunk in nuevo_archivo.chunks():
+                            f.write(chunk)
+                    valor_final = os.path.join(subdir, nombre).replace('\\', '/')
+
+                ParametroSistema.objects.update_or_create(
+                    clave='logo_empresa',
+                    defaults={
+                        'valor': valor_final,
+                        'descripcion': 'Ruta del archivo del logo de la empresa (barra superior)',
+                    },
+                )
+                messages.success(request, 'Logo de la empresa guardado correctamente.')
+                return redirect('parametros_sistema')
+
+    parametros = ParametroSistema.objects.exclude(clave='logo_empresa').order_by('clave')
     return render(request, 'base/parametros_sistema.html', {
         'form_punto_partida': form_punto,
         'punto_partida': punto,
+        'form_logo_empresa': form_logo,
         'form_parametro_nuevo': form_param,
         'parametros': parametros,
     })

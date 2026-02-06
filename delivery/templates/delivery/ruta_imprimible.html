@@ -120,6 +120,7 @@
     .modal-recorrido .modal-recorrido-header .btn-recalcular { padding: 6px 14px; font-size: 0.9rem; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 8px; }
     .modal-recorrido .modal-recorrido-header .btn-recalcular:hover { background: #1976D2; }
     .modal-recorrido .modal-recorrido-header .btn-recalcular:disabled { opacity: 0.7; cursor: not-allowed; }
+    .modal-recorrido .recorrido-recalculado-msg { padding: 8px 12px; margin: 0 16px 8px; background: #e8f5e9; border: 1px solid #4caf50; border-radius: 4px; font-size: 0.9rem; color: #2e7d32; display: none; }
     .modal-recorrido .modal-recorrido-body { flex: 1; min-height: 0; position: relative; }
     .modal-recorrido #mapa-recorrido { width: 100%; height: 100%; min-height: 400px; }
     .modal-recorrido .sin-puntos { padding: 24px; text-align: center; color: #666; }
@@ -233,6 +234,7 @@
         </div>
     </div>
     <div class="modal-recorrido-body">
+        <div class="recorrido-recalculado-msg" id="recorrido-recalculado-msg">Recorrido actualizado. Actualice la página (F5) para ver el nuevo orden en la lista.</div>
         <div id="mapa-recorrido"></div>
         <div class="sin-puntos" id="mapa-recorrido-sin-puntos" style="display: none;">No hay suficientes puntos con coordenadas para mostrar el recorrido.</div>
     </div>
@@ -288,6 +290,8 @@
             if (overlayRecorrido) overlayRecorrido.style.display = 'block';
             if (modalRecorrido) { modalRecorrido.style.display = 'flex'; modalRecorrido.classList.add('show'); modalRecorrido.setAttribute('aria-hidden', 'false'); }
             document.body.style.overflow = 'hidden';
+            var msgEl = document.getElementById('recorrido-recalculado-msg');
+            if (msgEl) msgEl.style.display = 'none';
             var data = getRecorridoData();
             if (!data.puntos || data.puntos.length === 0) {
                 if (mapRecorridoEl) mapRecorridoEl.style.display = 'none';
@@ -307,7 +311,7 @@
         function loadMapRecorrido(data) {
             if (!window.google || !window.google.maps) {
                 var s = document.createElement('script');
-                s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(mapsKey);
+                s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(mapsKey) + '&libraries=geometry';
                 s.async = true; s.defer = true;
                 s.onload = function() { initMapRecorrido(data); };
                 document.head.appendChild(s);
@@ -344,8 +348,24 @@
             }
             if (path.length > 1) {
                 if (window.polylineRecorrido) window.polylineRecorrido.setMap(null);
-                window.polylineRecorrido = new google.maps.Polyline({ path: path, geodesic: true, strokeColor: '#2196F3', strokeOpacity: 0.8, strokeWeight: 4 });
-                window.polylineRecorrido.setMap(mapRecorridoInstance);
+                if (window.polylinesCallesRecorrido && window.polylinesCallesRecorrido.length) {
+                    window.polylinesCallesRecorrido.forEach(function(p) { p.setMap(null); });
+                    window.polylinesCallesRecorrido = [];
+                }
+                if (data.polylines_calles && data.polylines_calles.length > 0 && window.google.maps.geometry && window.google.maps.geometry.encoding) {
+                    window.polylinesCallesRecorrido = [];
+                    for (var k = 0; k < data.polylines_calles.length; k++) {
+                        try {
+                            var decoded = google.maps.geometry.encoding.decodePath(data.polylines_calles[k]);
+                            var pl = new google.maps.Polyline({ path: decoded, geodesic: true, strokeColor: '#2196F3', strokeOpacity: 0.8, strokeWeight: 4 });
+                            pl.setMap(mapRecorridoInstance);
+                            window.polylinesCallesRecorrido.push(pl);
+                        } catch (err) {}
+                    }
+                } else {
+                    window.polylineRecorrido = new google.maps.Polyline({ path: path, geodesic: true, strokeColor: '#2196F3', strokeOpacity: 0.8, strokeWeight: 4 });
+                    window.polylineRecorrido.setMap(mapRecorridoInstance);
+                }
             }
             if (path.length === 1) {
                 mapRecorridoInstance.setCenter(path[0]);
@@ -388,7 +408,8 @@
                     var dataEl = document.getElementById('mapa-recorrido-data');
                     if (dataEl) dataEl.textContent = JSON.stringify(data.mapa_recorrido);
                     initMapRecorrido(data.mapa_recorrido);
-                    location.reload();
+                    var msgEl = document.getElementById('recorrido-recalculado-msg');
+                    if (msgEl) { msgEl.style.display = 'block'; }
                 } else {
                     alert(data && data.error ? data.error : 'No se pudo recalcular el recorrido.');
                 }

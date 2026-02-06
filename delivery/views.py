@@ -18,7 +18,7 @@ from .utils import (
     contratos_con_entrega_en_fecha,
     contratos_sin_ruta_en_fecha,
 )
-from .services.google_maps_ruta import optimizar_orden_entregas
+from .services.google_maps_ruta import optimizar_orden_entregas, get_geometria_ruta_calles
 
 
 BaseRutaClienteFormSet = inlineformset_factory(
@@ -533,10 +533,15 @@ def _datos_recorrido_ruta(ruta, ruta_clientes):
                 'lng': float(c.longitud),
                 'label': f"#{rc.orden_entrega} {rc.codigo_entrega}",
             })
-    return {
+    mapa = {
         'puntos': puntos,
         'tiene_punto_partida': bool(punto_partida and punto_partida.latitud is not None and punto_partida.longitud is not None),
     }
+    if len(puntos) >= 2:
+        polylines_calles = get_geometria_ruta_calles(puntos)
+        if polylines_calles:
+            mapa['polylines_calles'] = polylines_calles
+    return mapa
 
 
 def _tiempos_estimados_ruta(ruta, ruta_clientes):

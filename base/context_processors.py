@@ -6,13 +6,26 @@ from django.utils import timezone
 
 
 def catering_context(request):
-    """Expone el nombre y colores de marca del catering a todas las plantillas."""
+    """Expone el nombre, colores de marca y logo del catering a todas las plantillas."""
+    from base.models import ParametroSistema
+
     openai_key = getattr(settings, 'OPENAI_API_KEY', '') or ''
     maps_key = getattr(settings, 'GOOGLE_MAPS_BROWSER_API_KEY', '') or ''
+    param_logo = ParametroSistema.objects.filter(clave='logo_empresa').first()
+    path_logo = (param_logo.valor or '').strip() if param_logo else ''
+    if path_logo:
+        media_url = getattr(settings, 'MEDIA_URL', '/media/')
+        if media_url and not media_url.startswith('/'):
+            media_url = '/' + media_url
+        logo_empresa_url = (media_url.rstrip('/') + '/' + path_logo.replace('\\', '/'))
+    else:
+        logo_empresa_url = ''
+
     ctx = {
         'catering_name': getattr(settings, 'CATERING_NAME', 'Catering'),
         'brand_color': getattr(settings, 'BRAND_COLOR', '#7CB342'),
         'brand_color_hover': getattr(settings, 'BRAND_COLOR_HOVER', '#689F38'),
+        'logo_empresa_url': logo_empresa_url,
         'openai_available': bool(openai_key.strip()),
         'google_maps_browser_key': maps_key,
     }

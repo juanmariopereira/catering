@@ -1,4 +1,6 @@
 Django>=6.0
+djangorestframework>=3.14
+httpx>=0.27.0
 psycopg2-binary>=2.9
 openai>=1.0.0
 python-dotenv>=1.0.0

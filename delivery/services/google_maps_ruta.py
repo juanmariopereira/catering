@@ -280,3 +280,53 @@ def optimizar_orden_entregas(ruta, request=None):
         exito=True, mensaje_error='', duracion_ms=total_duracion_ms, request=request,
     )
     return result
+
+
+def get_geometria_ruta_calles(puntos):
+    """
+    Obtiene la geometría del recorrido por calles (no línea recta) para una lista
+    ordenada de puntos. Hace requests a Directions API en chunks de hasta 25 waypoints.
+    Devuelve una lista de polylines codificados (encoded) para dibujar en el mapa.
+    Si hay error o no hay API key, devuelve lista vacía.
+    """
+    if not puntos or len(puntos) < 2:
+        return []
+    api_key = (getattr(settings, 'GOOGLE_MAPS_API_KEY', None) or '').strip()
+    if not api_key:
+        return []
+    n = len(puntos)
+    polylines = []
+    i = 0
+    while i < n - 1:
+        # Segmento: origin=puntos[i], waypoints=puntos[i+1 : i+26] (máx 25), destination=puntos[i+26] o último
+        if i + 26 < n:
+            waypoints_list = puntos[i + 1 : i + 26]
+            dest_idx = i + 26
+        else:
+            waypoints_list = puntos[i + 1 : n - 1]
+            dest_idx = n - 1
+        origin = f"{puntos[i]['lat']},{puntos[i]['lng']}"
+        destination = f"{puntos[dest_idx]['lat']},{puntos[dest_idx]['lng']}"
+        if waypoints_list:
+            waypoints_str = '|'.join(f"{p['lat']},{p['lng']}" for p in waypoints_list)
+            params = {'origin': origin, 'destination': destination, 'waypoints': waypoints_str, 'key': api_key}
+        else:
+            params = {'origin': origin, 'destination': destination, 'key': api_key}
+        url = f"{DIRECTIONS_URL}?{urlencode(params)}"
+        try:
+            with urlopen(url, timeout=15) as resp:
+                data = json.loads(resp.read().decode())
+        except Exception as e:
+            logger.warning('Error obteniendo geometría de ruta por calles: %s', e)
+            return polylines
+        if data.get('status') != 'OK':
+            return polylines
+        routes = data.get('routes') or []
+        if not routes:
+            return polylines
+        overview = routes[0].get('overview_polyline') or {}
+        encoded = overview.get('points')
+        if encoded:
+            polylines.append(encoded)
+        i = dest_idx
+    return polylines
