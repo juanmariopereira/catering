@@ -186,3 +186,41 @@ class ParametroSistema(models.Model):
 
     def __str__(self):
         return f"{self.clave} = {self.valor[:50]}{'…' if len(self.valor or '') > 50 else ''}"
+
+
+class UserActionLog(models.Model):
+    """
+    Historial de acciones de usuarios en la aplicación (crear, editar, eliminar).
+    Permite auditoría y consulta de quién hizo qué y qué cambios se realizaron.
+    """
+    ACCION_CHOICES = [
+        ('crear', 'Crear'),
+        ('editar', 'Editar'),
+        ('eliminar', 'Eliminar'),
+    ]
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='user_action_logs',
+        verbose_name='Usuario',
+    )
+    fecha_hora = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Fecha y hora')
+    accion = models.CharField(max_length=20, choices=ACCION_CHOICES, db_index=True, verbose_name='Acción')
+    modelo = models.CharField(max_length=64, db_index=True, verbose_name='Tipo de registro')
+    objeto_id = models.PositiveIntegerField(null=True, blank=True, verbose_name='ID del objeto')
+    objeto_repr = models.CharField(max_length=255, blank=True, verbose_name='Descripción del objeto')
+    descripcion = models.TextField(blank=True, verbose_name='Descripción adicional')
+    # Cambios en ediciones: lista de {"campo": str, "valor_anterior": str, "valor_nuevo": str}
+    cambios = models.JSONField(default=list, blank=True, verbose_name='Cambios realizados')
+
+    class Meta:
+        ordering = ['-fecha_hora']
+        verbose_name = 'Registro de acción de usuario'
+        verbose_name_plural = 'Historial de acciones de usuarios'
+
+    def __str__(self):
+        user = self.usuario.get_username() if self.usuario else '—'
+        return f"{user} | {self.get_accion_display()} | {self.modelo} | {self.fecha_hora}"

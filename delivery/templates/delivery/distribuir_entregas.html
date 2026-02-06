@@ -1,0 +1,348 @@
+{% extends 'base/base.html' %}
+{% load dict_filters %}
+
+{% block title %}Distribuir entregas por zona - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Producción</span>
+<span class="sep">/</span>
+<a href="{% url 'delivery:lista' %}">Entregas</a>
+<span class="sep">/</span>
+<span>Distribuir por zona</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .distribuir-header { margin-bottom: 20px; }
+    .distribuir-filtro { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 14px; background: #f5f5f5; border-radius: 8px; margin-bottom: 16px; }
+    .distribuir-filtro label { font-weight: 600; color: #333; }
+    .distribuir-filtro input[type="date"] { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; }
+    .distribuir-filtro .btn-ver { padding: 8px 16px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.95rem; text-decoration: none; display: inline-block; }
+    .distribuir-filtro .btn-ver:hover { background: #1976D2; }
+    .distribuir-ayuda { padding: 12px 16px; background: #e3f2fd; border: 1px solid #2196F3; border-radius: 6px; margin-bottom: 16px; font-size: 0.9rem; color: #1565c0; }
+    .distribuir-resumen { padding: 10px 14px; background: #f1f8e9; border: 1px solid #7CB342; border-radius: 6px; margin-bottom: 16px; }
+    .distribuir-resumen strong { color: #2e7d32; }
+    .distribuir-tabla { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .distribuir-tabla th, .distribuir-tabla td { padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0; vertical-align: middle; }
+    .distribuir-tabla th { background: #7CB342; color: white; font-weight: 600; }
+    .distribuir-tabla tr:hover { background: #f9f9f9; }
+    .distribuir-tabla .col-cliente { min-width: 140px; }
+    .distribuir-tabla .col-plan { min-width: 100px; }
+    .distribuir-tabla .col-direccion { max-width: 280px; word-break: break-word; }
+    .distribuir-tabla .col-entregador { min-width: 200px; }
+    .distribuir-tabla select { width: 100%; max-width: 220px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.95rem; }
+    .distribuir-tabla .link-maps { font-size: 0.85rem; color: #1565c0; margin-top: 4px; display: inline-block; }
+    .distribuir-tabla .link-maps:hover { text-decoration: underline; }
+    .distribuir-actions { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .btn-guardar { padding: 12px 24px; background: #7CB342; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600; }
+    .btn-guardar:hover { background: #689F38; }
+    .btn-volver { padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 0.95rem; }
+    .btn-volver:hover { background: #5a6268; color: white; }
+    .sin-entregas { padding: 24px; text-align: center; background: #fff8e1; border: 1px solid #ffc107; border-radius: 8px; color: #e65100; }
+    .mapa-distribuir-wrap { margin-bottom: 24px; }
+    .mapa-distribuir-wrap h3 { font-size: 1.1rem; margin: 0 0 8px 0; color: #333; }
+    #map-distribuir { width: 100%; height: 480px; border: 1px solid #ddd; border-radius: 8px; background: #e8e8e8; }
+    .mapa-leyenda { margin-top: 8px; font-size: 0.85rem; color: #666; }
+    .mapa-info-window { min-width: 220px; padding: 4px 0; }
+    .mapa-info-window .info-titulo { font-weight: 600; margin-bottom: 6px; }
+    .mapa-info-window .info-direccion { font-size: 0.9rem; color: #555; margin-bottom: 8px; }
+    .mapa-info-window label { display: block; font-size: 0.85rem; margin-bottom: 4px; }
+    .mapa-info-window select { width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; }
+    .mapa-info-window .btn-guardar-modal { margin-top: 12px; width: 100%; padding: 10px 16px; background: #7CB342; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.95rem; font-weight: 600; }
+    .mapa-info-window .btn-guardar-modal:hover { background: #689F38; }
+    .mapa-leyenda-colores { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-top: 10px; padding: 10px 12px; background: #f9f9f9; border-radius: 6px; font-size: 0.9rem; }
+    .mapa-leyenda-colores .leyenda-item { display: flex; align-items: center; gap: 8px; }
+    .mapa-leyenda-colores .leyenda-bola { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #333; flex-shrink: 0; }
+    .mapa-leyenda-colores .leyenda-count { font-weight: 600; color: #333; margin-left: 2px; }
+    .tabla-agrupada-wrap { margin-top: 20px; }
+    .tabla-agrupada-wrap h3 { font-size: 1.1rem; margin: 0 0 12px 0; color: #333; }
+    .grupo-entregador { margin-bottom: 20px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+    .grupo-entregador .grupo-header { padding: 12px 16px; font-weight: 600; font-size: 1rem; display: flex; align-items: center; gap: 10px; }
+    .grupo-entregador .grupo-header .grupo-bola { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #333; flex-shrink: 0; }
+    .grupo-entregador .grupo-list { padding: 0; margin: 0; list-style: none; background: #fafafa; }
+    .grupo-entregador .grupo-list li { padding: 10px 16px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 12px; }
+    .grupo-entregador .grupo-list li:last-child { border-bottom: none; }
+    .grupo-entregador .grupo-list .item-cliente { font-weight: 500; }
+    .grupo-entregador .grupo-list .item-plan { color: #666; font-size: 0.9rem; }
+    .selects-ocultos { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    {% include "base/page_title.html" with title="Distribuir entregas por zona" icon="📍" %}
+
+    <div class="distribuir-ayuda">
+        <strong>Camino alternativo:</strong> aquí puedes asignar cada punto de entrega a un entregador de forma visual.
+        Útil para distribuir por zona sin usar «Generar rutas» ni «Asignar pendientes». Los cambios se guardan en las mismas rutas que ves en la lista de entregas.
+    </div>
+
+    <form method="get" action="{% url 'delivery:distribuir_entregas' %}" class="distribuir-filtro" id="form-filtro-fecha">
+        <label for="fecha">Fecha de entrega</label>
+        <input type="date" name="fecha" id="fecha" value="{{ fecha_str }}" required>
+        <button type="submit" class="btn-ver" id="btn-ver-puntos">Ver puntos de entrega</button>
+    </form>
+
+    {% if fecha_seleccionada %}
+    <div class="distribuir-resumen">
+        <strong>{{ contratos|length }} punto(s) de entrega</strong> para el {{ fecha_seleccionada|date:"d/m/Y" }}
+        (contratos vigentes con entrega ese día).
+    </div>
+
+    {% if contratos %}
+    {% if puntos_mapa %}
+    <div class="mapa-distribuir-wrap">
+        <h3>Mapa de puntos de entrega</h3>
+        <p class="mapa-leyenda">Haz clic en un marcador para asignar o cambiar el entregador. Los cambios se reflejan en la tabla; pulsa «Guardar distribución» al finalizar.</p>
+        <div id="map-distribuir"></div>
+        <div class="mapa-leyenda-colores" id="mapa-leyenda-colores">
+            <span class="leyenda-item" data-entregador-id=""><span class="leyenda-bola" style="background:#9E9E9E;"></span><span class="leyenda-nombre">Sin asignar</span><span class="leyenda-count"></span></span>
+            {% for e in entregadores %}
+            <span class="leyenda-item" data-entregador-id="{{ e.pk }}"><span class="leyenda-bola leyenda-entregador-{{ forloop.counter0 }}"></span><span class="leyenda-nombre">{{ e.nombre }}</span><span class="leyenda-count"></span></span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% if puntos_mapa and puntos_mapa|length < contratos|length %}
+    <p class="mapa-leyenda" style="margin-bottom: 12px;">Los puntos sin coordenadas se asignan desde la tabla debajo.</p>
+    {% endif %}
+    <form method="post" action="{% url 'delivery:distribuir_entregas' %}" id="form-distribuir">
+        {% csrf_token %}
+        <input type="hidden" name="fecha" value="{{ fecha_str }}">
+        <div class="selects-ocultos" aria-hidden="true">
+            {% for c in contratos %}
+            <select name="entregador_{{ c.id }}" id="entregador_{{ c.id }}" data-contrato-id="{{ c.id }}">
+                <option value="">— Sin asignar —</option>
+                {% for e in entregadores %}
+                <option value="{{ e.pk }}" {% if asignacion_actual|get_item:c.id == e.pk %}selected{% endif %}>{{ e.nombre }}</option>
+                {% endfor %}
+            </select>
+            {% endfor %}
+        </div>
+        <div class="tabla-agrupada-wrap">
+            <h3>Resumen por entregador</h3>
+            <p class="mapa-leyenda" style="margin-bottom: 12px;">Se actualiza al cambiar asignaciones en el mapa.</p>
+            <div id="tabla-agrupada"></div>
+        </div>
+        <div class="distribuir-actions">
+            <button type="submit" class="btn-guardar">Guardar distribución</button>
+            <a href="{% url 'delivery:lista' %}?fecha={{ fecha_str }}" class="btn-volver">Volver a lista de entregas</a>
+        </div>
+    </form>
+    {% else %}
+    <div class="sin-entregas">
+        No hay contratos con entrega el {{ fecha_seleccionada|date:"d/m/Y" }} (o es feriado). Elige otra fecha.
+    </div>
+    <p style="margin-top: 12px;"><a href="{% url 'delivery:lista' %}?fecha={{ fecha_str }}" class="btn-volver">Volver a lista de entregas</a></p>
+    {% endif %}
+    {% endif %}
+</div>
+
+{% if contratos %}
+{{ contratos_json|json_script:"contratos-data" }}
+{{ entregadores_json|json_script:"entregadores-tabla-data" }}
+{% endif %}
+{% if puntos_mapa and google_maps_browser_key %}
+{{ puntos_mapa|json_script:"puntos-mapa-data" }}
+{{ entregadores_json|json_script:"entregadores-data" }}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if contratos %}
+<script>
+(function() {
+    var contratosEl = document.getElementById('contratos-data');
+    var entregadoresTablaEl = document.getElementById('entregadores-tabla-data');
+    if (!contratosEl || !entregadoresTablaEl) return;
+    var contratosList = JSON.parse(contratosEl.textContent);
+    var entregadoresList = JSON.parse(entregadoresTablaEl.textContent);
+    var COLOR_SIN_ASIGNAR = '#9E9E9E';
+    var COLORES_ENTREGADORES = ['#2196F3', '#4CAF50', '#FF9800', '#9C27B0', '#00BCD4', '#E91E63', '#8BC34A', '#FF5722', '#673AB7', '#009688', '#F44336', '#3F51B5'];
+    function nombreEntregador(id) {
+        if (!id) return 'Sin asignar';
+        var e = entregadoresList.find(function(x) { return x.id === id || x.id === parseInt(id, 10); });
+        return e ? e.nombre : 'Sin asignar';
+    }
+    function colorEntregador(id) {
+        if (!id) return COLOR_SIN_ASIGNAR;
+        var idx = entregadoresList.findIndex(function(x) { return x.id === id || x.id === parseInt(id, 10); });
+        return idx >= 0 ? COLORES_ENTREGADORES[idx % COLORES_ENTREGADORES.length] : COLOR_SIN_ASIGNAR;
+    }
+    function refreshGroupedTable() {
+        var selects = document.querySelectorAll('select[name^="entregador_"]');
+        var byEntregador = {};
+        byEntregador[''] = [];
+        entregadoresList.forEach(function(e) { byEntregador[String(e.id)] = []; });
+        selects.forEach(function(sel) {
+            var cid = sel.getAttribute('data-contrato-id') || (sel.name && sel.name.replace('entregador_', ''));
+            if (!cid) return;
+            var val = (sel.value || '').trim();
+            if (!byEntregador[val]) byEntregador[val] = [];
+            byEntregador[val].push(cid);
+        });
+        var contratosById = {};
+        contratosList.forEach(function(c) { contratosById[String(c.id)] = c; });
+        var html = '';
+        var orden = [''].concat(entregadoresList.map(function(e) { return String(e.id); }));
+        orden.forEach(function(eid) {
+            var ids = byEntregador[eid] || [];
+            if (ids.length === 0) return;
+            var nombre = nombreEntregador(eid);
+            var color = colorEntregador(eid);
+            html += '<div class="grupo-entregador">';
+            html += '<div class="grupo-header" style="background:' + color + ';color:white;"><span class="grupo-bola" style="background:white;border-color:white;"></span>' + nombre + ' <span style="font-weight:normal;opacity:0.9;">(' + ids.length + ' entrega' + (ids.length !== 1 ? 's' : '') + ')</span></div>';
+            html += '<ul class="grupo-list">';
+            ids.forEach(function(cid) {
+                var c = contratosById[cid] || { cliente: '—', plan: '' };
+                html += '<li><span class="item-cliente">' + (c.cliente || '').replace(/</g, '&lt;') + '</span> <span class="item-plan">(' + (c.plan || '').replace(/</g, '&lt;') + ')</span></li>';
+            });
+            html += '</ul></div>';
+        });
+        var container = document.getElementById('tabla-agrupada');
+        if (container) container.innerHTML = html;
+        updateLegendCounts(byEntregador);
+    }
+    function updateLegendCounts(byEntregador) {
+        var legend = document.getElementById('mapa-leyenda-colores');
+        if (!legend) return;
+        var items = legend.querySelectorAll('.leyenda-item');
+        items.forEach(function(item) {
+            var eid = item.getAttribute('data-entregador-id');
+            if (eid === null) eid = '';
+            var count = (byEntregador[eid] || []).length;
+            var countEl = item.querySelector('.leyenda-count');
+            if (countEl) countEl.textContent = ' (' + count + ')';
+        });
+    }
+    window.refreshGroupedTable = refreshGroupedTable;
+    refreshGroupedTable();
+    document.querySelectorAll('select[name^="entregador_"]').forEach(function(sel) {
+        sel.addEventListener('change', refreshGroupedTable);
+    });
+})();
+</script>
+{% endif %}
+{% if puntos_mapa and google_maps_browser_key %}
+<script>
+(function() {
+    var puntosEl = document.getElementById('puntos-mapa-data');
+    var entregadoresEl = document.getElementById('entregadores-data');
+    if (!puntosEl || !entregadoresEl) return;
+    var puntos = JSON.parse(puntosEl.textContent);
+    var entregadores = JSON.parse(entregadoresEl.textContent);
+    if (puntos.length === 0) return;
+    var mapsKey = "{{ google_maps_browser_key|escapejs }}";
+    if (!mapsKey) return;
+    var COLOR_SIN_ASIGNAR = '#9E9E9E';
+    var COLORES_ENTREGADORES = ['#2196F3', '#4CAF50', '#FF9800', '#9C27B0', '#00BCD4', '#E91E63', '#8BC34A', '#FF5722', '#673AB7', '#009688', '#F44336', '#3F51B5'];
+    function colorParaEntregador(entregadorId) {
+        if (!entregadorId) return COLOR_SIN_ASIGNAR;
+        var idx = entregadores.findIndex(function(e) { return e.id === entregadorId || e.id === parseInt(entregadorId, 10); });
+        return idx >= 0 ? COLORES_ENTREGADORES[idx % COLORES_ENTREGADORES.length] : COLOR_SIN_ASIGNAR;
+    }
+    function getMarkerIcon(color) {
+        return {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 14,
+            fillColor: color,
+            fillOpacity: 1,
+            strokeColor: '#333',
+            strokeWeight: 2
+        };
+    }
+    function loadMaps(cb) {
+        if (window.google && window.google.maps) { cb(); return; }
+        var s = document.createElement('script');
+        s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(mapsKey);
+        s.async = true; s.defer = true;
+        s.onload = cb;
+        document.head.appendChild(s);
+    }
+    function buildInfoContent(p, entregadoresList, valorActual) {
+        var actual = valorActual !== undefined ? String(valorActual) : (p.entregador_actual_id ? String(p.entregador_actual_id) : '');
+        var html = '<div class="mapa-info-window">';
+        html += '<div class="info-titulo">' + (p.cliente || '').replace(/</g, '&lt;') + ' <span style="color:#666;">(' + (p.plan || '').replace(/</g, '&lt;') + ')</span></div>';
+        if (p.direccion) html += '<div class="info-direccion">' + (p.direccion || '').replace(/</g, '&lt;').substring(0, 120) + (p.direccion.length > 120 ? '…' : '') + '</div>';
+        html += '<label>Asignar a entregador:</label>';
+        html += '<select id="map-select-' + p.id + '" data-contrato-id="' + p.id + '">';
+        html += '<option value="">— Sin asignar —</option>';
+        for (var i = 0; i < entregadoresList.length; i++) {
+            var e = entregadoresList[i];
+            var sel = (actual === String(e.id)) ? ' selected' : '';
+            html += '<option value="' + e.id + '"' + sel + '>' + (e.nombre || '').replace(/</g, '&lt;') + '</option>';
+        }
+        html += '</select>';
+        html += '<button type="button" class="btn-guardar-modal" id="map-btn-guardar-' + p.id + '">Guardar</button>';
+        html += '</div>';
+        return html;
+    }
+    loadMaps(function() {
+        for (var i = 0; i < entregadores.length; i++) {
+            var el = document.querySelector('.leyenda-entregador-' + i);
+            if (el) el.style.background = COLORES_ENTREGADORES[i % COLORES_ENTREGADORES.length];
+        }
+        var center = { lat: puntos[0].lat, lng: puntos[0].lng };
+        var map = new google.maps.Map(document.getElementById('map-distribuir'), {
+            center: center,
+            zoom: 13,
+            mapTypeControl: true,
+            streetViewControl: false
+        });
+        var bounds = new google.maps.LatLngBounds();
+        var infoWindow = new google.maps.InfoWindow();
+        for (var i = 0; i < puntos.length; i++) {
+            var p = puntos[i];
+            var pos = { lat: p.lat, lng: p.lng };
+            bounds.extend(pos);
+            var pinColor = colorParaEntregador(p.entregador_actual_id);
+            var marker = new google.maps.Marker({
+                position: pos,
+                map: map,
+                title: p.cliente + ' (' + p.plan + ')',
+                data: p,
+                icon: getMarkerIcon(pinColor)
+            });
+            (function(mkr, pt) {
+                mkr.addListener('click', function() {
+                    var formSel = document.querySelector('select[name="entregador_' + pt.id + '"]');
+                    var valorActual = formSel ? formSel.value : '';
+                    var content = buildInfoContent(pt, entregadores, valorActual);
+                    infoWindow.setContent(content);
+                    infoWindow.open(map, mkr);
+                setTimeout(function() {
+                    var sel = document.getElementById('map-select-' + pt.id);
+                    if (sel) {
+                        sel.addEventListener('change', function() {
+                            var fs = document.querySelector('select[name="entregador_' + pt.id + '"]');
+                            if (fs) fs.value = this.value;
+                            mkr.setIcon(getMarkerIcon(colorParaEntregador(this.value)));
+                            if (window.refreshGroupedTable) window.refreshGroupedTable();
+                        });
+                    }
+                    var btnGuardar = document.getElementById('map-btn-guardar-' + pt.id);
+                    if (btnGuardar) {
+                        btnGuardar.addEventListener('click', function() {
+                            var sel = document.getElementById('map-select-' + pt.id);
+                            if (sel) {
+                                var fs = document.querySelector('select[name="entregador_' + pt.id + '"]');
+                                if (fs) fs.value = sel.value;
+                                mkr.setIcon(getMarkerIcon(colorParaEntregador(sel.value)));
+                                if (window.refreshGroupedTable) window.refreshGroupedTable();
+                            }
+                            var form = document.getElementById('form-distribuir');
+                            if (form) form.submit();
+                        });
+                    }
+                }, 100);
+                });
+            })(marker, p);
+        }
+        if (puntos.length > 1) map.fitBounds(bounds, 50);
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

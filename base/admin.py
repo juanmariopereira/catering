@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import AIRequestLog, ExternalApiRequestLog, Feriado, ParametroSistema
+from .models import AIRequestLog, ExternalApiRequestLog, Feriado, ParametroSistema, UserActionLog
 
 
 @admin.register(Feriado)
@@ -29,6 +29,19 @@ class ParametroSistemaAdmin(admin.ModelAdmin):
         v = (obj.valor or '')[:60]
         return f'{v}…' if len(obj.valor or '') > 60 else v
     valor_preview.short_description = 'Valor'
+
+
+@admin.register(UserActionLog)
+class UserActionLogAdmin(admin.ModelAdmin):
+    list_display = ('fecha_hora', 'usuario', 'accion', 'modelo', 'objeto_repr_short')
+    list_filter = ('accion', 'modelo')
+    search_fields = ('modelo', 'objeto_repr', 'descripcion')
+    readonly_fields = ('usuario', 'fecha_hora', 'accion', 'modelo', 'objeto_id', 'objeto_repr', 'descripcion', 'cambios')
+    date_hierarchy = 'fecha_hora'
+
+    def objeto_repr_short(self, obj):
+        return (obj.objeto_repr or '')[:50]
+    objeto_repr_short.short_description = 'Objeto'
 
 
 @admin.register(ExternalApiRequestLog)

@@ -411,6 +411,106 @@ def asignar_pendientes(request):
 
 
 @login_required
+def distribuir_entregas(request):
+    """
+    Interfaz alternativa para distribuir puntos de entrega por entregador de forma visual.
+    Muestra todos los contratos con entrega en la fecha seleccionada; el usuario asigna
+    cada punto a un entregador (o deja sin asignar). No modifica el flujo existente
+    (generar rutas / asignar pendientes); solo crea/actualiza Ruta y RutaCliente.
+    """
+    entregadores = list(Entregador.objects.filter(activo=True).order_by('nombre'))
+    fecha_param = request.GET.get('fecha') or request.POST.get('fecha')
+    fecha = timezone.now().date()
+    if fecha_param:
+        try:
+            fecha = date.fromisoformat(fecha_param)
+        except ValueError:
+            pass
+
+    # GET sin fecha: redirigir con ?fecha=hoy para que el botón "Ver puntos" tenga efecto visible
+    if request.method == 'GET' and not request.GET.get('fecha'):
+        return redirect(reverse('delivery:distribuir_entregas') + f'?fecha={fecha.isoformat()}')
+
+    # Contratos con entrega en la fecha (vigentes ese día)
+    contratos = list(
+        contratos_con_entrega_en_fecha(fecha)
+        .select_related('cliente', 'plan')
+        .order_by('cliente__nombre')
+    )
+    # Asignación actual: contrato_id -> entregador_id (o None)
+    asignacion_actual = {}
+    if contratos:
+        ids_contratos = [c.id for c in contratos]
+        for rc in RutaCliente.objects.filter(
+            ruta__fecha=fecha,
+            contrato_id__in=ids_contratos,
+        ).select_related('ruta'):
+            asignacion_actual[rc.contrato_id] = rc.ruta.entregador_id
+
+    if request.method == 'POST':
+        # Guardar distribución: entregador_<contrato_id> para cada contrato
+        actualizados = 0
+        for c in contratos:
+            key = f'entregador_{c.id}'
+            entregador_id_raw = request.POST.get(key, '').strip()
+            entregador_id = int(entregador_id_raw) if entregador_id_raw and entregador_id_raw.isdigit() else None
+            actual = asignacion_actual.get(c.id)
+
+            if actual == entregador_id:
+                continue
+
+            # Quitar de la ruta actual si estaba asignado
+            RutaCliente.objects.filter(ruta__fecha=fecha, contrato_id=c.id).delete()
+
+            if entregador_id:
+                ruta = _get_or_create_ruta(fecha, Entregador.objects.get(pk=entregador_id))
+                max_orden = ruta.ruta_clientes.aggregate(m=Max('orden_entrega'))['m'] or 0
+                RutaCliente.objects.create(
+                    ruta=ruta,
+                    contrato_id=c.id,
+                    orden_entrega=max_orden + 1,
+                )
+                actualizados += 1
+            else:
+                actualizados += 1
+
+        if actualizados > 0:
+            messages.success(
+                request,
+                f'Distribución guardada para el {fecha.strftime("%d/%m/%Y")}. '
+                'Puedes ver las rutas en la lista de entregas.',
+            )
+        return redirect(reverse('delivery:distribuir_entregas') + f'?fecha={fecha.isoformat()}')
+
+    fecha_str = fecha.isoformat()
+    # Puntos con coordenadas para el mapa (lat/lng obligatorios)
+    puntos_mapa = []
+    for c in contratos:
+        if c.latitud is not None and c.longitud is not None:
+            puntos_mapa.append({
+                'id': c.id,
+                'lat': float(c.latitud),
+                'lng': float(c.longitud),
+                'cliente': c.cliente.nombre,
+                'plan': c.plan.nombre,
+                'direccion': (c.direccion_entrega or '')[:200],
+                'entregador_actual_id': asignacion_actual.get(c.id),
+            })
+    entregadores_json = [{'id': e.id, 'nombre': e.nombre} for e in entregadores]
+    contratos_json = [{'id': c.id, 'cliente': c.cliente.nombre, 'plan': c.plan.nombre} for c in contratos]
+    return render(request, 'delivery/distribuir_entregas.html', {
+        'fecha_seleccionada': fecha,
+        'fecha_str': fecha_str,
+        'contratos': contratos,
+        'asignacion_actual': asignacion_actual,
+        'entregadores': entregadores,
+        'puntos_mapa': puntos_mapa,
+        'entregadores_json': entregadores_json,
+        'contratos_json': contratos_json,
+    })
+
+
+@login_required
 def ruta_cargar_ultima(request, pk):
     """
     Añade a la ruta actual los contratos que este entregador llevó en su última ruta

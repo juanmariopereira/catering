@@ -1,0 +1,154 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Historial de acciones - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Historial de acciones</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .historial-filtros { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; padding: 14px; background: #f5f5f5; border-radius: 8px; margin-bottom: 20px; }
+    .historial-filtros label { font-weight: 600; font-size: 0.9rem; margin-right: 4px; }
+    .historial-filtros input, .historial-filtros select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; }
+    .historial-filtros .btn-filtrar { padding: 8px 16px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.95rem; }
+    .historial-filtros .btn-filtrar:hover { background: #1976D2; }
+    .historial-tabla { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .historial-tabla th, .historial-tabla td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+    .historial-tabla th { background: #37474F; color: white; font-weight: 600; }
+    .historial-tabla tr:hover { background: #f5f5f5; }
+    .historial-tabla .col-fecha { white-space: nowrap; font-size: 0.9rem; }
+    .historial-tabla .col-usuario { font-weight: 500; }
+    .historial-tabla .col-accion { }
+    .historial-tabla .badge-crear { background: #4CAF50; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+    .historial-tabla .badge-editar { background: #2196F3; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+    .historial-tabla .badge-eliminar { background: #f44336; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+    .historial-tabla .col-modelo { font-size: 0.9rem; color: #555; }
+    .historial-tabla .col-objeto { max-width: 220px; word-break: break-word; }
+    .historial-tabla .col-detalle { max-width: 320px; font-size: 0.85rem; }
+    .historial-tabla .cambios-list { list-style: none; padding: 0; margin: 4px 0 0 0; }
+    .historial-tabla .cambios-list li { padding: 4px 0; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+    .historial-tabla .cambios-list li:last-child { border-bottom: none; }
+    .historial-tabla .cambios-list .campo { font-weight: 600; color: #333; }
+    .historial-tabla .toggle-cambios { background: none; border: none; color: #1565c0; cursor: pointer; font-size: 0.85rem; padding: 0; text-decoration: underline; }
+    .historial-tabla .origen-admin { font-size: 0.75rem; color: #888; }
+    .historial-vacio { padding: 24px; text-align: center; color: #666; background: #fafafa; border-radius: 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="page-title">
+        <span class="page-title-icon" aria-hidden="true">📋</span>
+        <span class="page-title-text">Historial de acciones</span>
+    </h1>
+    <p style="margin-bottom: 20px; color: #555;">
+        Acciones realizadas por los usuarios (crear, editar, eliminar) en la aplicación y en el panel de administración.
+        Use los filtros para ver por usuario, fechas o tipo de acción.
+    </p>
+
+    <form method="get" action="{% url 'historial_acciones' %}" class="historial-filtros">
+        <div>
+            <label for="usuario">Usuario</label>
+            <select name="usuario" id="usuario">
+                <option value="">Todos</option>
+                {% for u in usuarios_con_acciones %}
+                <option value="{{ u.pk }}" {% if filtros.usuario == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="fecha_desde">Desde</label>
+            <input type="date" name="fecha_desde" id="fecha_desde" value="{{ filtros.fecha_desde }}">
+        </div>
+        <div>
+            <label for="fecha_hasta">Hasta</label>
+            <input type="date" name="fecha_hasta" id="fecha_hasta" value="{{ filtros.fecha_hasta }}">
+        </div>
+        <div>
+            <label for="accion">Acción</label>
+            <select name="accion" id="accion">
+                <option value="">Todas</option>
+                <option value="crear" {% if filtros.accion == 'crear' %}selected{% endif %}>Crear</option>
+                <option value="editar" {% if filtros.accion == 'editar' %}selected{% endif %}>Editar</option>
+                <option value="eliminar" {% if filtros.accion == 'eliminar' %}selected{% endif %}>Eliminar</option>
+            </select>
+        </div>
+        <div>
+            <label for="modelo">Tipo de registro</label>
+            <input type="text" name="modelo" id="modelo" value="{{ filtros.modelo }}" placeholder="Ej: Feriado, Contrato" style="min-width: 140px;">
+        </div>
+        <div>
+            <button type="submit" class="btn-filtrar">Filtrar</button>
+        </div>
+    </form>
+
+    {% if registros %}
+    <table class="historial-tabla">
+        <thead>
+            <tr>
+                <th class="col-fecha">Fecha y hora</th>
+                <th class="col-usuario">Usuario</th>
+                <th class="col-accion">Acción</th>
+                <th class="col-modelo">Tipo</th>
+                <th class="col-objeto">Objeto</th>
+                <th class="col-detalle">Detalle / Cambios</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in registros %}
+            <tr>
+                <td class="col-fecha">{{ r.fecha_hora|date:"d/m/Y H:i" }}</td>
+                <td class="col-usuario">{{ r.usuario_str }}</td>
+                <td class="col-accion">
+                    <span class="badge-{{ r.accion }}">{{ r.accion_display }}</span>
+                    {% if r.origen == 'admin' %}<span class="origen-admin">(admin)</span>{% endif %}
+                </td>
+                <td class="col-modelo">{{ r.modelo }}</td>
+                <td class="col-objeto">{{ r.objeto_repr|default:"—" }}</td>
+                <td class="col-detalle">
+                    {% if r.cambios %}
+                    <button type="button" class="toggle-cambios" data-target="cambios-{{ forloop.counter }}" aria-expanded="false">Ver {{ r.cambios|length }} cambio(s)</button>
+                    <div id="cambios-{{ forloop.counter }}" style="display: none;" class="cambios-block">
+                        <ul class="cambios-list">
+                            {% for c in r.cambios %}
+                            <li><span class="campo">{{ c.campo }}</span>: <del>{{ c.valor_anterior|truncatewords:8 }}</del> → {{ c.valor_nuevo|truncatewords:8 }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% elif r.descripcion %}
+                    {{ r.descripcion|truncatewords:15 }}
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p style="margin-top: 12px; font-size: 0.9rem; color: #666;">Se muestran hasta 400 registros más recientes según los filtros.</p>
+    {% else %}
+    <div class="historial-vacio">
+        No hay registros que coincidan con los filtros. Pruebe a ampliar el rango de fechas o quitar filtros.
+    </div>
+    {% endif %}
+</div>
+
+<script>
+(function() {
+    document.querySelectorAll('.toggle-cambios').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.getAttribute('data-target');
+            var block = document.getElementById(id);
+            if (!block) return;
+            var isHidden = block.style.display === 'none';
+            block.style.display = isHidden ? 'block' : 'none';
+            this.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+            this.textContent = isHidden ? 'Ocultar cambios' : 'Ver ' + block.querySelectorAll('li').length + ' cambio(s)';
+        });
+    });
+})();
+</script>
+{% endblock %}

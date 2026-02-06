@@ -11,8 +11,9 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy, reverse
 from datetime import date, timedelta, datetime
 
-from .models import Feriado, ParametroSistema, es_feriado
+from .models import Feriado, ParametroSistema, UserActionLog, es_feriado
 from .forms import FeriadoForm, LogoEmpresaForm, ParametroSistemaForm
+from .audit import LogUserActionMixin
 from planning.models import PlanificacionMenu
 from billing.models import Cobro, Pago, _dias_vencimiento_por_frecuencia
 from billing.utils import obtener_cobros_vencidos, periodo_hasta_segun_frecuencia
@@ -280,7 +281,7 @@ class FeriadoListView(LoginRequiredMixin, ListView):
         return qs.order_by('fecha')
 
 
-class FeriadoCreateView(LoginRequiredMixin, CreateView):
+class FeriadoCreateView(LogUserActionMixin, LoginRequiredMixin, CreateView):
     """Crear un nuevo feriado."""
     model = Feriado
     form_class = FeriadoForm
@@ -292,7 +293,7 @@ class FeriadoCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class FeriadoUpdateView(LoginRequiredMixin, UpdateView):
+class FeriadoUpdateView(LogUserActionMixin, LoginRequiredMixin, UpdateView):
     """Editar un feriado."""
     model = Feriado
     form_class = FeriadoForm
@@ -305,7 +306,7 @@ class FeriadoUpdateView(LoginRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class FeriadoDeleteView(LoginRequiredMixin, DeleteView):
+class FeriadoDeleteView(LogUserActionMixin, LoginRequiredMixin, DeleteView):
     """Eliminar un feriado."""
     model = Feriado
     template_name = 'base/feriado_confirm_delete.html'
@@ -315,6 +316,122 @@ class FeriadoDeleteView(LoginRequiredMixin, DeleteView):
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, 'Feriado eliminado.')
         return super().delete(request, *args, **kwargs)
+
+
+# --- Historial de acciones de usuarios ---
+
+@login_required
+def historial_acciones(request):
+    """
+    Pantalla de historial de acciones por usuario: crear, editar, eliminar.
+    Incluye registros de la app (UserActionLog) y del admin de Django (LogEntry).
+    Filtros: usuario, rango de fechas, acción, tipo de registro.
+    """
+    from django.contrib.admin.models import LogEntry
+    from django.contrib.auth import get_user_model
+    from django.contrib.contenttypes.models import ContentType
+
+    User = get_user_model()
+    qs_log = UserActionLog.objects.all().select_related('usuario').order_by('-fecha_hora')
+    # Filtros
+    user_id = request.GET.get('usuario', '').strip()
+    if user_id:
+        qs_log = qs_log.filter(usuario_id=user_id)
+    date_from = request.GET.get('fecha_desde', '').strip()
+    if date_from:
+        try:
+            qs_log = qs_log.filter(fecha_hora__date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    date_to = request.GET.get('fecha_hasta', '').strip()
+    if date_to:
+        try:
+            qs_log = qs_log.filter(fecha_hora__date__lte=datetime.strptime(date_to, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    accion = request.GET.get('accion', '').strip()
+    if accion:
+        qs_log = qs_log.filter(accion=accion)
+    modelo = request.GET.get('modelo', '').strip()
+    if modelo:
+        qs_log = qs_log.filter(modelo__icontains=modelo)
+
+    # Lista unificada: registros de la app
+    registros = []
+    for log in qs_log[:500]:  # límite razonable
+        registros.append({
+            'fecha_hora': log.fecha_hora,
+            'usuario': log.usuario,
+            'usuario_str': log.usuario.get_username() if log.usuario else '—',
+            'accion': log.accion,
+            'accion_display': log.get_accion_display(),
+            'modelo': log.modelo,
+            'objeto_repr': log.objeto_repr,
+            'objeto_id': log.objeto_id,
+            'descripcion': log.descripcion,
+            'cambios': log.cambios or [],
+            'origen': 'app',
+        })
+
+    # Añadir registros del admin de Django (mismos filtros aproximados)
+    qs_admin = LogEntry.objects.all().select_related('user', 'content_type').order_by('-action_time')
+    if user_id:
+        qs_admin = qs_admin.filter(user_id=user_id)
+    if date_from:
+        try:
+            qs_admin = qs_admin.filter(action_time__date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            qs_admin = qs_admin.filter(action_time__date__lte=datetime.strptime(date_to, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    if accion:
+        flag_map = {'crear': 1, 'editar': 2, 'eliminar': 3}
+        if accion in flag_map:
+            qs_admin = qs_admin.filter(action_flag=flag_map[accion])
+    for le in qs_admin[:300]:
+        ct = le.content_type
+        modelo_nombre = ct.model if ct else '—'
+        if modelo and modelo.lower() not in modelo_nombre.lower():
+            continue
+        accion_flag = {1: 'crear', 2: 'editar', 3: 'eliminar'}.get(le.action_flag, '')
+        registros.append({
+            'fecha_hora': le.action_time,
+            'usuario': le.user,
+            'usuario_str': le.user.get_username() if le.user else '—',
+            'accion': accion_flag,
+            'accion_display': {'crear': 'Crear', 'editar': 'Editar', 'eliminar': 'Eliminar'}.get(accion_flag, str(le.action_flag)),
+            'modelo': modelo_nombre,
+            'objeto_repr': le.object_repr[:255] if le.object_repr else '—',
+            'objeto_id': le.object_id,
+            'descripcion': le.change_message or '',
+            'cambios': [],
+            'origen': 'admin',
+        })
+
+    # Ordenar por fecha descendente
+    registros.sort(key=lambda x: x['fecha_hora'], reverse=True)
+    registros = registros[:400]  # máximo mostrado
+
+    # Usuarios con acciones (para el filtro)
+    user_ids_log = set(UserActionLog.objects.values_list('usuario_id', flat=True).distinct())
+    user_ids_admin = set(LogEntry.objects.values_list('user_id', flat=True).distinct())
+    user_ids = sorted(user_ids_log | user_ids_admin)
+    usuarios_con_acciones = list(User.objects.filter(pk__in=user_ids).order_by('username'))
+
+    return render(request, 'base/historial_acciones.html', {
+        'registros': registros,
+        'usuarios_con_acciones': usuarios_con_acciones,
+        'filtros': {
+            'usuario': user_id,
+            'fecha_desde': date_from,
+            'fecha_hasta': date_to,
+            'accion': accion,
+            'modelo': modelo,
+        },
+    })
 
 
 # --- Parámetros del sistema ---

@@ -32,6 +32,11 @@ class EntregadorCreateView(LoginRequiredMixin, CreateView):
     fields = ['nombre', 'telefono', 'vehiculo', 'activo', 'notas']
     success_url = reverse_lazy('routes:entregador_lista')
 
+    def get_initial(self):
+        initial = super().get_initial()
+        initial['activo'] = True
+        return initial
+
     def form_valid(self, form):
         messages.success(self.request, 'Entregador creado exitosamente.')
         return super().form_valid(form)

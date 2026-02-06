@@ -32,6 +32,7 @@ urlpatterns = [
     path('parametros/', base_views.parametros_sistema, name='parametros_sistema'),
     path('parametros/nuevo/', base_views.parametro_crear, name='parametro_crear'),
     path('parametros/<int:pk>/editar/', base_views.parametro_editar, name='parametro_editar'),
+    path('historial/', base_views.historial_acciones, name='historial_acciones'),
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
     path('clients/', include('clients.urls')),

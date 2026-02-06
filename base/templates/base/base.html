@@ -498,7 +498,7 @@
                 <a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/dashboard/' or request.path == '/' %}active{% endif %}">🏠 Inicio</a>
             </li>
             <li class="nav-item nav-dropdown">
-                <span class="nav-link nav-dropdown-toggle {% if '/clients/' in request.path or '/plans/' in request.path or '/recipes/' in request.path or '/diets/' in request.path or '/routes/' in request.path or '/feriados/' in request.path or '/parametros/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true"><span class="nav-toggle-icon" aria-hidden="true">📚</span>Catálogos</span>
+                <span class="nav-link nav-dropdown-toggle {% if '/clients/' in request.path or '/plans/' in request.path or '/recipes/' in request.path or '/diets/' in request.path or '/routes/' in request.path or '/feriados/' in request.path or '/parametros/' in request.path or '/historial/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true"><span class="nav-toggle-icon" aria-hidden="true">📚</span>Catálogos</span>
                 <ul class="nav-dropdown-menu">
                     <li><a href="{% url 'clients:lista' %}" class="{% if '/clients/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">👥</span>Clientes</a></li>
                     <li><a href="{% url 'plans:lista' %}" class="{% if '/plans/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📑</span>Planes</a></li>
@@ -510,6 +510,7 @@
                     <li><a href="{% url 'routes:entregador_lista' %}" class="{% if '/routes/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🚚</span>Entregadores</a></li>
                     <li><a href="{% url 'feriado_lista' %}" class="{% if '/feriados/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📅</span>Feriados</a></li>
                     <li><a href="{% url 'parametros_sistema' %}" class="{% if '/parametros/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">⚙️</span>Parámetros del sistema</a></li>
+                    <li><a href="{% url 'historial_acciones' %}" class="{% if '/historial/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📋</span>Historial de acciones</a></li>
                 </ul>
             </li>
             <li class="nav-item nav-dropdown">

@@ -8,6 +8,7 @@ urlpatterns = [
     path('configurar-punto-partida/', views.punto_partida_config, name='punto_partida_config'),
     path('generar-rutas/', views.generar_rutas, name='generar_rutas'),
     path('asignar-pendientes/', views.asignar_pendientes, name='asignar_pendientes'),
+    path('distribuir/', views.distribuir_entregas, name='distribuir_entregas'),
     path('ruta/crear/', views.RutaCreateView.as_view(), name='ruta_crear'),
     path('ruta/<int:pk>/editar/', views.RutaUpdateView.as_view(), name='ruta_editar'),
     path('ruta/<int:pk>/cargar-ultima/', views.ruta_cargar_ultima, name='ruta_cargar_ultima'),
