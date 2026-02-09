@@ -35,6 +35,7 @@
     .ruta-print .info-value { font-size: 0.9rem; font-weight: bold; color: #333; margin-top: 2px; }
     .ruta-print .info-note { font-size: 0.65rem; color: #666; margin-left: 4px; font-weight: normal; }
     .ruta-print .tiempo-llegada { font-size: 0.7rem; color: #1565c0; font-weight: 600; margin-left: 6px; }
+    .ruta-print .hora-entrega-pactada { font-size: 0.75rem; color: #2e7d32; font-weight: 600; margin-left: 8px; background: #e8f5e9; padding: 2px 6px; border-radius: 4px; }
     .ruta-print .clientes-lista { margin-top: 8px; }
     .ruta-print .cliente-item {
         border-bottom: 1px solid #e0e0e0;
@@ -155,7 +156,7 @@
         </div>
         <div class="info-item">
             <span class="info-label">Total</span>
-            <span class="info-value">{{ ruta_clientes.count }}</span>
+            <span class="info-value">{{ ruta_clientes|length }}</span>
         </div>
         {% if total_estimado_str %}
         <div class="info-item">
@@ -169,11 +170,12 @@
     {% if ruta_clientes %}
         <div class="clientes-lista">
             {% for ruta_cliente, tiempo_llegada in clientes_con_tiempo %}
-                <div class="cliente-item{% if ruta_cliente.entregada %} entregada{% elif ruta_cliente.no_entregada %} no-entregada{% endif %}" data-ruta-cliente-id="{{ ruta_cliente.pk }}">
+                <div class="cliente-item{% if ruta_cliente.entregada %} entregada{% elif ruta_cliente.no_entregada %} no-entregada{% endif %}" data-ruta-cliente-id="{{ ruta_cliente.contrato_id }}">
                     <div class="cliente-fila">
                         <span class="orden-entrega">#{{ ruta_cliente.orden_entrega }}</span>
                         <span class="codigo-entrega" title="Código de entrega"><a href="{% url 'contracts:detalle' ruta_cliente.contrato_id %}">{{ ruta_cliente.codigo_entrega }}</a></span>
                         <span class="cliente-nombre">{% if ruta_cliente.contrato.cliente.telefono %}<a href="{% url 'contracts:detalle' ruta_cliente.contrato_id %}">{{ ruta_cliente.contrato.cliente.nombre }}</a> · {{ ruta_cliente.contrato.cliente.telefono }}{% else %}<a href="{% url 'contracts:detalle' ruta_cliente.contrato_id %}">{{ ruta_cliente.contrato.cliente.nombre }}</a>{% endif %}</span>
+                        {% if ruta_cliente.horario_entrega %}<span class="hora-entrega-pactada" title="Hora de entrega pactada en el contrato">🕐 {{ ruta_cliente.horario_entrega|time:"H:i" }}</span>{% endif %}
                         {% if tiempo_llegada %}<span class="tiempo-llegada" title="Tiempo estimado desde salida">Llegada est.: {{ tiempo_llegada }}</span>{% endif %}
                         {% if ruta_cliente.entregada %}
                             <span class="entregada-badge">✓ Entregada</span>
@@ -186,8 +188,8 @@
                             <span class="registro-marcado">por {% if ruta_cliente.marcadopor_no_entrega %}{{ ruta_cliente.marcadopor_no_entrega.get_full_name|default:ruta_cliente.marcadopor_no_entrega.username }}{% else %}—{% endif %}{% if ruta_cliente.fecha_no_entrega %} el {{ ruta_cliente.fecha_no_entrega|date:"d/m/Y H:i" }}{% endif %}</span>
                             {% endif %}
                         {% else %}
-                            <button type="button" class="btn-marcar-entregada" data-pk="{{ ruta_cliente.pk }}" data-cliente="{{ ruta_cliente.contrato.cliente.nombre }}" data-codigo="{{ ruta_cliente.codigo_entrega }}" title="Marcar como entregada">Marcar entregada</button>
-                            <button type="button" class="btn-reportar-no-entrega" data-pk="{{ ruta_cliente.pk }}" data-cliente="{{ ruta_cliente.contrato.cliente.nombre }}" data-codigo="{{ ruta_cliente.codigo_entrega }}" title="Reportar que no se pudo entregar">⚠ No entregada</button>
+                            <button type="button" class="btn-marcar-entregada" data-url="{% url 'delivery:entregadia_marcar_entregada' ruta_cliente.entregador_id ruta_cliente.contrato_id fecha_str %}" data-cliente="{{ ruta_cliente.contrato.cliente.nombre }}" data-codigo="{{ ruta_cliente.codigo_entrega }}" data-row-id="{{ ruta_cliente.contrato_id }}" title="Marcar como entregada">Marcar entregada</button>
+                            <button type="button" class="btn-reportar-no-entrega" data-url="{% url 'delivery:entregadia_reportar_no_entrega' ruta_cliente.entregador_id ruta_cliente.contrato_id fecha_str %}" data-cliente="{{ ruta_cliente.contrato.cliente.nombre }}" data-codigo="{{ ruta_cliente.codigo_entrega }}" data-row-id="{{ ruta_cliente.contrato_id }}" title="Reportar que no se pudo entregar">⚠ No entregada</button>
                         {% endif %}
                     </div>
                     {% if ruta_cliente.no_entregada and ruta_cliente.motivo_no_entrega %}
@@ -231,7 +233,7 @@
     <div class="modal-recorrido-header">
         <h3 id="modal-recorrido-title">Recorrido de la ruta</h3>
         <div style="display: flex; align-items: center; gap: 8px;">
-            <button type="button" class="btn-recalcular" id="btn-recalcular-recorrido" data-ruta-id="{{ ruta.id }}" data-url="{% url 'delivery:ruta_recalcular_recorrido' ruta.id %}" aria-label="Recalcular recorrido usando el punto de partida">🔄 Recalcular recorrido</button>
+            <button type="button" class="btn-recalcular" id="btn-recalcular-recorrido" data-url="{% url 'delivery:ruta_recalcular_recorrido' fecha_str entregador.id %}" aria-label="Recalcular recorrido usando el punto de partida">🔄 Recalcular recorrido</button>
             <button type="button" class="modal-recorrido-close" id="modal-recorrido-close" aria-label="Cerrar">×</button>
         </div>
     </div>
@@ -388,6 +390,7 @@
                         mkr.addListener('click', function() {
                             var html = '<div class="mapa-recorrido-popup" style="padding:8px;min-width:200px;max-width:320px;">';
                             html += '<div style="font-weight:600;margin-bottom:6px;">' + (pt.cliente || '').replace(/</g, '&lt;') + '</div>';
+                            if (pt.hora_entrega) html += '<div style="font-size:0.9rem;color:#2e7d32;font-weight:600;margin-bottom:4px;">🕐 Hora pactada: ' + (pt.hora_entrega || '').replace(/</g, '&lt;') + '</div>';
                             if (pt.codigo_entrega) html += '<div style="font-size:0.9rem;color:#1565c0;margin-bottom:4px;">' + (pt.codigo_entrega || '').replace(/</g, '&lt;') + '</div>';
                             if (pt.direccion) html += '<div style="font-size:0.85rem;color:#555;">' + (pt.direccion || '').replace(/</g, '&lt;').replace(/\n/g, '<br>') + '</div>';
                             html += '</div>';
@@ -491,11 +494,11 @@
     var textoCodigo = document.getElementById('modal-entregada-codigo');
     var btnCancel = document.getElementById('modal-entregada-cancel');
     var btnConfirm = document.getElementById('modal-entregada-confirm');
-    var pendingPk = null;
-    var urlBase = "{% url 'delivery:ruta_cliente_marcar_entregada' pk=0 %}";
+    var pendingUrl = null;
 
-    function openModal(pk, cliente, codigo) {
-        pendingPk = pk;
+    function openModal(url, cliente, codigo, rowId) {
+        pendingUrl = url;
+        window._pendingRowId = rowId;
         if (textoCliente) textoCliente.textContent = cliente || '';
         if (textoCodigo) textoCodigo.textContent = codigo || '';
         if (overlay) overlay.style.display = 'block';
@@ -503,7 +506,8 @@
         document.body.style.overflow = 'hidden';
     }
     function closeModal() {
-        pendingPk = null;
+        pendingUrl = null;
+        window._pendingRowId = null;
         if (overlay) overlay.style.display = 'none';
         if (modal) { modal.style.display = 'none'; modal.setAttribute('aria-hidden', 'true'); }
         document.body.style.overflow = '';
@@ -520,8 +524,8 @@
             return day + '/' + month + '/' + year + ' ' + h + ':' + m;
         } catch (e) { return ''; }
     }
-    function markRowEntregada(pk, marcadopor, fechaEntrega) {
-        var row = document.querySelector('.cliente-item[data-ruta-cliente-id="' + pk + '"]');
+    function markRowEntregada(rowId, marcadopor, fechaEntrega) {
+        var row = document.querySelector('.cliente-item[data-ruta-cliente-id="' + rowId + '"]');
         if (!row) return;
         row.classList.add('entregada');
         row.classList.remove('no-entregada');
@@ -546,19 +550,19 @@
 
     document.querySelectorAll('.btn-marcar-entregada').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            var pk = this.getAttribute('data-pk');
+            var url = this.getAttribute('data-url');
             var cliente = this.getAttribute('data-cliente');
             var codigo = this.getAttribute('data-codigo');
-            openModal(pk, cliente, codigo);
+            var rowId = this.getAttribute('data-row-id');
+            openModal(url, cliente, codigo, rowId);
         });
     });
     if (btnCancel) btnCancel.addEventListener('click', closeModal);
     if (overlay) overlay.addEventListener('click', closeModal);
     if (btnConfirm) btnConfirm.addEventListener('click', function() {
-        if (!pendingPk) return;
-        var url = urlBase.replace('/0/', '/' + pendingPk + '/');
+        if (!pendingUrl) return;
         var csrf = getCookie('csrftoken');
-        fetch(url, {
+        fetch(pendingUrl, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': csrf || '',
@@ -567,7 +571,7 @@
             }
         }).then(function(r) { return r.json(); }).then(function(data) {
             if (data && data.ok) {
-                markRowEntregada(pendingPk, data.marcado_por, data.fecha_entrega);
+                markRowEntregada(window._pendingRowId, data.marcado_por, data.fecha_entrega);
                 closeModal();
             } else {
                 alert('No se pudo marcar la entrega.');
@@ -585,11 +589,11 @@
     var motivoError = document.getElementById('modal-no-entrega-motivo-error');
     var btnCancelNo = document.getElementById('modal-no-entrega-cancel');
     var btnConfirmNo = document.getElementById('modal-no-entrega-confirm');
-    var pendingPkNo = null;
-    var urlNoBase = "{% url 'delivery:ruta_cliente_reportar_no_entrega' pk=0 %}";
+    var pendingUrlNo = null;
 
-    function openModalNoEntrega(pk, cliente, codigo) {
-        pendingPkNo = pk;
+    function openModalNoEntrega(url, cliente, codigo, rowId) {
+        pendingUrlNo = url;
+        window._pendingRowIdNo = rowId;
         if (textoClienteNo) textoClienteNo.textContent = cliente || '';
         if (textoCodigoNo) textoCodigoNo.textContent = codigo || '';
         if (inputMotivo) { inputMotivo.value = ''; inputMotivo.removeAttribute('aria-invalid'); }
@@ -600,13 +604,14 @@
         if (inputMotivo) setTimeout(function() { inputMotivo.focus(); }, 100);
     }
     function closeModalNoEntrega() {
-        pendingPkNo = null;
+        pendingUrlNo = null;
+        window._pendingRowIdNo = null;
         if (overlayNo) overlayNo.style.display = 'none';
         if (modalNo) { modalNo.style.display = 'none'; modalNo.setAttribute('aria-hidden', 'true'); }
         document.body.style.overflow = '';
     }
-    function markRowNoEntregada(pk, motivo, marcadopor, fechaNoEntrega) {
-        var row = document.querySelector('.cliente-item[data-ruta-cliente-id="' + pk + '"]');
+    function markRowNoEntregada(rowId, motivo, marcadopor, fechaNoEntrega) {
+        var row = document.querySelector('.cliente-item[data-ruta-cliente-id="' + rowId + '"]');
         if (!row) return;
         row.classList.remove('entregada');
         row.classList.add('no-entregada');
@@ -635,25 +640,25 @@
 
     document.querySelectorAll('.btn-reportar-no-entrega').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            var pk = this.getAttribute('data-pk');
+            var url = this.getAttribute('data-url');
             var cliente = this.getAttribute('data-cliente');
             var codigo = this.getAttribute('data-codigo');
-            openModalNoEntrega(pk, cliente, codigo);
+            var rowId = this.getAttribute('data-row-id');
+            openModalNoEntrega(url, cliente, codigo, rowId);
         });
     });
     if (btnCancelNo) btnCancelNo.addEventListener('click', closeModalNoEntrega);
     if (overlayNo) overlayNo.addEventListener('click', closeModalNoEntrega);
     if (btnConfirmNo) btnConfirmNo.addEventListener('click', function() {
-        if (!pendingPkNo) return;
+        if (!pendingUrlNo) return;
         var motivo = inputMotivo ? inputMotivo.value.trim() : '';
         if (!motivo) {
             if (motivoError) motivoError.style.display = 'block';
             if (inputMotivo) inputMotivo.setAttribute('aria-invalid', 'true');
             return;
         }
-        var url = urlNoBase.replace('/0/', '/' + pendingPkNo + '/');
         var csrf = getCookie('csrftoken');
-        fetch(url, {
+        fetch(pendingUrlNo, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': csrf || '',
@@ -663,7 +668,7 @@
             body: JSON.stringify({ motivo: motivo })
         }).then(function(r) { return r.json(); }).then(function(data) {
             if (data && data.ok) {
-                markRowNoEntregada(pendingPkNo, motivo, data.marcado_por, data.fecha_no_entrega);
+                markRowNoEntregada(window._pendingRowIdNo, motivo, data.marcado_por, data.fecha_no_entrega);
                 closeModalNoEntrega();
             } else {
                 alert(data && data.error ? data.error : 'No se pudo registrar.');

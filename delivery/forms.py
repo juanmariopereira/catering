@@ -1,5 +1,5 @@
 from django import forms
-from routes.models import Ruta
+from routes.models import Ruta, PlantillaRuta
 from .models import PuntoPartidaEntrega
 
 
@@ -33,3 +33,11 @@ class RutaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['fecha'].input_formats = ['%Y-%m-%d']
+
+
+class PlantillaRutaForm(forms.ModelForm):
+    """Formulario para editar plantilla de ruta (entregador fijo)."""
+
+    class Meta:
+        model = PlantillaRuta
+        fields = ['activa', 'notas']

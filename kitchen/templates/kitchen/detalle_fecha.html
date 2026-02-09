@@ -88,6 +88,13 @@
         border-radius: 4px;
         letter-spacing: 0.03em;
     }
+    .hora-entrega-cocina {
+        display: inline-block;
+        margin-right: 8px;
+        font-size: 0.9rem;
+        color: #2e7d32;
+        font-weight: 600;
+    }
     .notas {
         margin-top: 20px;
         padding: 15px;
@@ -239,6 +246,7 @@
                         {% for p in item.planificaciones %}
                         <div class="cliente-item {% if p.es_sustituta %}sustituta{% endif %}">
                             {% if p.codigo_entrega %}<span class="codigo-entrega-cocina" title="Código de entrega">{{ p.codigo_entrega }}</span>{% endif %}
+                            {% if p.hora_entrega %}<span class="hora-entrega-cocina" title="Hora de entrega pactada en el contrato">🕐 {{ p.hora_entrega }}</span>{% endif %}
                             {{ p.contrato.cliente.nombre }}{% if p.es_sustituta %} (plato diferente: en lugar de «{{ p.receta_original_nombre|default:'' }}»){% endif %}
                         </div>
                         {% endfor %}

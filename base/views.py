@@ -17,7 +17,8 @@ from .audit import LogUserActionMixin
 from planning.models import PlanificacionMenu
 from billing.models import Cobro, Pago, _dias_vencimiento_por_frecuencia
 from billing.utils import obtener_cobros_vencidos, periodo_hasta_segun_frecuencia
-from routes.models import Ruta, RutaCliente
+from routes.models import Entregador
+from delivery.utils import get_paradas_ruta_fecha
 from purchases.models import PrevisionCompra
 from clients.models import Cliente
 from contracts.models import Contrato, q_filtro_estado
@@ -41,9 +42,11 @@ def dashboard(request):
         estado__in=['pendiente', 'vencida']
     ).aggregate(total=Sum('monto'))['total'] or 0
 
-    # Rutas del día
-    rutas_hoy = Ruta.objects.filter(fecha=hoy, activa=True)
-    total_rutas_hoy = rutas_hoy.count()
+    # Rutas del día (paradas por entregador; virtual desde plantilla)
+    entregadores_activos = list(Entregador.objects.filter(activo=True))
+    rutas_hoy = [{'entregador': e, 'paradas': get_paradas_ruta_fecha(e, hoy)} for e in entregadores_activos]
+    rutas_hoy = [r for r in rutas_hoy if r['paradas']]
+    total_rutas_hoy = len(rutas_hoy)
 
     # Previsiones recientes (últimos 7 días)
     hace_7_dias = hoy - timedelta(days=7)
@@ -85,7 +88,7 @@ def dashboard(request):
         dias_revisados += 1
 
     # Entregas (paradas) del día
-    total_entregas_hoy = RutaCliente.objects.filter(ruta__fecha=hoy).count()
+    total_entregas_hoy = sum(len(r['paradas']) for r in rutas_hoy)
 
     # Recetas activas en catálogo
     recetas_activas = Receta.objects.filter(activa=True).count()

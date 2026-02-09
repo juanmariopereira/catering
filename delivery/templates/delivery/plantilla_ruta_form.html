@@ -1,0 +1,136 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Editar plantilla de ruta - {{ plantilla.entregador.nombre }} - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Producción</span>
+<span class="sep">/</span>
+<a href="{% url 'delivery:lista' %}">Entregas</a>
+<span class="sep">/</span>
+<span>Plantilla {{ plantilla.entregador.nombre }}</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    .btn:hover { background-color: {{ brand_color_hover }}; }
+    .btn-secondary { background-color: #6c757d; }
+    .form-layout .form-group.checkbox-group label { font-weight: normal; margin-left: 8px; }
+    .clientes-section { margin-top: 30px; padding-top: 20px; border-top: 2px solid {{ brand_color }}; }
+    .clientes-section h2 { margin-bottom: 15px; }
+    .formset-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .formset-table th, .formset-table td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+    .formset-table th { background-color: #e8f5e9; }
+    .formset-table .drag-cell { width: 36px; cursor: grab; }
+    .formset-table .drag-handle { color: #999; }
+    .formset-table .orden-input-wrap { display: none; }
+    .aviso-sin-coordenadas { font-size: 0.8rem; color: #e65100; margin-left: 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Plantilla de ruta — {{ plantilla.entregador.nombre }}</h1>
+    <p style="color: #666;">Define los clientes que lleva este entregador y su orden. La ruta del día se calcula automáticamente (solo aparecen los activos ese día y con entrega ese día).</p>
+
+    <form id="plantilla-form" method="post" class="form-layout">
+        {% csrf_token %}
+        <div class="form-row form-row-1">
+            <div class="form-group checkbox-group">
+                <label for="{{ form.activa.id_for_label }}">{{ form.activa }} {{ form.activa.label }}</label>
+            </div>
+        </div>
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.notas.id_for_label }}">{{ form.notas.label }}</label>
+                {{ form.notas }}
+            </div>
+        </div>
+
+        {% if formset %}
+        <div class="clientes-section">
+            <h2>Clientes en la plantilla (orden de entrega)</h2>
+            <p>Arrastre las filas para cambiar el orden. Marque "Eliminar" para quitar un cliente de esta plantilla.</p>
+            <p style="margin-bottom: 12px;">
+                <a href="{% url 'delivery:ruta_cargar_ultima' plantilla.entregador_id %}" class="btn btn-secondary">Cargar clientes de la última ruta de {{ plantilla.entregador.nombre }}</a>
+                <form method="post" action="{% url 'delivery:ruta_calcular_orden' plantilla.entregador_id %}" style="display: inline-block; margin-left: 12px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="fecha" value="{{ request.GET.fecha|default:'' }}">
+                    <button type="submit" class="btn" style="background-color: #2196F3;">Calcular orden óptimo (hoy)</button>
+                </form>
+            </p>
+            {{ formset.management_form }}
+            <table class="formset-table">
+                <thead>
+                    <tr>
+                        <th class="drag-cell" title="Arrastrar para reordenar"></th>
+                        <th>Contrato (Cliente)</th>
+                        <th class="delete">Eliminar</th>
+                    </tr>
+                </thead>
+                <tbody id="plantilla-formset-body">
+                    {% for f in formset %}
+                    <tr class="formset-row">
+                        <td class="drag-cell"><span class="drag-handle">⋮⋮</span><span class="orden-input-wrap">{{ f.orden_entrega }}</span></td>
+                        <td>{{ f.id }}{{ f.contrato }}{% if f.initial.contrato and f.initial.contrato in contratos_sin_coordenadas %}<span class="aviso-sin-coordenadas">⚠ Sin coordenadas</span>{% endif %}</td>
+                        <td class="delete">{% if f.DELETE %}{{ f.DELETE }}{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr id="plantilla-empty-form-row" style="display: none;">
+                        <td class="drag-cell"><span class="drag-handle">⋮⋮</span><span class="orden-input-wrap">{{ formset.empty_form.orden_entrega }}</span></td>
+                        <td>{{ formset.empty_form.id }}{{ formset.empty_form.contrato }}</td>
+                        <td class="delete">{% if formset.empty_form.DELETE %}{{ formset.empty_form.DELETE }}{% endif %}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p style="margin-top: 10px;"><button type="button" class="btn btn-secondary" id="plantilla-add-row">Añadir fila</button></p>
+        </div>
+        {% endif %}
+    </form>
+    <div class="form-actions">
+        <button form="plantilla-form" type="submit" class="btn">Guardar</button>
+        <a href="{% url 'delivery:ruta_fecha_entregador' fecha_seleccionada|date:'Y-m-d' plantilla.entregador_id %}" class="btn btn-secondary">Ver ruta del día (hoy)</a>
+        <a href="{% url 'delivery:lista' %}" class="btn btn-secondary">Cancelar</a>
+    </div>
+</div>
+{% if formset %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+(function() {
+    var tbody = document.getElementById('plantilla-formset-body');
+    if (!tbody || typeof Sortable === 'undefined') return;
+    function renumberOrden() {
+        var rows = tbody.querySelectorAll('tr.formset-row');
+        rows.forEach(function(tr, idx) {
+            var input = tr.querySelector('input[name$="-orden_entrega"]');
+            if (input) input.value = idx + 1;
+        });
+    }
+    new Sortable(tbody, { animation: 150, handle: '.drag-handle', onEnd: renumberOrden });
+})();
+(function() {
+    var container = document.querySelector('.clientes-section');
+    if (!container) return;
+    var tbody = document.getElementById('plantilla-formset-body');
+    var emptyRow = document.getElementById('plantilla-empty-form-row');
+    var totalInput = container.querySelector('input[name$="-TOTAL_FORMS"]');
+    var addBtn = document.getElementById('plantilla-add-row');
+    if (!tbody || !emptyRow || !totalInput || !addBtn) return;
+    addBtn.addEventListener('click', function() {
+        var total = parseInt(totalInput.value, 10);
+        var newRow = emptyRow.cloneNode(true);
+        newRow.id = ''; newRow.style.display = ''; newRow.classList.add('formset-row');
+        newRow.innerHTML = newRow.innerHTML.replace(/__prefix__/g, String(total));
+        var ordenInput = newRow.querySelector('input[name$="-orden_entrega"]');
+        if (ordenInput) ordenInput.value = total + 1;
+        tbody.insertBefore(newRow, emptyRow);
+        totalInput.value = total + 1;
+    });
+})();
+</script>
+{% endblock %}
+{% endif %}
+{% endblock %}

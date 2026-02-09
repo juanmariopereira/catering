@@ -282,6 +282,187 @@ def optimizar_orden_entregas(ruta, request=None):
     return result
 
 
+def optimizar_orden_entregas_plantilla(entregador, fecha, request=None):
+    """
+    Optimiza el orden de entregas de la plantilla del entregador para la fecha dada.
+    Usa get_paradas_ruta_fecha para obtener las paradas del día, llama a la API y actualiza
+    PlantillaRutaCliente.orden_entrega y PlantillaRuta.duracion_legs_segundos.
+    Devuelve el mismo formato que optimizar_orden_entregas.
+    """
+    from delivery.utils import get_paradas_ruta_fecha
+    from routes.models import PlantillaRuta
+
+    plantilla = getattr(entregador, 'plantilla_ruta', None)
+    if not plantilla:
+        return {'optimizados': 0, 'sin_coordenadas': 0}
+    paradas = get_paradas_ruta_fecha(entregador, fecha)
+    ruta_clientes = [prc for prc, _ in paradas]
+    if not ruta_clientes:
+        return {'optimizados': 0, 'sin_coordenadas': 0}
+
+    # Mismo flujo que optimizar_orden_entregas pero con prc (PlantillaRutaCliente) y plantilla
+    api_key = getattr(settings, 'GOOGLE_MAPS_API_KEY', None) or ''
+    if not api_key.strip():
+        logger.warning('GOOGLE_MAPS_API_KEY no configurada; se omite optimización.')
+        _log_directions_skipped(plantilla, 'API key no configurada', request=request)
+        return {'optimizados': 0, 'sin_coordenadas': 0, 'error': 'API key no configurada'}
+
+    con_coords = []
+    sin_coords = []
+    for rc in ruta_clientes:
+        c = rc.contrato
+        if c.latitud is not None and c.longitud is not None:
+            con_coords.append((rc, float(c.latitud), float(c.longitud)))
+        else:
+            sin_coords.append(rc)
+
+    result = {'optimizados': 0, 'sin_coordenadas': len(sin_coords)}
+
+    if len(con_coords) < 2:
+        _log_directions_skipped(
+            plantilla,
+            f'Waypoints insuficientes (con coordenadas: {len(con_coords)})',
+            request=request,
+        )
+        return result
+
+    punto_partida = _get_punto_partida_activo()
+    if punto_partida is not None:
+        origin_str = f'{float(punto_partida.latitud)},{float(punto_partida.longitud)}'
+        depot_str = origin_str
+    else:
+        origin_str = f'{con_coords[0][1]},{con_coords[0][2]}'
+        depot_str = origin_str
+
+    n = len(con_coords)
+    chunks = []
+    i = 0
+    current_origin = origin_str
+    while i < n:
+        if i + MAX_WAYPOINTS_PER_REQUEST < n:
+            waypoints_chunk = con_coords[i:i + MAX_WAYPOINTS_PER_REQUEST]
+            link_point = con_coords[i + MAX_WAYPOINTS_PER_REQUEST]
+            dest_str = f'{link_point[1]},{link_point[2]}'
+            chunks.append((current_origin, waypoints_chunk, dest_str, link_point[0]))
+            current_origin = dest_str
+            i += MAX_WAYPOINTS_PER_REQUEST + 1
+        else:
+            waypoints_chunk = con_coords[i:]
+            chunks.append((current_origin, waypoints_chunk, depot_str, None))
+            break
+
+    all_legs_sec = []
+    ordered_rcs = []
+    total_duracion_ms = 0
+    request_extra_base = f'waypoints_count={len(con_coords)};chunks={len(chunks)};plantilla'
+    if punto_partida:
+        request_extra_base += ';origin=punto_partida'
+
+    for chunk_idx, (orig, waypoints_chunk, dest, link_rc) in enumerate(chunks):
+        waypoints_str = 'optimize:true|' + '|'.join(
+            f'{lat},{lng}' for _, lat, lng in waypoints_chunk
+        )
+        params = {
+            'origin': orig,
+            'destination': dest,
+            'waypoints': waypoints_str,
+            'key': api_key,
+        }
+        request_params_safe = {k: ('***' if k == 'key' else v) for k, v in params.items()}
+        request_extra = f'{request_extra_base};chunk={chunk_idx + 1}/{len(chunks)}'
+        url = f'{DIRECTIONS_URL}?{urlencode(params)}'
+
+        t0 = time.perf_counter()
+        try:
+            with urlopen(url, timeout=30) as resp:
+                data = json.loads(resp.read().decode())
+        except Exception as e:
+            total_duracion_ms += int((time.perf_counter() - t0) * 1000)
+            logger.exception('Error llamando a Google Directions API (chunk %s)', chunk_idx + 1)
+            result['error'] = str(e)
+            _log_directions_request(
+                plantilla, request_params_safe, request_extra,
+                response_status='ERROR', response_body={'exception': str(e)},
+                exito=False, mensaje_error=str(e), duracion_ms=int((time.perf_counter() - t0) * 1000), request=request,
+            )
+            return result
+        chunk_duracion_ms = int((time.perf_counter() - t0) * 1000)
+        total_duracion_ms += chunk_duracion_ms
+
+        response_status = data.get('status') or ''
+        response_body_log = {
+            'status': response_status,
+            'waypoint_order': data.get('routes', [{}])[0].get('waypoint_order') if data.get('routes') else None,
+            'routes_count': len(data.get('routes') or []),
+        }
+        if response_status != 'OK':
+            error_msg = data.get('error_message') or response_status or 'Unknown error'
+            result['error'] = error_msg
+            _log_directions_request(
+                plantilla, request_params_safe, request_extra,
+                response_status=response_status, response_body=response_body_log,
+                exito=False, mensaje_error=error_msg, duracion_ms=chunk_duracion_ms, request=request,
+            )
+            return result
+
+        routes = data.get('routes') or []
+        if not routes:
+            result['error'] = 'La API no devolvió rutas'
+            _log_directions_request(
+                plantilla, request_params_safe, request_extra,
+                response_status=response_status, response_body=response_body_log,
+                exito=False, mensaje_error='La API no devolvió rutas', duracion_ms=chunk_duracion_ms, request=request,
+            )
+            return result
+
+        waypoint_order = routes[0].get('waypoint_order')
+        if waypoint_order is not None:
+            for idx in waypoint_order:
+                ordered_rcs.append(waypoints_chunk[idx][0])
+        else:
+            for wc in waypoints_chunk:
+                ordered_rcs.append(wc[0])
+        if link_rc is not None:
+            ordered_rcs.append(link_rc)
+
+        legs = routes[0].get('legs') or []
+        for leg in legs:
+            dur = leg.get('duration') if isinstance(leg, dict) else None
+            if isinstance(dur, dict) and 'value' in dur:
+                all_legs_sec.append(int(dur['value']))
+            else:
+                all_legs_sec.append(0)
+
+    orden_nuevo = 1
+    for rc in ordered_rcs:
+        if rc is not None:
+            rc.orden_entrega = orden_nuevo
+            rc.save(update_fields=['orden_entrega'])
+            orden_nuevo += 1
+    max_orden = orden_nuevo - 1
+    for rc in sin_coords:
+        max_orden += 1
+        rc.orden_entrega = max_orden
+        rc.save(update_fields=['orden_entrega'])
+
+    plantilla.duracion_legs_segundos = all_legs_sec
+    plantilla.save(update_fields=['duracion_legs_segundos'])
+
+    result['optimizados'] = len(con_coords)
+    response_body_log = {
+        'status': 'OK',
+        'waypoint_order': f'{len(chunks)} chunks',
+        'geocoded_waypoints_count': n,
+    }
+    _log_directions_request(
+        plantilla, {'waypoints_count': len(con_coords), 'chunks': len(chunks), 'key': '***'},
+        request_extra_base,
+        response_status='OK', response_body=response_body_log,
+        exito=True, mensaje_error='', duracion_ms=total_duracion_ms, request=request,
+    )
+    return result
+
+
 def get_geometria_ruta_calles(puntos):
     """
     Obtiene la geometría del recorrido por calles (no línea recta) para una lista

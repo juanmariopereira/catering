@@ -87,12 +87,12 @@ def composicion_por_fecha(request):
         ).select_related('receta_sustituta')
     }
 
-    # Código único de entrega por contrato (RutaCliente para esta fecha)
-    from routes.models import RutaCliente
+    # Código de entrega por contrato (desde plantilla; solo contratos en ruta ese día)
+    from delivery.utils import contratos_en_ruta_fecha
+    from routes.models import PlantillaRutaCliente
+    ids_en_ruta = contratos_en_ruta_fecha(fecha) & set(contratos.values_list('pk', flat=True))
     codigos_entrega = dict(
-        RutaCliente.objects.filter(
-            ruta__fecha=fecha, contrato__in=contratos
-        ).values_list('contrato_id', 'codigo_entrega')
+        PlantillaRutaCliente.objects.filter(contrato_id__in=ids_en_ruta).values_list('contrato_id', 'codigo_entrega')
     )
 
     filas = []
@@ -108,6 +108,8 @@ def composicion_por_fecha(request):
                     'receta': receta_final,
                     'es_sustituta': es_sustituta,
                 })
+        # Hora de entrega pactada en el contrato
+        hora_entrega = (c.horario_entrega.strftime('%H:%M') if c.horario_entrega and hasattr(c.horario_entrega, 'strftime') else '')
         filas.append({
             'contrato': c,
             'cliente': c.cliente,
@@ -115,6 +117,7 @@ def composicion_por_fecha(request):
             'menu': menu,
             'composicion': composicion,
             'codigo_entrega': codigos_entrega.get(c.id) or '',
+            'hora_entrega': hora_entrega,
         })
 
     # Filtro por tipo de comida: solo filas que incluyen esa comida; opcionalmente mostrar solo esa fila en la tabla

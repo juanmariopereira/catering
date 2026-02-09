@@ -172,3 +172,143 @@ class RutaCliente(models.Model):
 
     def __str__(self):
         return f"{self.ruta} - {self.contrato.cliente.nombre} (Orden: {self.orden_entrega})"
+
+
+class PlantillaRuta(models.Model):
+    """
+    Plantilla de ruta por entregador: define qué contratos lleva cada entregador y en qué orden.
+    La "ruta del día" se obtiene filtrando por activo_en_fecha(fecha) y dias_entrega.
+    Una sola fila por entregador.
+    """
+    entregador = models.OneToOneField(
+        Entregador,
+        on_delete=models.CASCADE,
+        related_name='plantilla_ruta',
+        verbose_name="Entregador",
+    )
+    activa = models.BooleanField(default=True, verbose_name="Activa")
+    notas = models.TextField(blank=True, null=True, verbose_name="Notas")
+    duracion_legs_segundos = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Duración por tramo (seg)",
+        help_text="Lista de duraciones en segundos por tramo (desde API Directions).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Plantilla de ruta"
+        verbose_name_plural = "Plantillas de ruta"
+        ordering = ['entregador__nombre']
+
+    def __str__(self):
+        return f"Plantilla - {self.entregador.nombre}"
+
+
+class PlantillaRutaCliente(models.Model):
+    """Asignación contrato → plantilla de entregador con orden de entrega."""
+    codigo_entrega = models.CharField(
+        max_length=20,
+        unique=True,
+        blank=True,
+        verbose_name="Código de entrega",
+        help_text="Identificador único corto para esta parada",
+    )
+    plantilla_ruta = models.ForeignKey(
+        PlantillaRuta,
+        on_delete=models.CASCADE,
+        related_name='clientes',
+        verbose_name="Plantilla",
+    )
+    contrato = models.ForeignKey(
+        'contracts.Contrato',
+        on_delete=models.CASCADE,
+        related_name='plantilla_rutas',
+        verbose_name="Contrato",
+    )
+    orden_entrega = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)],
+        verbose_name="Orden de entrega",
+        help_text="Orden en que se realizará la entrega (mismo orden todos los días en que aplique)",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Cliente en plantilla"
+        verbose_name_plural = "Clientes en plantilla"
+        unique_together = ['plantilla_ruta', 'contrato']
+        ordering = ['plantilla_ruta', 'orden_entrega']
+
+    def save(self, *args, **kwargs):
+        if not self.codigo_entrega:
+            self.codigo_entrega = self._generar_codigo_unico()
+        super().save(*args, **kwargs)
+
+    def _generar_codigo_unico(self):
+        for length in range(4, 13):
+            for _ in range(100):
+                codigo = uuid.uuid4().hex[:length].upper()
+                if not PlantillaRutaCliente.objects.filter(codigo_entrega=codigo).exists():
+                    return codigo
+        return uuid.uuid4().hex[:12].upper()
+
+    def __str__(self):
+        return f"{self.plantilla_ruta} - {self.contrato.cliente.nombre} (#{self.orden_entrega})"
+
+
+class EntregaDia(models.Model):
+    """
+    Estado de entrega de un contrato en una fecha para un entregador (entregada, no entregada, etc.).
+    La lista de paradas del día se calcula desde PlantillaRutaCliente filtrada por fecha;
+    este modelo solo guarda el estado del día.
+    """
+    entregador = models.ForeignKey(
+        Entregador,
+        on_delete=models.CASCADE,
+        related_name='entregas_dia',
+        verbose_name="Entregador",
+    )
+    contrato = models.ForeignKey(
+        'contracts.Contrato',
+        on_delete=models.CASCADE,
+        related_name='entregas_dia',
+        verbose_name="Contrato",
+    )
+    fecha = models.DateField(verbose_name="Fecha")
+    entregada = models.BooleanField(
+        default=False,
+        verbose_name="Entregada",
+    )
+    fecha_entrega = models.DateTimeField(null=True, blank=True, verbose_name="Fecha/hora entrega")
+    marcadopor_entregada = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='entregas_dia_marcadas',
+        verbose_name="Marcado entregada por",
+    )
+    no_entregada = models.BooleanField(default=False, verbose_name="No entregada")
+    motivo_no_entrega = models.TextField(blank=True, default='', verbose_name="Motivo no entrega")
+    fecha_no_entrega = models.DateTimeField(null=True, blank=True, verbose_name="Fecha/hora reporte no entrega")
+    marcadopor_no_entrega = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='entregas_dia_no_entregada',
+        verbose_name="Reportado no entrega por",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Entrega del día"
+        verbose_name_plural = "Entregas del día"
+        unique_together = ['entregador', 'contrato', 'fecha']
+        ordering = ['fecha', 'entregador', 'contrato']
+
+    def __str__(self):
+        return f"{self.fecha} {self.entregador.nombre} - {self.contrato.cliente.nombre}"

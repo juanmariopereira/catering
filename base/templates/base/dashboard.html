@@ -320,7 +320,7 @@
                     {% for ruta in rutas_hoy %}
                         <li>
                             <strong>{{ ruta.entregador.nombre }}</strong><br>
-                            {{ ruta.ruta_clientes.count|separador_miles }} entregas
+                            {{ ruta.paradas|length|separador_miles }} entregas
                         </li>
                     {% endfor %}
                 </ul>

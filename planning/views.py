@@ -27,7 +27,7 @@ from django.views.decorators.http import require_http_methods
 
 from contracts.models import Contrato, contratos_activos_en_fecha
 from base.models import es_feriado, get_feriado
-from routes.models import RutaCliente
+from delivery.utils import contratos_en_ruta_fecha
 from diets.models import TipoComida
 from plans.models import Plan
 from recipes.models import Receta
@@ -143,10 +143,8 @@ def clientes_reciben_fecha(request):
     }
     contratos_fecha = contratos_activos_en_fecha(fecha).select_related('plan', 'cliente')
 
-    # Contratos que ya tienen repartidor (ruta) asignada para esta fecha
-    contrato_ids_con_ruta = set(
-        RutaCliente.objects.filter(ruta__fecha=fecha).values_list('contrato_id', flat=True)
-    )
+    # Contratos que ya tienen repartidor (plantilla) y entrega ese día
+    contrato_ids_con_ruta = contratos_en_ruta_fecha(fecha)
 
     filas = []
     for c in contratos_fecha:
@@ -200,9 +198,7 @@ def contratos_sin_entregador_fecha(request):
         for pm in PlanificacionMenu.objects.filter(fecha=fecha).select_related('plan')
     }
     contratos_fecha = contratos_activos_en_fecha(fecha).select_related('plan', 'cliente')
-    contrato_ids_con_ruta = set(
-        RutaCliente.objects.filter(ruta__fecha=fecha).values_list('contrato_id', flat=True)
-    )
+    contrato_ids_con_ruta = contratos_en_ruta_fecha(fecha)
     filas_sin_entregador = []
     for c in contratos_fecha:
         if c.plan_id not in menus_por_plan or c.id in contrato_ids_con_ruta:

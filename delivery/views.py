@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, TemplateView
 from django.urls import reverse_lazy, reverse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
@@ -11,98 +11,62 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 from base.models import es_feriado
-from routes.models import Ruta, RutaCliente, Entregador
+from routes.models import (
+    Ruta, RutaCliente, Entregador,
+    PlantillaRuta, PlantillaRutaCliente, EntregaDia,
+)
 from contracts.models import Contrato, q_filtro_estado, contratos_activos_en_fecha
-from .forms import RutaForm, PuntoPartidaEntregaForm
+from .forms import PuntoPartidaEntregaForm, PlantillaRutaForm
 from .models import PuntoPartidaEntrega
 from .utils import (
     contratos_con_entrega_en_fecha,
     contratos_sin_ruta_en_fecha,
+    get_paradas_ruta_fecha,
+    RutaClienteDia,
 )
-from .services.google_maps_ruta import optimizar_orden_entregas, get_geometria_ruta_calles
+from .services.google_maps_ruta import optimizar_orden_entregas_plantilla, get_geometria_ruta_calles
 
 
-BaseRutaClienteFormSet = inlineformset_factory(
-    Ruta,
-    RutaCliente,
+BasePlantillaRutaClienteFormSet = inlineformset_factory(
+    PlantillaRuta,
+    PlantillaRutaCliente,
     fields=['contrato', 'orden_entrega'],
     extra=0,
     can_delete=True,
 )
 
 
-class RutaClienteFormSet(BaseRutaClienteFormSet):
-    """
-    Formset que limita el select de contratos a: activos en la fecha con entrega ese día,
-    que no estén asignados a otro entregador ese día, más los ya en esta ruta.
-    Usa contratos_con_entrega_en_fecha para reducir el tamaño del queryset (solo los que tienen entrega ese día).
-    """
+class PlantillaRutaClienteFormSet(BasePlantillaRutaClienteFormSet):
+    """Formset para clientes de la plantilla; contrato puede ser cualquier contrato (no duplicado en otras plantillas)."""
     def __init__(self, *args, **kwargs):
         instance = kwargs.get('instance')
-        if instance and instance.pk and getattr(instance, 'fecha', None):
-            fecha = instance.fecha
-            # Contratos que ya están en esta ruta (siempre opciones válidas para no romper filas existentes)
-            ids_en_esta_ruta = set(
-                instance.ruta_clientes.values_list('contrato_id', flat=True)
+        if instance and instance.pk:
+            # Contratos ya en esta plantilla
+            ids_en_plantilla = set(
+                instance.clientes.values_list('contrato_id', flat=True)
             )
-            # Solo contratos con entrega ese día (menos filas que contratos_activos_en_fecha)
-            activos = contratos_con_entrega_en_fecha(fecha).select_related('cliente', 'plan')
-            # Contratos asignados a otra ruta (otro entregador) en la misma fecha
-            ya_otra_ruta = set(
-                RutaCliente.objects.filter(ruta__fecha=fecha)
-                .exclude(ruta_id=instance.pk)
-                .values_list('contrato_id', flat=True)
-            )
-            disponibles = activos.exclude(pk__in=ya_otra_ruta)
-            # Incluir siempre los que ya están en esta ruta para que no salga "obligatorio" / invalid choice
-            if ids_en_esta_ruta:
-                ids_disponibles = set(disponibles.values_list('pk', flat=True))
-                todos_los_ids = ids_disponibles | ids_en_esta_ruta
-                qs = Contrato.objects.filter(pk__in=todos_los_ids).select_related('cliente', 'plan')
-            else:
-                qs = disponibles
-            # Primero los que no tienen ruta asignada, luego por nombre de cliente
+            # Todos los contratos (o al menos los activos recientes) para elegir
+            disponibles = Contrato.objects.select_related('cliente', 'plan').order_by('cliente__nombre')
             ids_sin_ruta = set(
-                contratos_sin_ruta_en_fecha(fecha).values_list('pk', flat=True)
+                contratos_sin_ruta_en_fecha(timezone.now().date()).values_list('pk', flat=True)
             )
-            qs = qs.annotate(
+            disponibles = disponibles.annotate(
                 sin_ruta=Case(
                     When(pk__in=ids_sin_ruta, then=Value(1)),
                     default=Value(0),
                     output_field=IntegerField(),
                 )
             ).order_by('-sin_ruta', 'cliente__nombre')
-            self.form.base_fields['contrato'].queryset = qs
+            self.form.base_fields['contrato'].queryset = disponibles
         super().__init__(*args, **kwargs)
 
 
-class RutaListView(LoginRequiredMixin, ListView):
-    """Vista para listar rutas de entrega"""
-    model = Ruta
+class RutaListView(LoginRequiredMixin, TemplateView):
+    """Lista de rutas del día por entregador (paradas calculadas desde plantilla + fecha)."""
     template_name = 'delivery/ruta_lista.html'
-    context_object_name = 'rutas'
-    paginate_by = 30
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        fecha_param = self.request.GET.get('fecha')
-        fecha = timezone.now().date()
-        if fecha_param:
-            try:
-                fecha = date.fromisoformat(fecha_param)
-            except ValueError:
-                pass
-        queryset = queryset.filter(fecha=fecha)
-
-        entregador_id = self.request.GET.get('entregador')
-        if entregador_id:
-            queryset = queryset.filter(entregador_id=entregador_id)
-
-        return queryset.order_by('-fecha', 'entregador')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['entregadores'] = Entregador.objects.filter(activo=True).order_by('nombre')
         fecha_param = self.request.GET.get('fecha')
         fecha = timezone.now().date()
         if fecha_param:
@@ -110,8 +74,23 @@ class RutaListView(LoginRequiredMixin, ListView):
                 fecha = date.fromisoformat(fecha_param)
             except ValueError:
                 pass
+        entregadores = list(Entregador.objects.filter(activo=True).order_by('nombre'))
+        entregador_id = self.request.GET.get('entregador')
+        if entregador_id:
+            entregadores = [e for e in entregadores if e.pk == int(entregador_id)]
+        rutas = []
+        for e in entregadores:
+            paradas = get_paradas_ruta_fecha(e, fecha)
+            rutas.append({
+                'entregador': e,
+                'paradas': paradas,
+                'cantidad': len(paradas),
+                'fecha': fecha,
+            })
         sin_ruta = list(contratos_sin_ruta_en_fecha(fecha))
         con_entrega = contratos_con_entrega_en_fecha(fecha).count()
+        context['rutas'] = rutas
+        context['entregadores'] = Entregador.objects.filter(activo=True).order_by('nombre')
         context['fecha_seleccionada'] = fecha
         context['contratos_sin_ruta'] = sin_ruta
         context['total_con_entrega'] = con_entrega
@@ -120,30 +99,25 @@ class RutaListView(LoginRequiredMixin, ListView):
         return context
 
 
-class RutaCreateView(LoginRequiredMixin, CreateView):
-    """Vista para crear una ruta (luego se edita para agregar clientes)."""
-    model = Ruta
-    form_class = RutaForm
-    template_name = 'delivery/ruta_form.html'
-    context_object_name = 'ruta'
-
-    def get_success_url(self):
-        return reverse('delivery:ruta_editar', args=[self.object.pk])
-
-    def form_valid(self, form):
-        messages.success(self.request, 'Ruta creada. Agregue los clientes a continuación.')
-        return super().form_valid(form)
+def _get_or_create_plantilla(entregador):
+    """Obtiene o crea la plantilla de ruta para un entregador."""
+    plantilla, _ = PlantillaRuta.objects.get_or_create(
+        entregador=entregador,
+        defaults={'activa': True},
+    )
+    return plantilla
 
 
-class RutaUpdateView(LoginRequiredMixin, UpdateView):
-    """Vista para editar ruta y sus clientes (orden de entrega)."""
-    model = Ruta
-    form_class = RutaForm
-    template_name = 'delivery/ruta_form.html'
-    context_object_name = 'ruta'
+class PlantillaRutaUpdateView(LoginRequiredMixin, UpdateView):
+    """Editar plantilla de ruta de un entregador (contratos y orden)."""
+    model = PlantillaRuta
+    form_class = PlantillaRutaForm
+    template_name = 'delivery/plantilla_ruta_form.html'
+    context_object_name = 'plantilla'
 
-    def get_queryset(self):
-        return Ruta.objects.select_related('entregador').prefetch_related('ruta_clientes')
+    def get_object(self, queryset=None):
+        entregador = get_object_or_404(Entregador, pk=self.kwargs['entregador_id'])
+        return _get_or_create_plantilla(entregador)
 
     def get_success_url(self):
         return reverse('delivery:lista')
@@ -151,87 +125,57 @@ class RutaUpdateView(LoginRequiredMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         if self.request.POST:
-            context['formset'] = RutaClienteFormSet(
+            context['formset'] = PlantillaRutaClienteFormSet(
                 self.request.POST, instance=self.object
             )
         else:
-            context['formset'] = RutaClienteFormSet(instance=self.object)
-        # Contratos sin coordenadas (para mostrar aviso en cada fila del formset)
-        if self.object and self.object.pk and getattr(self.object, 'fecha', None):
-            ids_en_ruta = set(
-                self.object.ruta_clientes.values_list('contrato_id', flat=True)
-            )
-            ids_disponibles = set(
-                contratos_con_entrega_en_fecha(self.object.fecha).values_list('pk', flat=True)
-            )
-            contract_ids = ids_en_ruta | ids_disponibles
-            context['contratos_sin_coordenadas'] = set(
-                Contrato.objects.filter(pk__in=contract_ids).filter(
-                    Q(latitud__isnull=True) | Q(longitud__isnull=True)
-                ).values_list('pk', flat=True)
-            )
-        else:
-            context['contratos_sin_coordenadas'] = set()
+            context['formset'] = PlantillaRutaClienteFormSet(instance=self.object)
+        contract_ids = set(
+            self.object.clientes.values_list('contrato_id', flat=True)
+        )
+        context['contratos_sin_coordenadas'] = set(
+            Contrato.objects.filter(pk__in=contract_ids).filter(
+                Q(latitud__isnull=True) | Q(longitud__isnull=True)
+            ).values_list('pk', flat=True)
+        ) if contract_ids else set()
+        context['fecha_seleccionada'] = timezone.now().date()
         return context
 
     def form_valid(self, form):
         self.object = form.save()
-        formset = RutaClienteFormSet(self.request.POST, instance=self.object)
+        formset = PlantillaRutaClienteFormSet(self.request.POST, instance=self.object)
         if formset.is_valid():
             formset.save()
-            messages.success(self.request, 'Ruta y clientes guardados correctamente.')
+            messages.success(self.request, 'Plantilla de ruta guardada correctamente.')
             return redirect(self.get_success_url())
         return self.render_to_response(
             self.get_context_data(form=form, formset=formset)
         )
 
 
-class RutaDeleteView(LoginRequiredMixin, DeleteView):
-    model = Ruta
-    template_name = 'delivery/ruta_confirm_delete.html'
-    context_object_name = 'ruta'
-    success_url = reverse_lazy('delivery:lista')
-
-    def form_valid(self, form):
-        messages.success(self.request, 'Ruta eliminada.')
-        return super().form_valid(form)
-
-
-def _get_or_create_ruta(fecha, entregador):
-    """Obtiene o crea la ruta para fecha + entregador."""
-    ruta, _ = Ruta.objects.get_or_create(
-        fecha=fecha,
-        entregador=entregador,
-        defaults={'activa': True},
-    )
-    return ruta
-
-
-def _asignar_contratos_a_rutas(fecha, contratos_ids, rutas):
+def _asignar_contratos_a_plantillas(contratos_ids, plantillas):
     """
-    Asigna los contratos (por id) a las rutas existentes, repartiendo en round-robin.
-    rutas: lista de Ruta para esa fecha (orden estable).
+    Asigna los contratos (por id) a las plantillas existentes, repartiendo en round-robin.
     Modifica la BD; devuelve cuántos se asignaron.
     """
-    if not rutas or not contratos_ids:
+    if not plantillas or not contratos_ids:
         return 0
     ya_asignados = set(
-        RutaCliente.objects.filter(ruta__fecha=fecha).values_list('contrato_id', flat=True)
+        PlantillaRutaCliente.objects.values_list('contrato_id', flat=True)
     )
     pendientes = [cid for cid in contratos_ids if cid not in ya_asignados]
     if not pendientes:
         return 0
-    # Orden de rutas por (cantidad actual ascendente) para equilibrar
-    counts = {r.id: r.ruta_clientes.count() for r in rutas}
-    orden_rutas = sorted(rutas, key=lambda r: (counts[r.id], r.entregador.nombre))
+    counts = {p.id: p.clientes.count() for p in plantillas}
+    orden_plantillas = sorted(plantillas, key=lambda p: (counts[p.id], p.entregador.nombre))
     asignados = 0
     for i, contrato_id in enumerate(pendientes):
-        ruta = orden_rutas[i % len(orden_rutas)]
-        max_orden = ruta.ruta_clientes.aggregate(m=Max('orden_entrega'))['m'] or 0
-        RutaCliente.objects.create(
-            ruta=ruta,
+        plantilla = orden_plantillas[i % len(orden_plantillas)]
+        max_orden = plantilla.clientes.aggregate(m=Max('orden_entrega'))['m'] or 0
+        PlantillaRutaCliente.objects.get_or_create(
+            plantilla_ruta=plantilla,
             contrato_id=contrato_id,
-            orden_entrega=max_orden + 1,
+            defaults={'orden_entrega': max_orden + 1},
         )
         asignados += 1
     return asignados
@@ -240,13 +184,10 @@ def _asignar_contratos_a_rutas(fecha, contratos_ids, rutas):
 @login_required
 def generar_rutas(request):
     """
-    Genera rutas para una fecha a partir de la configuración de una fecha anterior
-    (mismo entregador → mismos contratos que sigan activos y con entrega ese día).
-    Si hay contratos sin asignar (nuevos o que no estaban en la fecha origen),
-    se reparten entre las rutas existentes.
+    Asegura plantillas por entregador y asigna contratos pendientes a plantillas (round-robin).
+    Opcional: copiar desde fecha origen (Ruta antigua) a plantillas.
     """
     if request.method != 'POST':
-        # GET: formulario con fecha (mañana) y fecha_origen (última fecha con rutas)
         manana = timezone.now().date() + timedelta(days=1)
         ultima_ruta = Ruta.objects.order_by('-fecha').values_list('fecha', flat=True).first()
         return render(request, 'delivery/generar_rutas_form.html', {
@@ -258,7 +199,7 @@ def generar_rutas(request):
     fecha_str = request.POST.get('fecha')
     fecha_origen_str = request.POST.get('fecha_origen') or ''
     if not fecha_str:
-        messages.error(request, 'Indica la fecha para la que generar las rutas.')
+        messages.error(request, 'Indica la fecha de referencia.')
         return redirect('delivery:generar_rutas')
 
     try:
@@ -279,55 +220,40 @@ def generar_rutas(request):
         messages.warning(request, 'No hay entregadores activos.')
         return redirect('delivery:lista')
 
-    # 1) Si hay fecha origen: copiar estructura (ruta por entregador, mismos contratos que apliquen)
+    # 1) Asegurar plantilla por entregador
+    plantillas = []
+    for e in entregadores_activos:
+        plantillas.append(_get_or_create_plantilla(e))
+
+    # 2) Opcional: copiar desde Ruta(fecha_origen) a plantillas (datos legacy)
     if fecha_origen:
         rutas_origen = list(Ruta.objects.filter(fecha=fecha_origen).select_related('entregador'))
         for ruta_orig in rutas_origen:
-            ruta = _get_or_create_ruta(fecha, ruta_orig.entregador)
+            plantilla = _get_or_create_plantilla(ruta_orig.entregador)
             for rc in ruta_orig.ruta_clientes.all().order_by('orden_entrega'):
-                contrato = rc.contrato
-                if not contrato.activo_en_fecha(fecha):
+                if plantilla.clientes.filter(contrato_id=rc.contrato_id).exists():
                     continue
-                dia_semana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'][fecha.weekday()]
-                if not contrato.dias_entrega or dia_semana not in contrato.dias_entrega:
-                    continue
-                if ruta.ruta_clientes.filter(contrato_id=rc.contrato_id).exists():
-                    continue
-                max_orden = ruta.ruta_clientes.aggregate(m=Max('orden_entrega'))['m'] or 0
-                RutaCliente.objects.create(
-                    ruta=ruta,
+                max_orden = plantilla.clientes.aggregate(m=Max('orden_entrega'))['m'] or 0
+                PlantillaRutaCliente.objects.get_or_create(
+                    plantilla_ruta=plantilla,
                     contrato_id=rc.contrato_id,
-                    orden_entrega=max_orden + 1,
+                    defaults={'orden_entrega': max_orden + 1},
                 )
 
-    # 2) Asegurar al menos una ruta por entregador activo para esa fecha
-    rutas_fecha = []
-    for e in entregadores_activos:
-        r = _get_or_create_ruta(fecha, e)
-        rutas_fecha.append(r)
-
-    # 3) Contratos con entrega ese día que aún no están en ninguna ruta
+    # 3) Asignar contratos sin plantilla a plantillas (round-robin)
     sin_ruta = contratos_sin_ruta_en_fecha(fecha)
     ids_sin_ruta = list(sin_ruta.values_list('pk', flat=True))
-    asignados = _asignar_contratos_a_rutas(fecha, ids_sin_ruta, rutas_fecha)
+    asignados = _asignar_contratos_a_plantillas(ids_sin_ruta, plantillas)
 
     if asignados > 0:
         messages.success(
             request,
-            f'Rutas generadas para el {fecha.strftime("%d/%m/%Y")}. '
-            f'Se asignaron {asignados} contrato(s) que no tenían ruta.',
-        )
-    elif fecha_origen:
-        messages.success(
-            request,
-            f'Rutas generadas para el {fecha.strftime("%d/%m/%Y")}. '
-            'Todos los contratos con entrega ya estaban asignados.',
+            f'Se asignaron {asignados} contrato(s) a las plantillas de entregadores.',
         )
     else:
         messages.success(
             request,
-            f'Rutas generadas para el {fecha.strftime("%d/%m/%Y")}. '
-            'Se creó una ruta por entregador; asigna clientes desde la lista o edita cada ruta.',
+            'Plantillas actualizadas. Asigna clientes desde la lista o edita cada plantilla.',
         )
     return redirect(reverse('delivery:lista') + '?fecha=' + fecha_str)
 
@@ -335,9 +261,8 @@ def generar_rutas(request):
 @login_required
 def asignar_pendientes(request):
     """
-    Asigna a rutas los contratos que tienen entrega en la fecha pero no están en ninguna ruta
-    (p. ej. contratos nuevos cuando las rutas ya existían). Reparte entre las rutas existentes
-    o crea una por entregador si no hay ninguna.
+    Asigna a plantillas los contratos que tienen entrega pero no están en ninguna plantilla.
+    Reparte en round-robin entre las plantillas existentes.
     """
     if request.method != 'POST':
         messages.error(request, 'Acción no permitida.')
@@ -356,21 +281,22 @@ def asignar_pendientes(request):
 
     sin_ruta = list(contratos_sin_ruta_en_fecha(fecha))
     if not sin_ruta:
-        messages.info(request, 'No hay contratos pendientes de asignar para esa fecha.')
+        messages.info(request, 'No hay contratos pendientes de asignar.')
         return redirect(reverse('delivery:lista') + '?fecha=' + fecha_str)
 
-    rutas_fecha = list(Ruta.objects.filter(fecha=fecha).select_related('entregador'))
-    if not rutas_fecha:
-        # Crear una ruta por entregador activo y repartir
-        for e in Entregador.objects.filter(activo=True).order_by('nombre'):
-            rutas_fecha.append(_get_or_create_ruta(fecha, e))
+    plantillas = []
+    for e in Entregador.objects.filter(activo=True).order_by('nombre'):
+        plantillas.append(_get_or_create_plantilla(e))
+    if not plantillas:
+        messages.warning(request, 'No hay entregadores activos.')
+        return redirect(reverse('delivery:lista') + '?fecha=' + fecha_str)
 
     ids_sin_ruta = [c.id for c in sin_ruta]
-    asignados = _asignar_contratos_a_rutas(fecha, ids_sin_ruta, rutas_fecha)
+    asignados = _asignar_contratos_a_plantillas(ids_sin_ruta, plantillas)
 
     messages.success(
         request,
-        f'Se asignaron {asignados} contrato(s) pendientes a las rutas del {fecha.strftime("%d/%m/%Y")}.',
+        f'Se asignaron {asignados} contrato(s) pendientes a las plantillas.',
     )
     return redirect(reverse('delivery:lista') + '?fecha=' + fecha_str)
 
@@ -402,18 +328,16 @@ def distribuir_entregas(request):
         .select_related('cliente', 'plan')
         .order_by('cliente__nombre')
     )
-    # Asignación actual: contrato_id -> entregador_id (o None)
+    # Asignación actual: contrato_id -> entregador_id (desde plantillas)
     asignacion_actual = {}
     if contratos:
         ids_contratos = [c.id for c in contratos]
-        for rc in RutaCliente.objects.filter(
-            ruta__fecha=fecha,
+        for prc in PlantillaRutaCliente.objects.filter(
             contrato_id__in=ids_contratos,
-        ).select_related('ruta'):
-            asignacion_actual[rc.contrato_id] = rc.ruta.entregador_id
+        ).select_related('plantilla_ruta'):
+            asignacion_actual[prc.contrato_id] = prc.plantilla_ruta.entregador_id
 
-    # GET con copiar_ultima=1: copiar la distribución más reciente anterior a fecha
-    # Solo se consideran días laborables (lun–vie); se ignora fin de semana u otras fechas con Ruta pero sin entregas.
+    # GET con copiar_ultima=1: copiar desde Ruta(fecha anterior) legacy si existe
     if request.method == 'GET' and request.GET.get('copiar_ultima'):
         fechas_anteriores = (
             Ruta.objects.filter(fecha__lt=fecha)
@@ -423,20 +347,18 @@ def distribuir_entregas(request):
         )
         ultima_fecha = None
         for f in fechas_anteriores:
-            if f.weekday() < 5 and not es_feriado(f):  # lun–vie y no feriado
+            if f.weekday() < 5 and not es_feriado(f):
                 ultima_fecha = f
                 break
         if not ultima_fecha:
             messages.info(
                 request,
-                'No hay ninguna distribución anterior a la fecha seleccionada.',
+                'No hay ninguna distribución anterior (Ruta por fecha) para copiar.',
             )
             return redirect(reverse('delivery:distribuir_entregas') + f'?fecha={fecha.isoformat()}')
         asignacion_origen = {
             rc.contrato_id: rc.ruta.entregador_id
-            for rc in RutaCliente.objects.filter(
-                ruta__fecha=ultima_fecha,
-            ).select_related('ruta')
+            for rc in RutaCliente.objects.filter(ruta__fecha=ultima_fecha).select_related('ruta')
         }
         copiados = 0
         for c in contratos:
@@ -446,31 +368,26 @@ def distribuir_entregas(request):
             actual = asignacion_actual.get(c.id)
             if actual == entregador_id:
                 continue
-            RutaCliente.objects.filter(ruta__fecha=fecha, contrato_id=c.id).delete()
-            ruta = _get_or_create_ruta(fecha, Entregador.objects.get(pk=entregador_id))
-            max_orden = ruta.ruta_clientes.aggregate(m=Max('orden_entrega'))['m'] or 0
-            RutaCliente.objects.create(
-                ruta=ruta,
+            PlantillaRutaCliente.objects.filter(contrato_id=c.id).delete()
+            plantilla = _get_or_create_plantilla(Entregador.objects.get(pk=entregador_id))
+            max_orden = plantilla.clientes.aggregate(m=Max('orden_entrega'))['m'] or 0
+            PlantillaRutaCliente.objects.get_or_create(
+                plantilla_ruta=plantilla,
                 contrato_id=c.id,
-                orden_entrega=max_orden + 1,
+                defaults={'orden_entrega': max_orden + 1},
             )
+            asignacion_actual[c.id] = entregador_id
             copiados += 1
         if copiados > 0:
             messages.success(
                 request,
-                f'Se copió la distribución del {ultima_fecha.strftime("%d/%m/%Y")} '
-                f'a la fecha seleccionada ({copiados} punto(s) asignados).',
+                f'Se copió la distribución del {ultima_fecha.strftime("%d/%m/%Y")} ({copiados} punto(s)).',
             )
         else:
-            messages.info(
-                request,
-                f'La distribución del {ultima_fecha.strftime("%d/%m/%Y")} se aplicó; '
-                'no hubo cambios (ya coincidía o no hay contratos comunes).',
-            )
+            messages.info(request, 'No hubo cambios (ya coincidía).')
         return redirect(reverse('delivery:distribuir_entregas') + f'?fecha={fecha.isoformat()}')
 
     if request.method == 'POST':
-        # Guardar distribución: entregador_<contrato_id> para cada contrato
         actualizados = 0
         for c in contratos:
             key = f'entregador_{c.id}'
@@ -481,16 +398,15 @@ def distribuir_entregas(request):
             if actual == entregador_id:
                 continue
 
-            # Quitar de la ruta actual si estaba asignado
-            RutaCliente.objects.filter(ruta__fecha=fecha, contrato_id=c.id).delete()
+            PlantillaRutaCliente.objects.filter(contrato_id=c.id).delete()
 
             if entregador_id:
-                ruta = _get_or_create_ruta(fecha, Entregador.objects.get(pk=entregador_id))
-                max_orden = ruta.ruta_clientes.aggregate(m=Max('orden_entrega'))['m'] or 0
-                RutaCliente.objects.create(
-                    ruta=ruta,
+                plantilla = _get_or_create_plantilla(Entregador.objects.get(pk=entregador_id))
+                max_orden = plantilla.clientes.aggregate(m=Max('orden_entrega'))['m'] or 0
+                PlantillaRutaCliente.objects.get_or_create(
+                    plantilla_ruta=plantilla,
                     contrato_id=c.id,
-                    orden_entrega=max_orden + 1,
+                    defaults={'orden_entrega': max_orden + 1},
                 )
                 actualizados += 1
             else:
@@ -499,8 +415,7 @@ def distribuir_entregas(request):
         if actualizados > 0:
             messages.success(
                 request,
-                f'Distribución guardada para el {fecha.strftime("%d/%m/%Y")}. '
-                'Puedes ver las rutas en la lista de entregas.',
+                'Distribución guardada. Puedes ver las rutas en la lista de entregas.',
             )
         return redirect(reverse('delivery:distribuir_entregas') + f'?fecha={fecha.isoformat()}')
 
@@ -533,61 +448,49 @@ def distribuir_entregas(request):
 
 
 @login_required
-def ruta_cargar_ultima(request, pk):
+def ruta_cargar_ultima(request, entregador_id):
     """
-    Añade a la ruta actual los contratos que este entregador llevó en su última ruta
-    (solo los que siguen activos). Redirige a la edición de la ruta.
+    Añade a la plantilla del entregador los contratos que tuvo en la "última ruta" (última fecha
+    con entregas o ayer). Solo añade los que no están ya en la plantilla.
     """
-    ruta = get_object_or_404(Ruta, pk=pk)
-    # Última ruta del mismo entregador (excluyendo la actual)
-    ultima_ruta = (
-        Ruta.objects.filter(entregador=ruta.entregador)
-        .exclude(pk=ruta.pk)
+    entregador = get_object_or_404(Entregador, pk=entregador_id)
+    plantilla = _get_or_create_plantilla(entregador)
+    # Última fecha con entregas para este entregador, o ayer
+    ultima_fecha = (
+        EntregaDia.objects.filter(entregador=entregador)
         .order_by('-fecha')
+        .values_list('fecha', flat=True)
         .first()
-    )
-    if not ultima_ruta:
-        messages.info(request, 'Este entregador no tiene otra ruta anterior. No hay clientes que cargar.')
-        return redirect('delivery:ruta_editar', pk=ruta.pk)
-    # Contratos de esa ruta, en orden
-    ruta_clientes_ultima = ultima_ruta.ruta_clientes.all().order_by('orden_entrega')
-    contrato_ids_ultima = [rc.contrato_id for rc in ruta_clientes_ultima]
-    if not contrato_ids_ultima:
-        messages.info(request, 'La última ruta de este entregador no tenía clientes.')
-        return redirect('delivery:ruta_editar', pk=ruta.pk)
-    # Solo contratos activos
-    contratos_activos = Contrato.objects.filter(pk__in=contrato_ids_ultima).filter(
-        q_filtro_estado('activo')
-    )
-    contratos_activos_ids = set(contratos_activos.values_list('pk', flat=True))
-    # Orden igual que en la última ruta, pero solo los activos
-    ya_en_ruta = set(
-        ruta.ruta_clientes.values_list('contrato_id', flat=True)
-    )
-    max_orden = ruta.ruta_clientes.aggregate(m=Max('orden_entrega'))['m'] or 0
+    ) or (timezone.now().date() - timedelta(days=1))
+    paradas = get_paradas_ruta_fecha(entregador, ultima_fecha)
+    if not paradas:
+        messages.info(
+            request,
+            f'No hay paradas que cargar para {entregador.nombre} en la fecha de referencia ({ultima_fecha}).',
+        )
+        return redirect('delivery:ruta_editar_plantilla', entregador_id=entregador_id)
+    ya_en_plantilla = set(plantilla.clientes.values_list('contrato_id', flat=True))
+    max_orden = plantilla.clientes.aggregate(m=Max('orden_entrega'))['m'] or 0
     creados = 0
-    for rc in ruta_clientes_ultima:
-        if rc.contrato_id not in contratos_activos_ids or rc.contrato_id in ya_en_ruta:
+    for prc, _ in paradas:
+        if prc.contrato_id in ya_en_plantilla:
             continue
         max_orden += 1
-        RutaCliente.objects.create(
-            ruta=ruta,
-            contrato_id=rc.contrato_id,
-            orden_entrega=max_orden,
+        PlantillaRutaCliente.objects.get_or_create(
+            plantilla_ruta=plantilla,
+            contrato_id=prc.contrato_id,
+            defaults={'orden_entrega': max_orden},
         )
-        ya_en_ruta.add(rc.contrato_id)
+        ya_en_plantilla.add(prc.contrato_id)
         creados += 1
     if creados:
         messages.success(
             request,
-            f'Se añadieron {creados} cliente(s) de la última ruta de {ruta.entregador.nombre} (solo activos).',
+            f'Se añadieron {creados} cliente(s) a la plantilla de {entregador.nombre}.',
         )
     else:
-        messages.info(
-            request,
-            'No se añadió ninguno: ya estaban en la ruta o ya no están activos.',
-        )
-    return redirect('delivery:ruta_editar', pk=ruta.pk)
+        messages.info(request, 'No se añadió ninguno: ya estaban en la plantilla.')
+    return redirect('delivery:ruta_editar_plantilla', entregador_id=entregador_id)
 
 
 @login_required
@@ -649,6 +552,8 @@ def _datos_recorrido_ruta(ruta, ruta_clientes):
         if c.latitud is not None and c.longitud is not None:
             nombre_cliente = (c.cliente.nombre if c.cliente_id else '').strip() or '—'
             direccion = (c.direccion_entrega or '').strip() or '—'
+            # Hora de entrega pactada en el contrato
+            hora_entrega = (c.horario_entrega.strftime('%H:%M') if c.horario_entrega and hasattr(c.horario_entrega, 'strftime') else None)
             puntos.append({
                 'lat': float(c.latitud),
                 'lng': float(c.longitud),
@@ -657,6 +562,7 @@ def _datos_recorrido_ruta(ruta, ruta_clientes):
                 'cliente': nombre_cliente,
                 'codigo_entrega': (rc.codigo_entrega or '').strip() or '—',
                 'direccion': direccion,
+                'hora_entrega': hora_entrega,
             })
     mapa = {
         'puntos': puntos,
@@ -696,38 +602,54 @@ def _tiempos_estimados_ruta(ruta, ruta_clientes):
 
 @login_required
 @require_POST
-def ruta_cliente_marcar_entregada(request, pk):
+def entregadia_marcar_entregada(request, entregador_id, contrato_id, fecha_str):
     """
-    Marca un RutaCliente como entregado (AJAX). Requiere confirmación en el cliente.
+    Marca la entrega del día como entregada (entregador, contrato, fecha). Crea/actualiza EntregaDia.
     """
-    rc = get_object_or_404(RutaCliente, pk=pk)
-    rc.entregada = True
-    rc.fecha_entrega = timezone.now()
-    rc.marcadopor_entregada = request.user
-    rc.no_entregada = False
-    rc.motivo_no_entrega = ''
-    rc.fecha_no_entrega = None
-    rc.marcadopor_no_entrega = None
-    rc.save(update_fields=[
+    entregador = get_object_or_404(Entregador, pk=entregador_id)
+    contrato = get_object_or_404(Contrato, pk=contrato_id)
+    try:
+        fecha = date.fromisoformat(fecha_str)
+    except ValueError:
+        return JsonResponse({'ok': False, 'error': 'Fecha inválida.'}, status=400)
+    estado, _ = EntregaDia.objects.get_or_create(
+        entregador=entregador,
+        contrato=contrato,
+        fecha=fecha,
+        defaults={},
+    )
+    estado.entregada = True
+    estado.fecha_entrega = timezone.now()
+    estado.marcadopor_entregada = request.user
+    estado.no_entregada = False
+    estado.motivo_no_entrega = ''
+    estado.fecha_no_entrega = None
+    estado.marcadopor_no_entrega = None
+    estado.save(update_fields=[
         'entregada', 'fecha_entrega', 'marcadopor_entregada',
         'no_entregada', 'motivo_no_entrega', 'fecha_no_entrega', 'marcadopor_no_entrega',
     ])
     nombre_usuario = (request.user.get_full_name().strip() or request.user.username) if request.user else ''
     return JsonResponse({
         'ok': True,
-        'fecha_entrega': rc.fecha_entrega.isoformat() if rc.fecha_entrega else None,
+        'fecha_entrega': estado.fecha_entrega.isoformat() if estado.fecha_entrega else None,
         'marcado_por': nombre_usuario,
     })
 
 
 @login_required
 @require_POST
-def ruta_cliente_reportar_no_entrega(request, pk):
+def entregadia_reportar_no_entrega(request, entregador_id, contrato_id, fecha_str):
     """
-    Reporta que no se pudo realizar la entrega (AJAX). Requiere motivo en el body (JSON).
+    Reporta que no se pudo realizar la entrega (entregador, contrato, fecha). Requiere motivo en body (JSON).
     """
     import json
-    rc = get_object_or_404(RutaCliente, pk=pk)
+    entregador = get_object_or_404(Entregador, pk=entregador_id)
+    contrato = get_object_or_404(Contrato, pk=contrato_id)
+    try:
+        fecha = date.fromisoformat(fecha_str)
+    except ValueError:
+        return JsonResponse({'ok': False, 'error': 'Fecha inválida.'}, status=400)
     try:
         body = json.loads(request.body.decode('utf-8')) if request.body else {}
     except (ValueError, TypeError):
@@ -735,14 +657,20 @@ def ruta_cliente_reportar_no_entrega(request, pk):
     motivo = (body.get('motivo') or '').strip()
     if not motivo:
         return JsonResponse({'ok': False, 'error': 'El motivo es obligatorio.'}, status=400)
-    rc.no_entregada = True
-    rc.motivo_no_entrega = motivo[:2000]
-    rc.fecha_no_entrega = timezone.now()
-    rc.marcadopor_no_entrega = request.user
-    rc.entregada = False
-    rc.fecha_entrega = None
-    rc.marcadopor_entregada = None
-    rc.save(update_fields=[
+    estado, _ = EntregaDia.objects.get_or_create(
+        entregador=entregador,
+        contrato=contrato,
+        fecha=fecha,
+        defaults={},
+    )
+    estado.no_entregada = True
+    estado.motivo_no_entrega = motivo[:2000]
+    estado.fecha_no_entrega = timezone.now()
+    estado.marcadopor_no_entrega = request.user
+    estado.entregada = False
+    estado.fecha_entrega = None
+    estado.marcadopor_entregada = None
+    estado.save(update_fields=[
         'no_entregada', 'motivo_no_entrega', 'fecha_no_entrega', 'marcadopor_no_entrega',
         'entregada', 'fecha_entrega', 'marcadopor_entregada',
     ])
@@ -750,22 +678,24 @@ def ruta_cliente_reportar_no_entrega(request, pk):
     return JsonResponse({
         'ok': True,
         'marcado_por': nombre_usuario,
-        'fecha_no_entrega': rc.fecha_no_entrega.isoformat() if rc.fecha_no_entrega else None,
+        'fecha_no_entrega': estado.fecha_no_entrega.isoformat() if estado.fecha_no_entrega else None,
     })
 
 
 @login_required
 @require_POST
-def ruta_calcular_orden(request, pk):
+def ruta_calcular_orden(request, entregador_id):
     """
-    Calcula el orden óptimo de entregas de la ruta bajo demanda (Google Maps).
-    Redirige a la edición de la ruta con mensajes de resultado.
+    Calcula el orden óptimo de entregas de la plantilla para la fecha indicada (Google Maps).
+    POST: entregador_id en URL; opcional fecha (default hoy). Redirige a edición de plantilla.
     """
-    ruta = get_object_or_404(
-        Ruta.objects.prefetch_related('ruta_clientes__contrato'),
-        pk=pk,
-    )
-    res = optimizar_orden_entregas(ruta, request=request)
+    entregador = get_object_or_404(Entregador, pk=entregador_id)
+    fecha_str = request.POST.get('fecha') or timezone.now().date().isoformat()
+    try:
+        fecha = date.fromisoformat(fecha_str)
+    except ValueError:
+        fecha = timezone.now().date()
+    res = optimizar_orden_entregas_plantilla(entregador, fecha, request=request)
     if res.get('optimizados', 0) > 0:
         messages.success(
             request,
@@ -774,41 +704,39 @@ def ruta_calcular_orden(request, pk):
     if res.get('sin_coordenadas', 0) > 0:
         messages.warning(
             request,
-            f"{res['sin_coordenadas']} cliente(s) sin coordenadas: no se pudo definir un orden óptimo para ellos (aparecen al final de la ruta).",
+            f"{res['sin_coordenadas']} cliente(s) sin coordenadas (aparecen al final).",
         )
     if res.get('error') and res.get('optimizados', 0) == 0 and res.get('sin_coordenadas', 0) == 0:
-        messages.warning(
-            request,
-            f"No se pudo optimizar la ruta con Google Maps: {res['error']}.",
-        )
+        messages.warning(request, f"No se pudo optimizar: {res['error']}.")
     elif res.get('error') and (res.get('optimizados', 0) > 0 or res.get('sin_coordenadas', 0) > 0):
-        messages.warning(
-            request,
-            f"Optimización parcial. Aviso de Google Maps: {res['error']}.",
-        )
+        messages.warning(request, f"Optimización parcial: {res['error']}.")
     if not res.get('error') and res.get('optimizados', 0) == 0 and res.get('sin_coordenadas', 0) == 0:
-        messages.info(request, "No había paradas que optimizar o la ruta está vacía.")
-    return redirect('delivery:ruta_editar', pk=pk)
+        messages.info(request, "No había paradas que optimizar o la ruta del día está vacía.")
+    return redirect('delivery:ruta_editar_plantilla', entregador_id=entregador_id)
 
 
 @login_required
 @require_POST
-def ruta_recalcular_recorrido(request, ruta_id):
+def ruta_recalcular_recorrido(request, fecha_str, entregador_id):
     """
-    Recalcula el orden de entregas de la ruta (optimización con punto de partida)
-    y devuelve los nuevos datos del recorrido para actualizar el mapa en el modal.
+    Recalcula el orden de entregas de la ruta del día (entregador + fecha) y devuelve
+    los datos del recorrido para actualizar el mapa en el modal (JSON).
     """
-    ruta = get_object_or_404(
-        Ruta.objects.prefetch_related('ruta_clientes__contrato'),
-        id=ruta_id,
-    )
-    result = optimizar_orden_entregas(ruta, request=request)
+    entregador = get_object_or_404(Entregador, pk=entregador_id)
+    try:
+        fecha = date.fromisoformat(fecha_str)
+    except ValueError:
+        fecha = timezone.now().date()
+    result = optimizar_orden_entregas_plantilla(entregador, fecha, request=request)
     if result.get('error'):
-        return JsonResponse({
-            'ok': False,
-            'error': result['error'],
-        }, status=400)
-    ruta_clientes = list(ruta.ruta_clientes.select_related('contrato__cliente').order_by('orden_entrega'))
+        return JsonResponse({'ok': False, 'error': result['error']}, status=400)
+    paradas = get_paradas_ruta_fecha(entregador, fecha)
+    ruta_clientes = [RutaClienteDia(prc, estado) for prc, estado in paradas]
+    plantilla = getattr(entregador, 'plantilla_ruta', None)
+    class RutaVirtual:
+        pass
+    ruta = RutaVirtual()
+    ruta.duracion_legs_segundos = getattr(plantilla, 'duracion_legs_segundos', None) or []
     mapa_recorrido = _datos_recorrido_ruta(ruta, ruta_clientes)
     return JsonResponse({
         'ok': True,
@@ -821,58 +749,44 @@ def ruta_recalcular_recorrido(request, ruta_id):
 @login_required
 def ruta_imprimible(request, ruta_id):
     """
-    Vista para mostrar una ruta de entrega en formato imprimible
+    Redirige a ruta del día por (fecha, entregador) para compatibilidad con enlaces antiguos.
     """
-    ruta = get_object_or_404(
-        Ruta.objects.prefetch_related(
-            'ruta_clientes__contrato__cliente',
-            'ruta_clientes__marcadopor_entregada',
-            'ruta_clientes__marcadopor_no_entrega',
-        ),
-        id=ruta_id,
+    ruta = get_object_or_404(Ruta, id=ruta_id)
+    return redirect(
+        'delivery:ruta_fecha_entregador',
+        fecha_str=ruta.fecha.isoformat(),
+        entregador_id=ruta.entregador_id,
     )
-    ruta_clientes = ruta.ruta_clientes.all().order_by('orden_entrega')
-    clientes_con_tiempo, total_estimado_str = _tiempos_estimados_ruta(ruta, list(ruta_clientes))
-    mapa_recorrido = _datos_recorrido_ruta(ruta, list(ruta_clientes))
-    context = {
-        'ruta': ruta,
-        'ruta_clientes': ruta_clientes,
-        'clientes_con_tiempo': clientes_con_tiempo,
-        'total_estimado_str': total_estimado_str,
-        'mapa_recorrido': mapa_recorrido,
-    }
-    return render(request, 'delivery/ruta_imprimible.html', context)
 
 
 @login_required
 def ruta_por_fecha_entregador(request, fecha_str, entregador_id):
     """
-    Vista para mostrar ruta de entrega por fecha y entregador
+    Vista para mostrar ruta del día por fecha y entregador (paradas desde plantilla + estado en EntregaDia).
     """
     try:
         fecha = date.fromisoformat(fecha_str)
     except ValueError:
         fecha = timezone.now().date()
-    
     entregador = get_object_or_404(Entregador, id=entregador_id)
-    
-    # Obtener o crear la ruta
-    ruta, created = Ruta.objects.get_or_create(
-        fecha=fecha,
-        entregador=entregador,
-        defaults={'activa': True}
-    )
-    ruta_clientes = ruta.ruta_clientes.select_related(
-        'marcadopor_entregada', 'marcadopor_no_entrega', 'contrato__cliente'
-    ).order_by('orden_entrega')
-    clientes_con_tiempo, total_estimado_str = _tiempos_estimados_ruta(ruta, list(ruta_clientes))
-    mapa_recorrido = _datos_recorrido_ruta(ruta, list(ruta_clientes))
-
+    paradas = get_paradas_ruta_fecha(entregador, fecha)
+    ruta_clientes = [RutaClienteDia(prc, estado) for prc, estado in paradas]
+    plantilla = getattr(entregador, 'plantilla_ruta', None)
+    # Objeto "ruta" virtual para compatibilidad con template (duracion_legs, etc.)
+    class RutaVirtual:
+        pass
+    ruta = RutaVirtual()
+    ruta.fecha = fecha
+    ruta.entregador = entregador
+    ruta.duracion_legs_segundos = getattr(plantilla, 'duracion_legs_segundos', None) or []
+    clientes_con_tiempo, total_estimado_str = _tiempos_estimados_ruta(ruta, ruta_clientes)
+    mapa_recorrido = _datos_recorrido_ruta(ruta, ruta_clientes)
     from base.models import es_feriado, get_feriado
     context = {
         'ruta': ruta,
         'entregador': entregador,
         'fecha': fecha,
+        'fecha_str': fecha_str,
         'ruta_clientes': ruta_clientes,
         'clientes_con_tiempo': clientes_con_tiempo,
         'total_estimado_str': total_estimado_str,

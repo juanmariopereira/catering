@@ -55,8 +55,7 @@
     </form>
 
     <div style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
-        <a href="{% url 'delivery:ruta_crear' %}" class="btn btn-primary">Nueva Ruta</a>
-        <a href="{% url 'delivery:generar_rutas' %}" class="btn btn-success">Generar rutas para una fecha</a>
+        <a href="{% url 'delivery:generar_rutas' %}" class="btn btn-success">Generar / asignar plantillas</a>
         <a href="{% url 'delivery:distribuir_entregas' %}{% if request.GET.fecha %}?fecha={{ request.GET.fecha }}{% endif %}" class="btn btn-secondary">Distribuir entregas por zona</a>
         <a href="{% url 'delivery:punto_partida_config' %}" class="btn btn-secondary">Configurar punto de partida</a>
     </div>
@@ -112,17 +111,16 @@
                 <tr>
                     <td>{{ ruta.fecha|date:"d/m/Y" }}</td>
                     <td>{{ ruta.entregador.nombre }}</td>
-                    <td>{{ ruta.ruta_clientes.count }}</td>
-                    <td>{% if ruta.activa %}Activa{% else %}Inactiva{% endif %}</td>
+                    <td>{{ ruta.cantidad }}</td>
+                    <td>—</td>
                     <td class="table-actions">
-                        <a href="{% url 'delivery:ruta_imprimible' ruta.id %}" title="Ver reporte" aria-label="Ver reporte"><span aria-hidden="true">📋</span></a>
-                        <a href="{% url 'delivery:ruta_editar' ruta.id %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
-                        <a href="{% url 'delivery:ruta_eliminar' ruta.id %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
+                        <a href="{% url 'delivery:ruta_fecha_entregador' ruta.fecha|date:'Y-m-d' ruta.entregador.id %}" title="Ver reporte del día" aria-label="Ver reporte">📋</a>
+                        <a href="{% url 'delivery:ruta_editar_plantilla' ruta.entregador.id %}" title="Editar plantilla" aria-label="Editar plantilla">✏️</a>
                     </td>
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="5">No hay rutas disponibles.</td>
+                    <td colspan="5">No hay entregadores activos o no hay paradas para la fecha seleccionada.</td>
                 </tr>
             {% endfor %}
         </tbody>
