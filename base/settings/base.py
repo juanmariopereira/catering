@@ -32,6 +32,13 @@ GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '')
 # Si no se define, se reutiliza GOOGLE_MAPS_API_KEY.
 GOOGLE_MAPS_BROWSER_API_KEY = os.environ.get('GOOGLE_MAPS_BROWSER_API_KEY', '') or GOOGLE_MAPS_API_KEY
 
+# WhatsApp Cloud API (Meta) - para recibir consultas y enviar recordatorios.
+# Obtener token y Phone Number ID en: developers.facebook.com > App > WhatsApp > API Setup.
+WHATSAPP_ACCESS_TOKEN = os.environ.get('WHATSAPP_ACCESS_TOKEN', '')
+WHATSAPP_PHONE_NUMBER_ID = os.environ.get('WHATSAPP_PHONE_NUMBER_ID', '')
+# Token que Meta enviará en la verificación del webhook; debe coincidir con el que configures en el dashboard.
+WHATSAPP_VERIFY_TOKEN = os.environ.get('WHATSAPP_VERIFY_TOKEN', 'catering_verify_token')
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -69,6 +76,7 @@ INSTALLED_APPS = [
     'kitchen',
     'delivery',
     'billing',
+    'whatsapp',
 ]
 
 MIDDLEWARE = [

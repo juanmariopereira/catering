@@ -46,6 +46,7 @@ urlpatterns = [
     path('planning/', include('planning.urls')),
     path('purchases/', include('purchases.urls')),
     path('billing/', include('billing.urls')),
+    path('whatsapp/', include('whatsapp.urls')),
     path('api/', include('routing.urls')),
 ]
 if getattr(settings, 'DEBUG', False):

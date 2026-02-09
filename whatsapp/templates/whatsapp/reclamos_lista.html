@@ -1,0 +1,71 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Reclamos WhatsApp - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Finanzas</span>
+<span class="sep">/</span>
+<span>Reclamos WhatsApp</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .reclamos-page h1 { margin-bottom: 16px; }
+    .reclamos-page .actions { margin-bottom: 20px; }
+    .reclamos-page .btn-secondary {
+        display: inline-block; padding: 8px 16px; background-color: #6c757d; color: white;
+        text-decoration: none; border-radius: 4px; border: none; font-size: 0.9rem;
+    }
+    .reclamos-page .btn-secondary:hover { background-color: #5a6268; color: white; }
+    .reclamos-page table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .reclamos-page th, .reclamos-page td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
+    .reclamos-page th { background-color: #e8f5e9; font-weight: 600; color: #2e7d32; }
+    .reclamos-page tr:hover { background-color: #f5f5f5; }
+    .reclamos-page .mensaje-cell { max-width: 320px; white-space: pre-wrap; word-break: break-word; }
+    .reclamos-page .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .reclamos-page .badge-reclamo { background-color: #ffcdd2; color: #c62828; }
+    .reclamos-page .badge-consulta { background-color: #e3f2fd; color: #1565c0; }
+    .reclamos-page .badge-otro { background-color: #f5f5f5; color: #616161; }
+    .reclamos-page .sin-datos { text-align: center; padding: 40px 20px; color: #999; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container reclamos-page">
+    <h1>💬 Reclamos y consultas WhatsApp</h1>
+    <div class="actions">
+        <a href="{% url 'dashboard' %}" class="btn-secondary">← Volver al inicio</a>
+    </div>
+    {% if not reclamos %}
+    <p class="sin-datos">No hay reclamos ni consultas registrados.</p>
+    {% else %}
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Teléfono</th>
+                <th>Cliente</th>
+                <th>Tipo</th>
+                <th>Mensaje</th>
+                <th>Leído</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in reclamos %}
+            <tr>
+                <td>{{ r.fecha_recibido|date:"d/m/Y H:i" }}</td>
+                <td>{{ r.telefono_whatsapp }}</td>
+                <td>{% if r.cliente %}<a href="{% url 'clients:detalle' r.cliente.pk %}">{{ r.cliente.nombre }}</a>{% else %}—{% endif %}</td>
+                <td><span class="badge badge-{{ r.tipo }}">{{ r.get_tipo_display }}</span></td>
+                <td class="mensaje-cell">{{ r.mensaje|truncatewords:25 }}</td>
+                <td>{% if r.leido %}✓{% else %}—{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p style="margin-top: 12px; font-size: 0.85rem; color: #666;">Se muestran los últimos 200. Para editar o marcar como leído, usar <a href="{% url 'admin:whatsapp_reclamo_changelist' %}">Admin</a>.</p>
+    {% endif %}
+</div>
+{% endblock %}

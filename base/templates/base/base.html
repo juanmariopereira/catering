@@ -524,7 +524,7 @@
                 </ul>
             </li>
             <li class="nav-item nav-dropdown">
-                <span class="nav-link nav-dropdown-toggle {% if '/billing/' in request.path or '/contracts/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true"><span class="nav-toggle-icon" aria-hidden="true">💵</span>Finanzas</span>
+                <span class="nav-link nav-dropdown-toggle {% if '/billing/' in request.path or '/contracts/' in request.path or '/whatsapp/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true"><span class="nav-toggle-icon" aria-hidden="true">💵</span>Finanzas</span>
                 <ul class="nav-dropdown-menu">
                     <li><a href="{% url 'contracts:lista' %}" class="{% if '/contracts/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📄</span>Contratos</a></li>
                     <li><a href="{% url 'billing:cobro_lista' %}" class="{% if '/billing/' in request.path and '/billing/dashboard/' not in request.path and 'reporte-ventas' not in request.path and 'estado-cuentas' not in request.path and 'reporte/' not in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">💰</span>Cobros</a></li>
@@ -532,6 +532,7 @@
                     <li><a href="{% url 'billing:reporte' %}" class="{% if '/billing/reporte/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📋</span>Reporte cobranza</a></li>
                     <li><a href="{% url 'billing:reporte_ventas' %}" class="{% if 'reporte-ventas' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📈</span>Reporte de ventas</a></li>
                     <li><a href="{% url 'billing:estado_cuentas' %}" class="{% if 'estado-cuentas' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📒</span>Estado de cuentas por cliente</a></li>
+                    <li><a href="{% url 'whatsapp:reclamos' %}" class="{% if '/whatsapp/reclamos/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">💬</span>Reclamos WhatsApp</a></li>
                 </ul>
             </li>
             <li class="nav-item">
