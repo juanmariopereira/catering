@@ -39,7 +39,7 @@
 <div class="container">
     <h1>{% if object %}Editar{% else %}Nueva{% endif %} Ruta de Entrega</h1>
 
-    <form method="post" class="form-layout">
+    <form id="ruta-form" method="post" class="form-layout">
         {% csrf_token %}
         <div class="form-row form-row-2">
             <div class="form-group">
@@ -120,15 +120,21 @@
             </p>
         </div>
         {% endif %}
-
+    </form>
         <div class="form-actions">
-            <button type="submit" class="btn">Guardar</button>
+            <button form="ruta-form" type="submit" class="btn">Guardar</button>
             {% if object %}
                 <a href="{% url 'delivery:ruta_imprimible' object.pk %}" class="btn btn-secondary">Ver reporte</a>
+                <form method="post" action="{% url 'delivery:ruta_calcular_orden' object.pk %}" style="display: inline-block;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn" style="background-color: #2196F3;">Calcular orden óptimo</button>
+                </form>
             {% endif %}
             <a href="{% url 'delivery:lista' %}" class="btn btn-secondary">Cancelar</a>
         </div>
-    </form>
+    {% if object %}
+    <p style="margin-top: 8px; font-size: 0.9rem; color: #666;">«Calcular orden óptimo» usa Google Maps para reordenar las paradas según el recorrido más eficiente (punto de partida y coordenadas de los clientes).</p>
+    {% endif %}
 </div>
 {% if formset %}
 {% block extra_js %}

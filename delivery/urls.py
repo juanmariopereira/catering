@@ -12,6 +12,7 @@ urlpatterns = [
     path('ruta/crear/', views.RutaCreateView.as_view(), name='ruta_crear'),
     path('ruta/<int:pk>/editar/', views.RutaUpdateView.as_view(), name='ruta_editar'),
     path('ruta/<int:pk>/cargar-ultima/', views.ruta_cargar_ultima, name='ruta_cargar_ultima'),
+    path('ruta/<int:pk>/calcular-orden/', views.ruta_calcular_orden, name='ruta_calcular_orden'),
     path('ruta/<int:pk>/eliminar/', views.RutaDeleteView.as_view(), name='ruta_eliminar'),
     path('ruta/<int:ruta_id>/', views.ruta_imprimible, name='ruta_imprimible'),
     path('ruta/<int:ruta_id>/recalcular-recorrido/', views.ruta_recalcular_recorrido, name='ruta_recalcular_recorrido'),

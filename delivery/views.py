@@ -179,34 +179,7 @@ class RutaUpdateView(LoginRequiredMixin, UpdateView):
         formset = RutaClienteFormSet(self.request.POST, instance=self.object)
         if formset.is_valid():
             formset.save()
-            # Optimizar orden de entrega con Google Maps (solo rutas presente/futuras)
-            hoy = timezone.now().date()
-            res = {}
-            if self.object.fecha >= hoy:
-                res = optimizar_orden_entregas(self.object, request=self.request)
-            else:
-                res = {'optimizados': 0, 'sin_coordenadas': 0}
             messages.success(self.request, 'Ruta y clientes guardados correctamente.')
-            if res.get('optimizados', 0) > 0:
-                messages.success(
-                    self.request,
-                    f"Se optimizó el orden de {res['optimizados']} entrega(s) según Google Maps.",
-                )
-            if res.get('sin_coordenadas', 0) > 0:
-                messages.warning(
-                    self.request,
-                    f"{res['sin_coordenadas']} cliente(s) sin coordenadas: no se pudo definir un orden óptimo para ellos (aparecen al final de la ruta).",
-                )
-            if res.get('error') and res.get('optimizados') == 0 and res.get('sin_coordenadas', 0) == 0:
-                messages.warning(
-                    self.request,
-                    f"No se pudo optimizar la ruta con Google Maps: {res['error']}.",
-                )
-            elif res.get('error') and (res.get('optimizados', 0) > 0 or res.get('sin_coordenadas', 0) > 0):
-                messages.warning(
-                    self.request,
-                    f"Optimización parcial. Aviso de Google Maps: {res['error']}.",
-                )
             return redirect(self.get_success_url())
         return self.render_to_response(
             self.get_context_data(form=form, formset=formset)
@@ -356,10 +329,6 @@ def generar_rutas(request):
             f'Rutas generadas para el {fecha.strftime("%d/%m/%Y")}. '
             'Se creó una ruta por entregador; asigna clientes desde la lista o edita cada ruta.',
         )
-    hoy = timezone.now().date()
-    if fecha >= hoy:
-        for ruta in rutas_fecha:
-            optimizar_orden_entregas(ruta, request=request)
     return redirect(reverse('delivery:lista') + '?fecha=' + fecha_str)
 
 
@@ -398,11 +367,6 @@ def asignar_pendientes(request):
 
     ids_sin_ruta = [c.id for c in sin_ruta]
     asignados = _asignar_contratos_a_rutas(fecha, ids_sin_ruta, rutas_fecha)
-
-    hoy = timezone.now().date()
-    if fecha >= hoy:
-        for ruta in rutas_fecha:
-            optimizar_orden_entregas(ruta, request=request)
 
     messages.success(
         request,
@@ -613,9 +577,6 @@ def ruta_cargar_ultima(request, pk):
         )
         ya_en_ruta.add(rc.contrato_id)
         creados += 1
-    hoy = timezone.now().date()
-    if ruta.fecha >= hoy:
-        optimizar_orden_entregas(ruta, request=request)
     if creados:
         messages.success(
             request,
@@ -791,6 +752,43 @@ def ruta_cliente_reportar_no_entrega(request, pk):
         'marcado_por': nombre_usuario,
         'fecha_no_entrega': rc.fecha_no_entrega.isoformat() if rc.fecha_no_entrega else None,
     })
+
+
+@login_required
+@require_POST
+def ruta_calcular_orden(request, pk):
+    """
+    Calcula el orden óptimo de entregas de la ruta bajo demanda (Google Maps).
+    Redirige a la edición de la ruta con mensajes de resultado.
+    """
+    ruta = get_object_or_404(
+        Ruta.objects.prefetch_related('ruta_clientes__contrato'),
+        pk=pk,
+    )
+    res = optimizar_orden_entregas(ruta, request=request)
+    if res.get('optimizados', 0) > 0:
+        messages.success(
+            request,
+            f"Se optimizó el orden de {res['optimizados']} entrega(s) según Google Maps.",
+        )
+    if res.get('sin_coordenadas', 0) > 0:
+        messages.warning(
+            request,
+            f"{res['sin_coordenadas']} cliente(s) sin coordenadas: no se pudo definir un orden óptimo para ellos (aparecen al final de la ruta).",
+        )
+    if res.get('error') and res.get('optimizados', 0) == 0 and res.get('sin_coordenadas', 0) == 0:
+        messages.warning(
+            request,
+            f"No se pudo optimizar la ruta con Google Maps: {res['error']}.",
+        )
+    elif res.get('error') and (res.get('optimizados', 0) > 0 or res.get('sin_coordenadas', 0) > 0):
+        messages.warning(
+            request,
+            f"Optimización parcial. Aviso de Google Maps: {res['error']}.",
+        )
+    if not res.get('error') and res.get('optimizados', 0) == 0 and res.get('sin_coordenadas', 0) == 0:
+        messages.info(request, "No había paradas que optimizar o la ruta está vacía.")
+    return redirect('delivery:ruta_editar', pk=pk)
 
 
 @login_required
