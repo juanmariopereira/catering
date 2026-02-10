@@ -6,7 +6,7 @@ Propone combinaciones de recetas según objetivos nutricionales
 """
 import json
 import logging
-from typing import Any
+from typing import Any, Dict, List
 
 from django.conf import settings
 
@@ -62,7 +62,7 @@ def _build_context(plan_id=None):
     }
 
 
-def sugerir_dieta_personalizada(objetivo: str, plan_id: int = None, request=None) -> list[dict[str, Any]]:
+def sugerir_dieta_personalizada(objetivo: str, plan_id: int = None, request=None) -> List[Dict[str, Any]]:
     """
     Sugiere una dieta personalizada según el objetivo.
 

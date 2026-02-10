@@ -4,7 +4,7 @@ Servicio para generar mensajes personalizados a clientes con IA.
 import json
 import logging
 from datetime import timedelta
-from typing import Any
+from typing import Any, Dict, List
 
 from django.conf import settings
 from django.utils import timezone
@@ -28,7 +28,7 @@ def _get_openai_client():
     return OpenAI(api_key=api_key)
 
 
-def _obtener_platos_servidos_recientes(contrato, dias: int = 14) -> list[dict[str, Any]]:
+def _obtener_platos_servidos_recientes(contrato, dias: int = 14) -> List[Dict[str, Any]]:
     """
     Obtiene los platos servidos al cliente en los últimos días.
     Devuelve lista de {fecha, momento, receta_nombre}

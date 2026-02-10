@@ -3,7 +3,7 @@ Business logic and validation for route optimization.
 Uses Google Routes API (Routes Preferred) with up to 98 stops (lat/lng only).
 """
 import logging
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from django.conf import settings
 
@@ -37,7 +37,7 @@ def _validate_lat_lng(lat: float, lng: float, name: str) -> None:
         raise RouteOptimizerError(f"{name}: longitude must be between {LNG_MIN} and {LNG_MAX}", "invalid_coords")
 
 
-def _parse_duration(dur: Any) -> int | None:
+def _parse_duration(dur: Any) -> Optional[int]:
     """Parse duration from API (string '3600s' or object with seconds). Return seconds or None."""
     if dur is None:
         return None
@@ -57,10 +57,10 @@ def _parse_duration(dur: Any) -> int | None:
 
 
 def optimize_route(
-    start: dict[str, float],
-    stops: list[dict[str, Any]],
-    end: dict[str, float] | None = None,
-) -> dict[str, Any]:
+    start: Dict[str, float],
+    stops: List[Dict[str, Any]],
+    end: Optional[Dict[str, float]] = None,
+) -> Dict[str, Any]:
     """
     Compute optimized visiting order for stops using Google Routes API.
 
@@ -73,7 +73,7 @@ def optimize_route(
         {
             "optimized_stop_ids": [id, ...],  # order to visit
             "legs": [{"distance_meters": int, "duration_seconds": int}, ...],
-            "polyline": str | None,  # encoded polyline if available
+            "polyline": Optional[str],  # encoded polyline if available
             "summary": {"total_distance_meters": int, "total_duration_seconds": int},
         }
 

@@ -8,7 +8,7 @@ import json
 import logging
 import re
 from decimal import Decimal
-from typing import Any
+from typing import Any, Dict, List, Optional, Tuple
 
 from django.conf import settings
 
@@ -17,7 +17,7 @@ from base.ai_logging import extraer_usage, registrar_llamada_ia
 logger = logging.getLogger(__name__)
 
 
-def _buscar_ingrediente_en_catalogo(nombre_ai: str, nombre_to_id: dict[str, int]) -> int | None:
+def _buscar_ingrediente_en_catalogo(nombre_ai: str, nombre_to_id: Dict[str, int]) -> Optional[int]:
     """
     Busca el ID del ingrediente en el catálogo, tolerando variaciones como
     "Lechuga (kg)", "Lechuga 1", "Lechuga - kg", etc.
@@ -72,7 +72,7 @@ def _get_openai_client():
     return OpenAI(api_key=api_key)
 
 
-def estimar_info_nutricional_ingrediente(nombre_ingrediente: str, unidad_nombre: str, request=None) -> dict[str, Any]:
+def estimar_info_nutricional_ingrediente(nombre_ingrediente: str, unidad_nombre: str, request=None) -> Dict[str, Any]:
     """
     Estima la información nutricional de un ingrediente por 100g usando OpenAI.
     Para ingredientes por unidad (ej. huevo, manzana), incluye gramos_por_unidad estimado.
@@ -185,7 +185,7 @@ def _cantidad_a_gramos(cantidad: Decimal, unidad_simbolo: str, ingrediente) -> f
     return 0
 
 
-def calcular_info_nutricional_receta(receta) -> dict[str, float]:
+def calcular_info_nutricional_receta(receta) -> Dict[str, float]:
     """
     Calcula la información nutricional total de una receta sumando los aportes
     de cada ingrediente según cantidad y su info nutricional por 100g.
@@ -196,7 +196,7 @@ def calcular_info_nutricional_receta(receta) -> dict[str, float]:
     """
     from recipes.models import RecetaIngrediente
 
-    totales: dict[str, float] = {}
+    totales: Dict[str, float] = {}
     nutrientes_clave = ('calorias', 'proteinas', 'carbohidratos', 'grasas', 'fibra')
 
     for ri in RecetaIngrediente.objects.filter(receta=receta).select_related(
@@ -225,7 +225,7 @@ def calcular_info_nutricional_receta(receta) -> dict[str, float]:
     return {k: round(v, 1) for k, v in totales.items()}
 
 
-def estimar_info_nutricional_receta_ia(receta, request=None) -> dict[str, Any]:
+def estimar_info_nutricional_receta_ia(receta, request=None) -> Dict[str, Any]:
     """
     Estima la información nutricional de una receta usando IA cuando no puede
     calcularse desde los ingredientes (p. ej. ingredientes sin info_nutricional).
@@ -376,7 +376,7 @@ Escribe una descripción breve y atractiva para esta receta. Solo el texto, sin 
         return ''
 
 
-def sugerir_ingredientes_receta_ia(receta, request=None) -> tuple[list[dict[str, Any]], list[dict[str, Any]], bool]:
+def sugerir_ingredientes_receta_ia(receta, request=None) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], bool]:
     """
     Sugiere ingredientes y cantidades para una receta usando IA.
     Puede sugerir cualquier ingrediente por nombre; los que no existan en catálogo
@@ -509,7 +509,7 @@ Responde solo el JSON con clave "ingredientes"."""
         return [], [], False
 
 
-def importar_receta_desde_texto_ia(texto: str, request=None) -> dict[str, Any]:
+def importar_receta_desde_texto_ia(texto: str, request=None) -> Dict[str, Any]:
     """
     Importa una receta desde texto pegado (de web, libro, etc.) usando IA.
     Extrae nombre, descripción, tipo(s), momento(s) e ingredientes con cantidades.
@@ -677,7 +677,7 @@ Extrae la receta en JSON. Para ingredientes, si el nombre coincide con el catál
         raise
 
 
-def obtener_alergenos_receta(receta) -> list[str]:
+def obtener_alergenos_receta(receta) -> List[str]:
     """
     Devuelve la lista de alérgenos presentes en una receta, según los ingredientes.
     """

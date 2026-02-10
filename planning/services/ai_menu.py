@@ -10,7 +10,7 @@ Genera sugerencias de menú (recetas por momento del día) considerando:
 import json
 import logging
 from datetime import timedelta
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from django.conf import settings
 
@@ -32,7 +32,7 @@ def _get_openai_client():
     return OpenAI(api_key=api_key)
 
 
-def _normalize_info_nutricional(info: dict | None) -> dict | None:
+def _normalize_info_nutricional(info: Optional[Dict]) -> Optional[Dict]:
     """
     Normaliza info nutricional a un dict plano con calorias, proteinas, carbohidratos, grasas, fibra.
     Acepta formato plano o anidado (por_100g). Devuelve None si no hay datos útiles.
@@ -128,7 +128,7 @@ def _build_context(fecha, plan):
     }
 
 
-def sugerir_menu_ia(fecha, plan, request=None, idea_menu: str | None = None) -> list[dict[str, Any]]:
+def sugerir_menu_ia(fecha, plan, request=None, idea_menu: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Sugiere un menú usando OpenAI.
 

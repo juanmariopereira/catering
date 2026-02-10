@@ -5,7 +5,7 @@ Uses raw lat/lng only (no Place IDs) to support up to 98 waypoints with optimiza
 """
 import logging
 import time
-from typing import Any
+from typing import Any, Dict, List
 
 import httpx
 
@@ -28,7 +28,7 @@ MAX_RETRIES = 3
 RETRY_BACKOFF_BASE = 1.0  # seconds
 
 
-def _build_waypoint(lat: float, lng: float) -> dict[str, Any]:
+def _build_waypoint(lat: float, lng: float) -> Dict[str, Any]:
     """Build a Waypoint object using latLng (no placeId)."""
     return {
         "location": {
@@ -45,8 +45,8 @@ def _build_request_body(
     origin_lng: float,
     destination_lat: float,
     destination_lng: float,
-    intermediates: list[dict[str, Any]],
-) -> dict[str, Any]:
+    intermediates: List[Dict[str, Any]],
+) -> Dict[str, Any]:
     """
     Build ComputeRoutes request body.
     intermediates: list of {lat, lng} (no id here; order is preserved and mapped by index).
@@ -70,8 +70,8 @@ def compute_routes(
     origin_lng: float,
     destination_lat: float,
     destination_lng: float,
-    intermediates: list[dict[str, Any]],
-) -> dict[str, Any]:
+    intermediates: List[Dict[str, Any]],
+) -> Dict[str, Any]:
     """
     Call Google Routes API computeRoutes with waypoint optimization.
 

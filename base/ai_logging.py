@@ -1,6 +1,7 @@
 """
 Utilidad para registrar llamadas a la API de IA.
 """
+from typing import Dict, Optional
 
 
 def registrar_llamada_ia(
@@ -50,7 +51,7 @@ def registrar_llamada_ia(
         logging.getLogger(__name__).warning('No se pudo registrar log de IA: %s', e)
 
 
-def extraer_usage(response) -> dict[str, int]:
+def extraer_usage(response) -> Dict[str, int]:
     """Extrae prompt_tokens, completion_tokens y total_tokens de una respuesta de OpenAI."""
     usage = getattr(response, 'usage', None)
     if not usage:
