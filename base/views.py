@@ -14,6 +14,7 @@ from datetime import date, timedelta, datetime
 from .models import Feriado, ParametroSistema, UserActionLog, es_feriado
 from .forms import FeriadoForm, LogoEmpresaForm, ParametroSistemaForm
 from .audit import LogUserActionMixin
+from .auth_utils import get_user_home_url, is_admin
 from planning.models import PlanificacionMenu
 from billing.models import Cobro, Pago, _dias_vencimiento_por_frecuencia
 from billing.utils import obtener_cobros_vencidos, periodo_hasta_segun_frecuencia
@@ -29,6 +30,10 @@ from delivery.utils import contratos_con_entrega_en_fecha
 @login_required
 def dashboard(request):
     """Dashboard principal con indicadores y menú de navegación."""
+    # Cocina y Entregador tienen página de inicio propia; redirigir si acceden al dashboard
+    home = get_user_home_url(request.user)
+    if home != reverse('dashboard'):
+        return redirect(home)
     hoy = timezone.now().date()
 
     # Menús planificados del día (fecha + plan)
@@ -562,3 +567,21 @@ def parametro_crear(request):
         'parametro': None,
         'es_edicion': False,
     })
+
+
+# --- Redirección raíz y login por perfil ---
+
+from django.contrib.auth.views import LoginView as AuthLoginView
+
+
+def home_redirect(request):
+    """Redirige a la página de inicio según perfil (Cocina, Entregador) o dashboard."""
+    if request.user.is_authenticated:
+        return redirect(get_user_home_url(request.user))
+    return redirect('dashboard')
+
+
+class CustomLoginView(AuthLoginView):
+    """Login que redirige a la página de inicio según perfil (Cocina, Entregador o dashboard)."""
+    def get_success_url(self):
+        return get_user_home_url(self.request.user)

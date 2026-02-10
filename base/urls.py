@@ -23,7 +23,7 @@ from django.views.generic import RedirectView
 from base import views as base_views
 
 urlpatterns = [
-    path('', RedirectView.as_view(url='/dashboard/', permanent=False)),
+    path('', base_views.home_redirect, name='home'),
     path('dashboard/', base_views.dashboard, name='dashboard'),
     path('feriados/', base_views.FeriadoListView.as_view(), name='feriado_lista'),
     path('feriados/nuevo/', base_views.FeriadoCreateView.as_view(), name='feriado_crear'),
@@ -34,6 +34,7 @@ urlpatterns = [
     path('parametros/<int:pk>/editar/', base_views.parametro_editar, name='parametro_editar'),
     path('historial/', base_views.historial_acciones, name='historial_acciones'),
     path('admin/', admin.site.urls),
+    path('accounts/login/', base_views.CustomLoginView.as_view(), name='login'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('clients/', include('clients.urls')),
     path('contracts/', include('contracts.urls')),

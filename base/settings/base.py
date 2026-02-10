@@ -79,6 +79,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'base.middleware.ProfileAccessMiddleware',
 ]
 
 ROOT_URLCONF = 'base.urls'
@@ -155,3 +156,17 @@ BRAND_COLOR_HOVER = '#689F38'
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
+
+# Sentry: monitoreo de errores (solo si SENTRY_DSN está definido en el entorno)
+SENTRY_DSN = os.environ.get('SENTRY_DSN', '').strip()
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        environment=os.environ.get('DJANGO_ENV', 'development'),
+        traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
+        send_default_pii=os.environ.get('SENTRY_SEND_DEFAULT_PII', 'false').lower() in ('true', '1', 'yes'),
+    )

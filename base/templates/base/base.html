@@ -489,14 +489,15 @@
 </head>
 <body>
     <nav class="navbar no-print">
-        <a href="{% url 'dashboard' %}" class="navbar-brand">
+        <a href="{% if user_home_url %}{{ user_home_url }}{% else %}{% url 'dashboard' %}{% endif %}" class="navbar-brand">
             {% if logo_empresa_url %}<img src="{{ logo_empresa_url }}" alt="{{ catering_name }}" class="navbar-logo" />{% endif %}
             <span class="navbar-brand-text">{{ catering_name }}</span>
         </a>
         <ul class="navbar-nav">
             <li class="nav-item">
-                <a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/dashboard/' or request.path == '/' %}active{% endif %}">🏠 Inicio</a>
+                <a href="{% if user_home_url %}{{ user_home_url }}{% else %}{% url 'dashboard' %}{% endif %}" class="nav-link {% if request.path == '/dashboard/' or request.path == '/' or '/kitchen/' in request.path or '/delivery/ruta/' in request.path or request.path == user_home_url %}active{% endif %}">🏠 Inicio</a>
             </li>
+            {% if is_admin_profile %}
             <li class="nav-item nav-dropdown">
                 <span class="nav-link nav-dropdown-toggle {% if '/clients/' in request.path or '/plans/' in request.path or '/recipes/' in request.path or '/diets/' in request.path or '/routes/' in request.path or '/feriados/' in request.path or '/parametros/' in request.path or '/historial/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true"><span class="nav-toggle-icon" aria-hidden="true">📚</span>Catálogos</span>
                 <ul class="nav-dropdown-menu">
@@ -534,9 +535,29 @@
                     <li><a href="{% url 'billing:estado_cuentas' %}" class="{% if 'estado-cuentas' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📒</span>Estado de cuentas por cliente</a></li>
                 </ul>
             </li>
+            {% if user.is_staff %}
             <li class="nav-item">
                 <a href="{% url 'admin:index' %}" class="nav-link" target="_blank">⚙️ Admin</a>
             </li>
+            {% endif %}
+            {% elif is_cocina_profile %}
+            <li class="nav-item nav-dropdown">
+                <span class="nav-link nav-dropdown-toggle {% if '/recipes/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true"><span class="nav-toggle-icon" aria-hidden="true">📚</span>Recetas</span>
+                <ul class="nav-dropdown-menu">
+                    <li><a href="{% url 'recipes:lista' %}" class="{% if '/recipes/' in request.path and 'ingredientes' not in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🍽️</span>Recetas</a></li>
+                    <li><a href="{% url 'recipes:ingrediente_lista' %}" class="{% if 'ingredientes' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🥗</span>Ingredientes</a></li>
+                    <li><a href="{% url 'recipes:unidad_medida_lista' %}" class="{% if 'unidades-medida' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📏</span>Unidades de medida</a></li>
+                    <li><a href="{% url 'recipes:tipo_receta_lista' %}" class="{% if 'tipos-receta' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🏷️</span>Tipos de receta</a></li>
+                </ul>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'kitchen:lista' %}" class="nav-link {% if '/kitchen/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🍳</span>Cocina</a>
+            </li>
+            {% elif is_entregador_profile %}
+            <li class="nav-item">
+                <a href="{{ user_home_url }}" class="nav-link {% if '/delivery/' in request.path %}active{% endif %}">🚚 Mi ruta</a>
+            </li>
+            {% endif %}
         </ul>
         <div class="navbar-user">
             {% if user.is_authenticated %}
@@ -551,7 +572,7 @@
         </div>
     </nav>
 
-    {% if user.is_authenticated and contratos_sin_ruta_hoy_count and contratos_sin_ruta_hoy_count > 0 %}
+    {% if user.is_authenticated and is_admin_profile and contratos_sin_ruta_hoy_count and contratos_sin_ruta_hoy_count > 0 %}
     <div class="banner-contratos-sin-ruta no-print" role="alert">
         <strong>{{ contratos_sin_ruta_hoy_count }} contrato(s)</strong> con entrega hoy no están asignados a ninguna ruta.
         <a href="{% url 'delivery:lista' %}?fecha={{ contratos_sin_ruta_hoy_fecha|date:'Y-m-d' }}">Asignar en Entregas</a>
@@ -561,7 +582,7 @@
     <main class="main-content">
         <nav class="breadcrumb-nav" aria-label="Miga de pan">
             {% block breadcrumb %}
-            <a href="{% url 'dashboard' %}">Inicio</a>
+            <a href="{% if user_home_url %}{{ user_home_url }}{% else %}{% url 'dashboard' %}{% endif %}">Inicio</a>
             {% endblock %}
         </nav>
         {% block content %}{% endblock %}

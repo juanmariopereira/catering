@@ -4,6 +4,8 @@ Context processors para templates globales.
 from django.conf import settings
 from django.utils import timezone
 
+from .auth_utils import is_admin, is_cocina, is_entregador, get_user_home_url
+
 
 def catering_context(request):
     """Expone el nombre, colores de marca y logo del catering a todas las plantillas."""
@@ -29,6 +31,18 @@ def catering_context(request):
         'openai_available': bool(openai_key.strip()),
         'google_maps_browser_key': maps_key,
     }
+    # Perfiles para menú y redirección (Admin, Cocina, Entregador)
+    user = getattr(request, 'user', None)
+    if user and user.is_authenticated:
+        ctx['is_admin_profile'] = is_admin(user)
+        ctx['is_cocina_profile'] = is_cocina(user) and not is_admin(user)
+        ctx['is_entregador_profile'] = is_entregador(user) and not is_admin(user)
+        ctx['user_home_url'] = get_user_home_url(user)
+    else:
+        ctx['is_admin_profile'] = False
+        ctx['is_cocina_profile'] = False
+        ctx['is_entregador_profile'] = False
+        ctx['user_home_url'] = None
     # Contratos vigentes con entrega hoy que no están en ninguna ruta (para banner global)
     if getattr(request, 'user', None) and request.user.is_authenticated:
         try:

@@ -4,10 +4,11 @@ from .models import Entregador, Ruta, RutaCliente, HistoricoAsignacionEntrega
 
 @admin.register(Entregador)
 class EntregadorAdmin(admin.ModelAdmin):
-    list_display = ['nombre', 'telefono', 'vehiculo', 'activo', 'fecha_creacion']
+    list_display = ['nombre', 'telefono', 'vehiculo', 'user', 'activo', 'fecha_creacion']
     list_filter = ['activo', 'fecha_creacion']
     search_fields = ['nombre', 'telefono', 'vehiculo']
     readonly_fields = ['fecha_creacion', 'fecha_actualizacion']
+    raw_id_fields = ['user']
 
 
 class RutaClienteInline(admin.TabularInline):

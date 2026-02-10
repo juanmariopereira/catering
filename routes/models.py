@@ -5,7 +5,7 @@ from django.core.validators import MinValueValidator
 
 
 class Entregador(models.Model):
-    """Modelo para gestionar entregadores"""
+    """Modelo para gestionar entregadores. Si user no es None, ese usuario tiene perfil Entregador y solo ve sus rutas."""
     nombre = models.CharField(max_length=200, verbose_name="Nombre completo")
     telefono = models.CharField(max_length=20, verbose_name="Teléfono")
     vehiculo = models.CharField(
@@ -16,6 +16,15 @@ class Entregador(models.Model):
         help_text="Tipo de vehículo utilizado para entregas"
     )
     activo = models.BooleanField(default=True, verbose_name="Activo")
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='entregador_perfil',
+        verbose_name="Usuario asociado",
+        help_text="Usuario que inicia sesión como este entregador (solo ve sus rutas)."
+    )
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
     fecha_actualizacion = models.DateTimeField(auto_now=True, verbose_name="Fecha de actualización")
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")

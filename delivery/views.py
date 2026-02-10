@@ -11,6 +11,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 from base.models import es_feriado
+from base.auth_utils import get_user_home_url, is_entregador, user_can_access_entregador
 from routes.models import (
     Ruta, RutaCliente, Entregador,
     PlantillaRuta, PlantillaRutaCliente, EntregaDia,
@@ -65,6 +66,11 @@ class RutaListView(LoginRequiredMixin, TemplateView):
     """Lista de rutas del día por entregador (paradas calculadas desde plantilla + fecha)."""
     template_name = 'delivery/ruta_lista.html'
 
+    def dispatch(self, request, *args, **kwargs):
+        if is_entregador(request.user):
+            return redirect(get_user_home_url(request.user))
+        return super().dispatch(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         fecha_param = self.request.GET.get('fecha')
@@ -114,6 +120,11 @@ class PlantillaRutaUpdateView(LoginRequiredMixin, UpdateView):
     form_class = PlantillaRutaForm
     template_name = 'delivery/plantilla_ruta_form.html'
     context_object_name = 'plantilla'
+
+    def dispatch(self, request, *args, **kwargs):
+        if is_entregador(request.user):
+            return redirect(get_user_home_url(request.user))
+        return super().dispatch(request, *args, **kwargs)
 
     def get_object(self, queryset=None):
         entregador = get_object_or_404(Entregador, pk=self.kwargs['entregador_id'])
@@ -187,6 +198,8 @@ def asignar_pendientes(request):
     Asigna a plantillas los contratos que tienen entrega pero no están en ninguna plantilla.
     Reparte en round-robin entre las plantillas existentes.
     """
+    if is_entregador(request.user):
+        return redirect(get_user_home_url(request.user))
     if request.method != 'POST':
         messages.error(request, 'Acción no permitida.')
         return redirect('delivery:lista')
@@ -232,6 +245,8 @@ def distribuir_entregas(request):
     cada punto a un entregador (o deja sin asignar). No modifica el flujo existente
     (generar rutas / asignar pendientes); solo crea/actualiza Ruta y RutaCliente.
     """
+    if is_entregador(request.user):
+        return redirect(get_user_home_url(request.user))
     entregadores = list(Entregador.objects.filter(activo=True).order_by('nombre'))
     fecha_param = request.GET.get('fecha') or request.POST.get('fecha')
     fecha = timezone.now().date()
@@ -376,6 +391,8 @@ def ruta_cargar_ultima(request, entregador_id):
     Añade a la plantilla del entregador los contratos que tuvo en la "última ruta" (última fecha
     con entregas o ayer). Solo añade los que no están ya en la plantilla.
     """
+    if not user_can_access_entregador(request.user, entregador_id):
+        return redirect(get_user_home_url(request.user))
     entregador = get_object_or_404(Entregador, pk=entregador_id)
     plantilla = _get_or_create_plantilla(entregador)
     # Última fecha con entregas para este entregador, o ayer
@@ -503,6 +520,8 @@ def entregadia_marcar_entregada(request, entregador_id, contrato_id, fecha_str):
     """
     Marca la entrega del día como entregada (entregador, contrato, fecha). Crea/actualiza EntregaDia.
     """
+    if not user_can_access_entregador(request.user, entregador_id):
+        return JsonResponse({'ok': False, 'error': 'No autorizado.'}, status=403)
     entregador = get_object_or_404(Entregador, pk=entregador_id)
     contrato = get_object_or_404(Contrato, pk=contrato_id)
     try:
@@ -541,6 +560,8 @@ def entregadia_reportar_no_entrega(request, entregador_id, contrato_id, fecha_st
     Reporta que no se pudo realizar la entrega (entregador, contrato, fecha). Requiere motivo en body (JSON).
     """
     import json
+    if not user_can_access_entregador(request.user, entregador_id):
+        return JsonResponse({'ok': False, 'error': 'No autorizado.'}, status=403)
     entregador = get_object_or_404(Entregador, pk=entregador_id)
     contrato = get_object_or_404(Contrato, pk=contrato_id)
     try:
@@ -586,6 +607,8 @@ def ruta_calcular_orden(request, entregador_id):
     Calcula el orden óptimo de entregas de la plantilla para la fecha indicada (Google Maps).
     POST: entregador_id en URL; opcional fecha (default hoy). Redirige a edición de plantilla.
     """
+    if not user_can_access_entregador(request.user, entregador_id):
+        return redirect(get_user_home_url(request.user))
     entregador = get_object_or_404(Entregador, pk=entregador_id)
     fecha_str = request.POST.get('fecha') or timezone.now().date().isoformat()
     try:
@@ -619,6 +642,8 @@ def ruta_recalcular_recorrido(request, fecha_str, entregador_id):
     Recalcula el orden de entregas de la ruta del día (entregador + fecha) y devuelve
     los datos del recorrido para actualizar el mapa en el modal (JSON).
     """
+    if not user_can_access_entregador(request.user, entregador_id):
+        return redirect(get_user_home_url(request.user))
     entregador = get_object_or_404(Entregador, pk=entregador_id)
     try:
         fecha = date.fromisoformat(fecha_str)
@@ -649,6 +674,8 @@ def ruta_imprimible(request, ruta_id):
     Redirige a ruta del día por (fecha, entregador) para compatibilidad con enlaces antiguos.
     """
     ruta = get_object_or_404(Ruta, id=ruta_id)
+    if not user_can_access_entregador(request.user, ruta.entregador_id):
+        return redirect(get_user_home_url(request.user))
     return redirect(
         'delivery:ruta_fecha_entregador',
         fecha_str=ruta.fecha.isoformat(),
@@ -661,6 +688,8 @@ def ruta_por_fecha_entregador(request, fecha_str, entregador_id):
     """
     Vista para mostrar ruta del día por fecha y entregador (paradas desde plantilla + estado en EntregaDia).
     """
+    if not user_can_access_entregador(request.user, entregador_id):
+        return redirect(get_user_home_url(request.user))
     try:
         fecha = date.fromisoformat(fecha_str)
     except ValueError:
