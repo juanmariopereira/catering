@@ -35,6 +35,7 @@ urlpatterns = [
     path('historial/', base_views.historial_acciones, name='historial_acciones'),
     path('admin/', admin.site.urls),
     path('accounts/login/', base_views.CustomLoginView.as_view(), name='login'),
+    path('accounts/sin-acceso/', base_views.sin_acceso, name='sin_acceso'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('clients/', include('clients.urls')),
     path('contracts/', include('contracts.urls')),

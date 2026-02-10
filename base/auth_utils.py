@@ -22,11 +22,28 @@ def user_in_group(user, group_name):
     return user.groups.filter(name=group_name).exists()
 
 
-def is_admin(user):
-    """Usuario con acceso completo: is_staff o pertenece al grupo Admin."""
+def user_has_any_profile(user):
+    """
+    True si el usuario tiene permiso para usar la aplicación: superuser, is_staff
+    o pertenece a algún grupo de perfil (Admin, Cocina, Entregador).
+    Por defecto, sin perfil no tiene acceso a nada (ni al dashboard).
+    """
     if not user or not user.is_authenticated:
         return False
-    return user.is_staff or user_in_group(user, GROUP_ADMIN)
+    if getattr(user, 'is_superuser', False) or getattr(user, 'is_staff', False):
+        return True
+    return (
+        user_in_group(user, GROUP_ADMIN)
+        or user_in_group(user, GROUP_COCINA)
+        or user_in_group(user, GROUP_ENTREGADOR)
+    )
+
+
+def is_admin(user):
+    """Usuario con acceso completo: is_superuser, is_staff o pertenece al grupo Admin."""
+    if not user or not user.is_authenticated:
+        return False
+    return getattr(user, 'is_superuser', False) or user.is_staff or user_in_group(user, GROUP_ADMIN)
 
 
 def is_cocina(user):
@@ -62,13 +79,16 @@ def user_can_access_entregador(user, entregador_id):
 def get_user_home_url(user):
     """
     URL de inicio según perfil (fuera del admin).
-    - Admin / staff: dashboard
+    - Admin / staff / superuser: dashboard
     - Cocina: /kitchen/
     - Entregador: /delivery/ruta/<fecha_actual>/<entregador_id>/
-    - Otros: dashboard
+    - Sin perfil: página "sin acceso"
     """
     if not user or not user.is_authenticated:
         return reverse('login')
+
+    if not user_has_any_profile(user):
+        return reverse('sin_acceso')
 
     if is_cocina(user) and not is_admin(user):
         return '/kitchen/'
@@ -81,6 +101,7 @@ def get_user_home_url(user):
                 'delivery:ruta_fecha_entregador',
                 kwargs={'fecha_str': hoy, 'entregador_id': entregador.pk},
             )
+        return reverse('sin_acceso')
 
     return reverse('dashboard')
 

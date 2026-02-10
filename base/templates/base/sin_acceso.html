@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sin acceso - {{ catering_name }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #f0f7ed 0%, #e8f5e9 100%);
+        }
+        .box {
+            width: 100%;
+            max-width: 420px;
+            padding: 40px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin: 0 0 16px 0;
+            font-size: 1.5rem;
+            border-bottom: 3px solid #c62828;
+            padding-bottom: 15px;
+        }
+        p { color: #555; margin: 0 0 24px 0; line-height: 1.5; }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #7CB342;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn:hover { background-color: #689F38; }
+        form { margin: 0; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>Sin acceso</h1>
+        <p>Tu usuario no tiene permisos para usar esta aplicación. Si crees que es un error, contacta al administrador para que te asigne un perfil (Admin, Cocina o Entregador).</p>
+        <form action="{% url 'logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn">Cerrar sesión</button>
+        </form>
+    </div>
+</body>
+</html>

@@ -569,9 +569,15 @@ def parametro_crear(request):
     })
 
 
-# --- Redirección raíz y login por perfil ---
+# --- Sin acceso (usuario sin perfil) y redirección por perfil ---
 
 from django.contrib.auth.views import LoginView as AuthLoginView
+
+
+@login_required
+def sin_acceso(request):
+    """Página mostrada a usuarios autenticados que no tienen ningún perfil asignado."""
+    return render(request, 'base/sin_acceso.html')
 
 
 def home_redirect(request):
