@@ -1,3 +1,47 @@
 /base/settings/__init__.py
 /.env
 *.pyc
+/venv38/
+/venv/
+
+# Python
+__pycache__/
+*.egg-info/
+*.egg
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.log
+
+# Django
+staticfiles/
+media/
+db.sqlite3
+*.sqlite3
+
+# Flutter / Dart
+courier_app/.dart_tool/
+courier_app/.packages
+courier_app/.flutter-plugins
+courier_app/.flutter-plugins-dependencies
+courier_app/build/
+
+# Android (Gradle, builds)
+courier_app/android/.gradle/
+courier_app/android/build/
+courier_app/android/app/build/
+courier_app/android/local.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

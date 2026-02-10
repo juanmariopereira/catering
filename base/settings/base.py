@@ -50,6 +50,10 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     'base',
     'rest_framework',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
+    'drf_spectacular',
+    'django_filters',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -68,6 +72,7 @@ INSTALLED_APPS = [
     'purchases',
     'kitchen',
     'delivery',
+    'deliveries',
     'billing',
 ]
 
@@ -156,6 +161,28 @@ BRAND_COLOR_HOVER = '#689F38'
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
+
+# REST Framework and API
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+}
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Catering API',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}
+SIMPLE_JWT = {
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+}
 
 # Sentry: monitoreo de errores (solo si SENTRY_DSN está definido en el entorno)
 SENTRY_DSN = os.environ.get('SENTRY_DSN', '').strip()
