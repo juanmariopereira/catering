@@ -14,4 +14,6 @@ urlpatterns = [
     path('<int:pk>/eliminar/', views.PlanificacionMenuDeleteView.as_view(), name='eliminar'),
     path('calendario/', views.calendario_planificacion, name='calendario'),
     path('calendario/<int:year>/<int:month>/', views.calendario_planificacion, name='calendario_mes'),
+    path('recetas-por-tipo/', views.recetas_por_tipo_ajax, name='recetas_por_tipo'),
+    path('recetas-del-menu/', views.recetas_del_menu_ajax, name='recetas_del_menu'),
 ]
