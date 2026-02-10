@@ -17,10 +17,12 @@ from .models import (
 )
 from .forms import PlanificacionMenuForm, PlanificacionMenuRecetaForm
 from .utils import (
-    obtener_conflictos_menu_por_cliente,
-    recetas_alternativas_para_momento,
+    obtener_conflictos_menu_por_cliente_con_precarga,
+    recetas_alternativas_para_momento_con_precarga,
     clientes_no_gustan_por_receta,
     dieta_etiqueta_contrato,
+    obtener_ingredientes_no_gustados_por_clientes,
+    obtener_ingredientes_por_recetas,
 )
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
@@ -31,7 +33,7 @@ from base.models import es_feriado, get_feriado
 from delivery.utils import contratos_en_ruta_fecha, entregador_por_contrato_en_fecha
 from diets.models import TipoComida
 from plans.models import Plan
-from recipes.models import Receta
+from recipes.models import Receta, Ingrediente
 from routes.models import Entregador
 from .services.ai_menu import sugerir_menu_ia
 
@@ -540,6 +542,9 @@ class PlanificacionMenuUpdateView(LoginRequiredMixin, UpdateView):
     success_url = reverse_lazy('planning:lista')
     context_object_name = 'planificacion_menu'
 
+    def get_queryset(self):
+        return PlanificacionMenu.objects.select_related('plan')
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         obj = self.object
@@ -554,25 +559,80 @@ class PlanificacionMenuUpdateView(LoginRequiredMixin, UpdateView):
             context['receta_formset'] = PlanificacionMenuRecetaFormSet(
                 instance=obj, receta_counts=receta_counts
             )
-        # Contratos activos en esta fecha con este plan (para sustituciones por cliente; excluye pausas)
-        contratos = contratos_activos_en_fecha(fecha).filter(plan=plan).select_related('cliente')
+        # Contratos activos en esta fecha con este plan (una query, en memoria)
+        contratos = list(
+            contratos_activos_en_fecha(fecha).filter(plan=plan).select_related('cliente')
+        )
         context['contratos_fecha'] = contratos
-        # Por cada contrato: conflictos (recetas del menú con ingredientes no gustados) y sustituciones actuales
-        sustituciones_actuales = {
-            (s.contrato_id, s.tipo_comida_id, s.receta_original_id): s.receta_sustituta_id
-            for s in PlanificacionClienteSustituta.objects.filter(
-                fecha=fecha, contrato__in=contratos
-            ).select_related('tipo_comida', 'receta_original', 'receta_sustituta')
-        }
+        contrato_ids = [c.id for c in contratos]
+        cliente_ids = [c.cliente_id for c in contratos]
+
+        # Sustituciones actuales (una query)
+        sustituciones_actuales = {}
+        for row in PlanificacionClienteSustituta.objects.filter(
+            fecha=fecha, contrato_id__in=contrato_ids
+        ).values_list('contrato_id', 'tipo_comida_id', 'receta_original_id', 'receta_sustituta_id'):
+            sustituciones_actuales[(row[0], row[1], row[2])] = row[3]
+
+        # Recetas del menú con receta y tipo_comida (una query + prefetch tipos_receta)
+        menu_recetas = list(
+            PlanificacionMenuReceta.objects.filter(planificacion_menu=obj)
+            .select_related('receta', 'tipo_comida')
+            .prefetch_related('receta__tipos_receta')
+            .order_by('tipo_comida__orden', 'orden')
+        )
+        receta_ids_menu = [mr.receta_id for mr in menu_recetas]
+
+        # Recetas activas (una query, para "todas" y para alternativas)
         recetas_todas = list(Receta.objects.filter(activa=True).order_by('nombre'))
+        receta_ids_activas = [r.id for r in recetas_todas]
+
+        # Ingredientes no gustados por cliente (una query batch)
+        ingredientes_no_gustados_por_cliente = obtener_ingredientes_no_gustados_por_clientes(cliente_ids)
+
+        # Ingredientes por receta para menu + todas activas (dos queries batch)
+        receta_ingredientes = obtener_ingredientes_por_recetas(receta_ids_menu)
+        receta_ingredientes.update(
+            obtener_ingredientes_por_recetas(receta_ids_activas)
+        )
+        all_ing_ids = set()
+        for ing_set in receta_ingredientes.values():
+            all_ing_ids |= ing_set
+        for ing_set in ingredientes_no_gustados_por_cliente.values():
+            all_ing_ids |= ing_set
+        ingredientes_por_id = Ingrediente.objects.in_bulk(all_ing_ids) if all_ing_ids else {}
+
+        # Tipos de comida en el menú (desde menu_recetas, sin query)
+        tipos_en_menu_ids = list({mr.tipo_comida_id for mr in menu_recetas})
+        tipos_en_menu = list(
+            TipoComida.objects.filter(id__in=tipos_en_menu_ids).order_by('orden', 'nombre')
+        )
+        context['tiene_momentos_en_menu'] = bool(tipos_en_menu)
+
+        # Recetas por tipo_comida para alternativas (una query por tipo en menú, con prefetch tipos_receta)
+        recetas_por_tipo_comida = {}
+        for tcid in tipos_en_menu_ids:
+            recetas_por_tipo_comida[tcid] = list(
+                Receta.objects.filter(activa=True, momentos_dia=tcid)
+                .prefetch_related('tipos_receta')
+                .order_by('nombre')
+            )
+
+        # Conflictos y alternativas por contrato (tod0 en memoria)
         clientes_conflictos = []
         for c in contratos:
-            conflictos = obtener_conflictos_menu_por_cliente(obj, c)
+            ing_no_gusta = ingredientes_no_gustados_por_cliente.get(c.cliente_id, set())
+            conflictos = obtener_conflictos_menu_por_cliente_con_precarga(
+                menu_recetas, c, ing_no_gusta, receta_ingredientes, ingredientes_por_id
+            )
             for cf in conflictos:
-                tipo_receta_ids = list(cf['receta'].tipos_receta.values_list('id', flat=True))
-                cf['alternativas'] = recetas_alternativas_para_momento(
-                    cf['tipo_comida'].id, cf['receta'].id, c.cliente_id,
-                    tipo_receta_ids=tipo_receta_ids if tipo_receta_ids else None,
+                tipo_receta_ids = [t.id for t in cf['receta'].tipos_receta.all()]
+                cf['alternativas'] = recetas_alternativas_para_momento_con_precarga(
+                    cf['receta'].id,
+                    tipo_receta_ids if tipo_receta_ids else None,
+                    recetas_por_tipo_comida.get(cf['tipo_comida'].id, []),
+                    receta_ingredientes,
+                    ing_no_gusta,
                 )
                 ids_alt = {r.id for r in cf['alternativas']}
                 cf['otras_recetas'] = [
@@ -582,28 +642,22 @@ class PlanificacionMenuUpdateView(LoginRequiredMixin, UpdateView):
                 key = (c.id, cf['tipo_comida'].id, cf['receta'].id)
                 cf['sustitucion_actual_id'] = sustituciones_actuales.get(key)
             clientes_conflictos.append({'contrato': c, 'conflictos': conflictos})
+
         context['clientes_conflictos'] = clientes_conflictos
         context['recetas_todas'] = recetas_todas
-        # Dietas personalizadas: solo excepciones (recetas distintas al menú del plan), compacto
         context['show_dietas_personalizadas'] = True
-        tipos_en_menu = TipoComida.objects.filter(
-            id__in=obj.recetas.values_list('tipo_comida_id', flat=True).distinct()
-        ).order_by('orden', 'nombre')
-        context['tiene_momentos_en_menu'] = tipos_en_menu.exists()
-        # Lista de excepciones: solo filas que existen (cliente + momento + receta + receta_original)
+        context['tipos_para_anadir'] = tipos_en_menu
+
+        # Lista de excepciones (una query)
         lista_excepciones = list(
             PlanificacionClienteReceta.objects.filter(
-                fecha=fecha, contrato__in=contratos
+                fecha=fecha, contrato_id__in=contrato_ids
             ).select_related('contrato__cliente', 'tipo_comida', 'receta', 'receta_original').order_by(
                 'contrato__cliente__nombre', 'tipo_comida__orden', 'orden'
             )
         )
         context['lista_excepciones'] = lista_excepciones
-        # Para añadir nueva: dropdowns Cliente, Momento, Reemplazar (plato del menú), Receta
-        context['contratos_para_anadir'] = [
-            (c.id, c.cliente.nombre) for c in contratos
-        ]
-        context['tipos_para_anadir'] = list(tipos_en_menu)
+        context['contratos_para_anadir'] = [(c.id, c.cliente.nombre) for c in contratos]
         return context
 
     def form_valid(self, form):

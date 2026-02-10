@@ -17,7 +17,7 @@ from routes.models import (
     PlantillaRuta, PlantillaRutaCliente, EntregaDia,
 )
 from contracts.models import Contrato, q_filtro_estado, contratos_activos_en_fecha
-from .forms import PlantillaRutaForm
+from .forms import PlantillaRutaForm, PlantillaRutaClienteForm
 from .models import PuntoPartidaEntrega
 from .utils import (
     contratos_con_entrega_en_fecha,
@@ -31,7 +31,7 @@ from .services.google_maps_ruta import optimizar_orden_entregas_plantilla, get_g
 BasePlantillaRutaClienteFormSet = inlineformset_factory(
     PlantillaRuta,
     PlantillaRutaCliente,
-    fields=['contrato', 'orden_entrega'],
+    form=PlantillaRutaClienteForm,
     extra=0,
     can_delete=True,
 )

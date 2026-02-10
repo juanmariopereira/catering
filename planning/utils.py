@@ -15,6 +15,32 @@ def obtener_ingredientes_no_gustados(cliente_id: int) -> Set[int]:
     return set(ingredientes_no_gustados)
 
 
+def obtener_ingredientes_no_gustados_por_clientes(cliente_ids: List[int]) -> Dict[int, Set[int]]:
+    """Batch: para cada cliente_id devuelve set de ingrediente_id que no gustan. Una sola query."""
+    if not cliente_ids:
+        return {}
+    rows = IngredienteNoGustado.objects.filter(
+        cliente_id__in=cliente_ids
+    ).values_list('cliente_id', 'ingrediente_id')
+    result = {cid: set() for cid in cliente_ids}
+    for cid, ing_id in rows:
+        result[cid].add(ing_id)
+    return result
+
+
+def obtener_ingredientes_por_recetas(receta_ids: List[int]) -> Dict[int, Set[int]]:
+    """Batch: para cada receta_id devuelve set de ingrediente_id. Una sola query."""
+    if not receta_ids:
+        return {}
+    rows = RecetaIngrediente.objects.filter(
+        receta_id__in=receta_ids
+    ).values_list('receta_id', 'ingrediente_id')
+    result = {rid: set() for rid in receta_ids}
+    for rid, ing_id in rows:
+        result[rid].add(ing_id)
+    return result
+
+
 def obtener_ingredientes_de_receta(receta_id: int) -> Set[int]:
     """Obtiene los IDs de ingredientes de una receta"""
     from recipes.models import RecetaIngrediente
@@ -84,6 +110,20 @@ def obtener_ingredientes_conflicto_receta(receta_id: int, ingredientes_no_gustad
     if not conflictivos_ids:
         return []
     return list(Ingrediente.objects.filter(id__in=conflictivos_ids))
+
+
+def _ingredientes_conflicto_desde_cache(
+    receta_id: int,
+    ingredientes_no_gustados: Set[int],
+    receta_ingredientes: Dict[int, Set[int]],
+    ingredientes_por_id: Dict[int, Any],
+) -> List[Any]:
+    """Devuelve lista de Ingrediente en conflicto usando datos precargados."""
+    ing_receta = receta_ingredientes.get(receta_id, set())
+    conflictivos_ids = ing_receta & ingredientes_no_gustados
+    if not conflictivos_ids:
+        return []
+    return [ingredientes_por_id[i] for i in conflictivos_ids if i in ingredientes_por_id]
 
 
 def clientes_no_gustan_por_receta(fecha, plan) -> Dict[int, int]:
@@ -212,6 +252,65 @@ def obtener_conflictos_menu_por_cliente(planificacion_menu, contrato) -> List[Di
                 'ingredientes_nombres': [i.nombre for i in ingredientes_conflicto],
             })
     return conflictos
+
+
+def obtener_conflictos_menu_por_cliente_con_precarga(
+    menu_recetas: List[Any],
+    contrato: Any,
+    ingredientes_no_gustados: Set[int],
+    receta_ingredientes: Dict[int, Set[int]],
+    ingredientes_por_id: Dict[int, Any],
+) -> List[Dict[str, Any]]:
+    """
+    Igual que obtener_conflictos_menu_por_cliente pero usando datos ya cargados (sin queries).
+    menu_recetas: lista de PlanificacionMenuReceta con receta y tipo_comida ya cargados.
+    """
+    if not ingredientes_no_gustados:
+        return []
+    conflictos = []
+    for mr in menu_recetas:
+        ing_receta = receta_ingredientes.get(mr.receta_id, set())
+        if not (ing_receta & ingredientes_no_gustados):
+            continue
+        ingredientes_conflicto = _ingredientes_conflicto_desde_cache(
+            mr.receta_id, ingredientes_no_gustados, receta_ingredientes, ingredientes_por_id
+        )
+        conflictos.append({
+            'menu_receta': mr,
+            'receta': mr.receta,
+            'tipo_comida': mr.tipo_comida,
+            'ingredientes_conflicto': ingredientes_conflicto,
+            'ingredientes_nombres': [i.nombre for i in ingredientes_conflicto],
+        })
+    return conflictos
+
+
+def recetas_alternativas_para_momento_con_precarga(
+    receta_id: int,
+    tipo_receta_ids: List[int],
+    recetas_por_tipo_comida: List[Any],
+    receta_ingredientes: Dict[int, Set[int]],
+    ingredientes_no_gustados: Set[int],
+) -> List[Any]:
+    """
+    Recetas alternativas para un momento usando datos precargados (sin queries).
+    recetas_por_tipo_comida: lista de Receta ya filtradas por momentos_dia (con tipos_receta precargados).
+    """
+    tipo_receta_set = set(tipo_receta_ids) if tipo_receta_ids else None
+    alternativas = []
+    for r in recetas_por_tipo_comida:
+        if r.id == receta_id:
+            continue
+        if tipo_receta_set is not None:
+            # Usar solo la relación precargada (sin query)
+            ids_r = {t.id for t in r.tipos_receta.all()}
+            if not (ids_r & tipo_receta_set):
+                continue
+        ing_r = receta_ingredientes.get(r.id, set())
+        if ing_r & ingredientes_no_gustados:
+            continue
+        alternativas.append(r)
+    return alternativas
 
 
 def _receta_efectiva_por_contrato(fecha, contrato_id, tipo_comida_id, receta_original_id, sustituciones_map):

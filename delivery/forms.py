@@ -1,6 +1,16 @@
 from django import forms
-from routes.models import Ruta, PlantillaRuta
+from routes.models import Ruta, PlantillaRuta, PlantillaRutaCliente
+from contracts.models import Contrato
 from .models import PuntoPartidaEntrega
+
+
+class ContratoConHorarioField(forms.ModelChoiceField):
+    """ModelChoiceField de contrato que muestra en la etiqueta el horario de entrega."""
+    def label_from_instance(self, obj):
+        base = str(obj)
+        if obj.horario_entrega:
+            return f"{base} — Entrega: {obj.horario_entrega.strftime('%H:%M')}"
+        return f"{base} — Sin horario"
 
 
 class PuntoPartidaEntregaForm(forms.ModelForm):
@@ -41,3 +51,16 @@ class PlantillaRutaForm(forms.ModelForm):
     class Meta:
         model = PlantillaRuta
         fields = ['activa', 'notas']
+
+
+class PlantillaRutaClienteForm(forms.ModelForm):
+    """Formulario para una fila de la plantilla; el desplegable de contrato muestra horario de entrega."""
+    contrato = ContratoConHorarioField(
+        queryset=Contrato.objects.none(),
+        required=True,
+        label="Contrato (Cliente)",
+    )
+
+    class Meta:
+        model = PlantillaRutaCliente
+        fields = ['contrato', 'orden_entrega']
