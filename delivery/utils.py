@@ -53,6 +53,29 @@ def contratos_en_ruta_fecha(fecha):
     return out
 
 
+def entregador_por_contrato_en_fecha(fecha):
+    """
+    Devuelve {contrato_id: entregador} para contratos con entrega en la fecha
+    que están asignados a alguna plantilla de entregador activo.
+    """
+    if hasattr(fecha, 'date'):
+        fecha = fecha.date()
+    if es_feriado(fecha):
+        return {}
+    dia_semana = DIA_SEMANA_NOMBRE[fecha.weekday()]
+    out = {}
+    for prc in PlantillaRutaCliente.objects.filter(
+        plantilla_ruta__entregador__activo=True,
+    ).select_related('plantilla_ruta__entregador', 'contrato'):
+        c = prc.contrato
+        if not c.activo_en_fecha(fecha):
+            continue
+        if not c.dias_entrega or dia_semana not in c.dias_entrega:
+            continue
+        out[c.id] = prc.plantilla_ruta.entregador
+    return out
+
+
 def contratos_sin_ruta_en_fecha(fecha):
     """
     Contratos que tienen entrega en la fecha pero no están en ninguna plantilla de entregador.

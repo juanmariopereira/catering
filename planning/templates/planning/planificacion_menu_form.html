@@ -27,6 +27,14 @@
     .recetas-formset table { width: 100%; border-collapse: collapse; margin-top: 12px; }
     .recetas-formset th, .recetas-formset td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
     .recetas-formset th { background-color: #f0f0f0; }
+    .recetas-formset td select {
+        width: 100%; min-width: 140px; max-width: 280px;
+        padding: 8px 10px; font-size: 1rem; font-family: inherit;
+        border: 1px solid #ced4da; border-radius: 4px; background-color: #fff;
+        color: #212529; appearance: auto;
+    }
+    .recetas-formset td select:hover { border-color: #adb5bd; }
+    .recetas-formset td select:focus { outline: none; border-color: {{ brand_color|default:'#7CB342' }}; box-shadow: 0 0 0 2px rgba(124, 179, 66, 0.2); }
     .sustituciones-section {
         margin-top: 28px; padding: 20px;
         background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;

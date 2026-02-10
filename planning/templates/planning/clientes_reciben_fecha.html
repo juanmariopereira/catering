@@ -39,6 +39,11 @@
     tr:hover { background-color: #f5f5f5; }
     .accion-link { color: {{ brand_color }}; font-weight: 600; }
     .accion-link:hover { text-decoration: underline; }
+    .th-checkbox, .td-checkbox { width: 52px; text-align: center; white-space: nowrap; }
+    .filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 20px; padding: 16px; background: #f8f9fa; border-radius: 4px; border: 1px solid #e9ecef; }
+    .filtros label { font-weight: 600; margin-right: 4px; }
+    .filtros select, .filtros input[type="text"], .filtros input[type="date"] { padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; }
+    .filtros .filtro-grupo { display: flex; align-items: center; gap: 4px; }
 </style>
 {% endblock %}
 
@@ -53,15 +58,55 @@
     </div>
     {% endif %}
     <div class="fecha-navegacion">
-        <a href="{% url 'planning:clientes_por_fecha' %}?fecha={{ fecha_anterior|date:'Y-m-d' }}">← Día anterior</a>
+        <a href="{% url 'planning:clientes_por_fecha' %}?{{ query_filtros_anterior }}">← Día anterior</a>
         <span class="fecha-actual">{{ fecha|date:"l, d F Y" }}</span>
-        <a href="{% url 'planning:clientes_por_fecha' %}?fecha={{ fecha_siguiente|date:'Y-m-d' }}">Día siguiente →</a>
+        <a href="{% url 'planning:clientes_por_fecha' %}?{{ query_filtros_siguiente }}">Día siguiente →</a>
         <form method="get" style="display: flex; gap: 8px; align-items: center;">
+            <input type="hidden" name="plan" value="{{ filtro_plan }}">
+            <input type="hidden" name="entregador" value="{{ filtro_entregador }}">
+            <input type="hidden" name="cliente" value="{{ filtro_cliente }}">
+            <input type="hidden" name="vigencia" value="{{ filtro_vigencia }}">
             <label for="fecha">Ir a fecha:</label>
             <input type="date" name="fecha" id="fecha" value="{{ fecha|date:'Y-m-d' }}">
             <button type="submit" class="btn">Ver</button>
         </form>
     </div>
+
+    <form method="get" class="filtros">
+        <input type="hidden" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
+        <div class="filtro-grupo">
+            <label for="filtro-plan">Plan:</label>
+            <select name="plan" id="filtro-plan">
+                <option value="">Todos</option>
+                {% for pid, pnombre in planes_opciones %}
+                <option value="{{ pid }}" {% if filtro_plan == pid %}selected{% endif %}>{{ pnombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filtro-grupo">
+            <label for="filtro-entregador">Entregador:</label>
+            <select name="entregador" id="filtro-entregador">
+                <option value="">Todos</option>
+                <option value="sin" {% if filtro_entregador == 'sin' %}selected{% endif %}>Sin repartidor</option>
+                {% for eid, enombre in entregadores_opciones %}
+                <option value="{{ eid }}" {% if filtro_entregador == eid %}selected{% endif %}>{{ enombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filtro-grupo">
+            <label for="filtro-cliente">Cliente:</label>
+            <input type="text" name="cliente" id="filtro-cliente" value="{{ filtro_cliente }}" placeholder="Buscar por nombre">
+        </div>
+        <div class="filtro-grupo">
+            <label for="filtro-vigencia">Vigencia contrato:</label>
+            <select name="vigencia" id="filtro-vigencia">
+                {% for val, texto in vigencia_choices %}
+                <option value="{{ val }}" {% if filtro_vigencia == val %}selected{% endif %}>{{ texto }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn">Filtrar</button>
+    </form>
 
     {% if cantidad_sin_entregador > 0 %}
     <div class="bloque-sin-entregador">
@@ -74,23 +119,28 @@
         <a href="{% url 'planning:resumen' %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn">Resumen por plan</a>
         <a href="{% url 'planning:lista' %}?fecha={{ fecha|date:'Y-m-d' }}" class="btn btn-secondary">Ver menús</a>
         <a href="{% url 'kitchen:detalle_fecha' fecha|date:'Y-m-d' %}" class="btn btn-secondary">Reporte cocina</a>
+        <button type="button" class="btn btn-secondary" id="btn-imprimir-etiquetas-seleccionadas" title="Abre en nuevas pestañas las etiquetas de dieta de los contratos marcados">Imprimir etiquetas seleccionadas</button>
     </div>
 
     <div class="table-responsive">
-    <table style="min-width: 600px;">
+    <table style="min-width: 700px;" id="tabla-clientes-reciben">
         <thead>
             <tr>
+                <th class="th-checkbox"><label><input type="checkbox" id="cb-seleccionar-todos-etiquetas" title="Seleccionar todos"> Impr.</label></th>
                 <th>Plan</th>
                 <th>Cliente</th>
                 <th>Vigencia contrato</th>
                 <th>Aviso</th>
-                <th>Repartidor</th>
+                <th>Entregador</th>
                 <th>Acción</th>
             </tr>
         </thead>
         <tbody>
             {% for f in filas %}
-            <tr>
+            <tr class="fila-contrato" data-planificacion="{{ f.planificacion_menu.pk }}" data-contrato="{{ f.contrato.pk }}">
+                <td class="td-checkbox">
+                    <label><input type="checkbox" class="cb-imprimir-etiqueta" value="{{ f.planificacion_menu.pk }}/{{ f.contrato.pk }}" title="Incluir en impresión de etiquetas"></label>
+                </td>
                 <td>{{ f.plan.nombre }}</td>
                 <td>{{ f.cliente.nombre }}</td>
                 <td>{{ f.contrato.fecha_inicio|date:"d/m/Y" }} — {% if f.contrato.fecha_fin %}{{ f.contrato.fecha_fin|date:"d/m/Y" }}{% else %}indefinido{% endif %}</td>
@@ -103,7 +153,9 @@
                 </td>
                 <td>
                     {% if f.sin_entregador %}
-                    <span class="aviso-sin-entregador">Sin repartidor asignado para este día</span>
+                    <span class="aviso-sin-entregador">Sin repartidor asignado</span>
+                    {% elif f.entregador %}
+                    {{ f.entregador.nombre }}
                     {% else %}
                     <span class="sin-aviso">—</span>
                     {% endif %}
@@ -118,11 +170,42 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="6">No hay clientes con menú planificado para esta fecha. Cree menús desde el <a href="{% url 'planning:resumen' %}?fecha={{ fecha|date:'Y-m-d' }}">resumen por plan</a>.</td>
+                <td colspan="7">No hay clientes con menú planificado para esta fecha. Cree menús desde el <a href="{% url 'planning:resumen' %}?fecha={{ fecha|date:'Y-m-d' }}">resumen por plan</a>.</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     </div>
+
+    <script>
+    (function() {
+        var cbTodos = document.getElementById('cb-seleccionar-todos-etiquetas');
+        var cbs = document.querySelectorAll('.cb-imprimir-etiqueta');
+        var btnImprimir = document.getElementById('btn-imprimir-etiquetas-seleccionadas');
+        var baseUrl = ('{% url "planning:etiqueta_dieta" 0 0 %}').replace(/\/0\/0\/?$/, '/');
+        if (cbTodos && cbs.length) {
+            cbTodos.addEventListener('change', function() {
+                cbs.forEach(function(cb) { cb.checked = cbTodos.checked; });
+            });
+        }
+        if (btnImprimir && cbs.length) {
+            btnImprimir.addEventListener('click', function() {
+                var seleccionados = [];
+                cbs.forEach(function(cb) {
+                    if (cb.checked && cb.value) {
+                        var parts = cb.value.split('/');
+                        if (parts.length === 2) seleccionados.push(parts[0] + '/' + parts[1]);
+                    }
+                });
+                if (seleccionados.length === 0) {
+                    alert('Seleccione al menos un contrato para imprimir etiquetas.');
+                    return;
+                }
+                var urlMasivo = '{% url "planning:etiquetas_dieta_masivo" %}?ids=' + encodeURIComponent(seleccionados.join(','));
+                window.open(urlMasivo, '_blank', 'noopener');
+            });
+        }
+    })();
+    </script>
 </div>
 {% endblock %}

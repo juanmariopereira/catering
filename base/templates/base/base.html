@@ -587,6 +587,8 @@
                 if ((select.getAttribute('name') || '').indexOf('receta_original') !== -1) return;
                 if ((select.getAttribute('name') || '').match(/^nuevo_\d+_receta$/)) return;
                 if (select.classList && select.classList.contains('nuevo-receta')) return;
+                /* Formset "Recetas por momento del día": tipo_comida y receta nativos para aspecto uniforme; receta se rellena por AJAX */
+                if (select.closest('#recetas-formset-container') && (select.getAttribute('name') || '').match(/-\d+-(receta|tipo_comida)$/)) return;
                 try {
                     var instance = new Choices(select, { searchEnabled: true, placeholderValue: 'Buscar...' });
                     select._choicesInstance = instance;

@@ -5,11 +5,11 @@ from django.core.validators import MinValueValidator
 
 class PlanificacionMenu(models.Model):
     """
-    Planificación por fecha: define el menú (comidas por momento del día) para una fecha.
-    Cada planificación tiene fecha y plan (tipo de plan). Solo puede existir una planificación
-    por fecha: no puede haber más de un plan para la misma fecha.
+    Planificación por fecha y plan: define el menú (comidas por momento del día).
+    Solo puede existir una planificación por cada combinación (fecha, plan);
+    puede haber varias planificaciones para la misma fecha con planes distintos.
     """
-    fecha = models.DateField(unique=True, verbose_name="Fecha")
+    fecha = models.DateField(verbose_name="Fecha")
     plan = models.ForeignKey(
         'plans.Plan',
         on_delete=models.CASCADE,
@@ -25,6 +25,7 @@ class PlanificacionMenu(models.Model):
     class Meta:
         verbose_name = "Planificación menú (fecha + plan)"
         verbose_name_plural = "Planificaciones menú"
+        unique_together = ['fecha', 'plan']
         ordering = ['-fecha', 'plan']
 
     def __str__(self):

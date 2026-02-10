@@ -17,4 +17,5 @@ urlpatterns = [
     path('recetas-por-tipo/', views.recetas_por_tipo_ajax, name='recetas_por_tipo'),
     path('recetas-del-menu/', views.recetas_del_menu_ajax, name='recetas_del_menu'),
     path('etiqueta-dieta/<int:planificacion_id>/<int:contrato_id>/', views.etiqueta_dieta, name='etiqueta_dieta'),
+    path('etiquetas-dieta/', views.etiquetas_dieta_masivo, name='etiquetas_dieta_masivo'),
 ]

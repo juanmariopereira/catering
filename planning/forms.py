@@ -5,7 +5,7 @@ from recipes.models import Receta
 
 
 class PlanificacionMenuForm(forms.ModelForm):
-    """Formulario para crear/editar menú planificado. Fecha y plan obligatorios; una sola planificación por fecha."""
+    """Formulario para crear/editar menú planificado. Una sola planificación por (fecha, plan)."""
 
     class Meta:
         model = PlanificacionMenu
@@ -20,18 +20,20 @@ class PlanificacionMenuForm(forms.ModelForm):
         self.fields['fecha'].input_formats = ['%Y-%m-%d']
         self.fields['plan'].required = True
 
-    def clean_fecha(self):
-        fecha = self.cleaned_data.get('fecha')
-        if not fecha:
-            return fecha
-        qs = PlanificacionMenu.objects.filter(fecha=fecha)
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha = cleaned_data.get('fecha')
+        plan = cleaned_data.get('plan')
+        if not fecha or not plan:
+            return cleaned_data
+        qs = PlanificacionMenu.objects.filter(fecha=fecha, plan=plan)
         if self.instance and self.instance.pk:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
             raise ValidationError(
-                'Ya existe una planificación para esta fecha. Solo puede haber un plan por fecha.'
+                'Ya existe una planificación para esta fecha y este plan. Solo puede haber una por (fecha, plan).'
             )
-        return fecha
+        return cleaned_data
 
 
 class PlanificacionMenuRecetaForm(forms.ModelForm):

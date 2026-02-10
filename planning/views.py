@@ -1,3 +1,4 @@
+from urllib.parse import urlencode
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy, reverse
@@ -23,13 +24,15 @@ from .utils import (
 )
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+from django.db.models import Q
 
-from contracts.models import Contrato, contratos_activos_en_fecha
+from contracts.models import Contrato, contratos_activos_en_fecha, q_filtro_estado
 from base.models import es_feriado, get_feriado
-from delivery.utils import contratos_en_ruta_fecha
+from delivery.utils import contratos_en_ruta_fecha, entregador_por_contrato_en_fecha
 from diets.models import TipoComida
 from plans.models import Plan
 from recipes.models import Receta
+from routes.models import Entregador
 from .services.ai_menu import sugerir_menu_ia
 
 BasePlanificacionMenuRecetaFormSet = inlineformset_factory(
@@ -120,12 +123,21 @@ def resumen_por_fecha(request):
     return render(request, 'planning/resumen_por_fecha.html', context)
 
 
+VIGENCIA_CHOICES = [
+    ('', 'Todos (en vigencia)'),
+    ('activo', 'Activo'),
+    ('pre_renovacion', 'Pre-Renovación'),
+    ('pausado', 'Pausado'),
+    ('vencido', 'Vencido'),
+    ('cancelado', 'Cancelado'),
+]
+
+
 @login_required
 def clientes_reciben_fecha(request):
     """
     Lista de clientes por plan que recibirán sus comidas en una fecha.
-    Si algún ingrediente del menú no es del agrado del cliente (parametrizado),
-    se muestra un aviso y enlace para definir sustituciones (editar menú por cliente).
+    Filtros: plan, entregador, cliente (texto), vigencia del contrato.
     """
     fecha_param = request.GET.get('fecha')
     if fecha_param:
@@ -136,14 +148,40 @@ def clientes_reciben_fecha(request):
     else:
         fecha = timezone.now().date()
 
+    # Parámetros de filtro
+    filtro_plan = request.GET.get('plan', '').strip()
+    filtro_entregador = request.GET.get('entregador', '').strip()
+    filtro_cliente = request.GET.get('cliente', '').strip()
+    filtro_vigencia = request.GET.get('vigencia', '').strip()
+
     menus_por_plan = {
         pm.plan_id: pm
         for pm in PlanificacionMenu.objects.filter(fecha=fecha).select_related('plan')
     }
-    contratos_fecha = contratos_activos_en_fecha(fecha).select_related('plan', 'cliente')
+    plan_ids_con_menu = list(menus_por_plan.keys())
 
-    # Contratos que ya tienen repartidor (plantilla) y entrega ese día
+    if filtro_vigencia and filtro_vigencia != 'activo':
+        contratos_fecha = (
+            Contrato.objects.filter(fecha_inicio__lte=fecha)
+            .filter(Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=fecha))
+            .exclude(
+                pausas__fecha_inicio__lte=fecha,
+                pausas__fecha_fin__gte=fecha,
+            )
+            .filter(plan_id__in=plan_ids_con_menu)
+            .filter(q_filtro_estado(filtro_vigencia))
+            .distinct()
+            .select_related('plan', 'cliente')
+        )
+    else:
+        contratos_fecha = (
+            contratos_activos_en_fecha(fecha)
+            .filter(plan_id__in=plan_ids_con_menu)
+            .select_related('plan', 'cliente')
+        )
+
     contrato_ids_con_ruta = contratos_en_ruta_fecha(fecha)
+    entregador_por_contrato = entregador_por_contrato_en_fecha(fecha)
 
     filas = []
     for c in contratos_fecha:
@@ -153,6 +191,7 @@ def clientes_reciben_fecha(request):
         conflictos = obtener_conflictos_menu_por_cliente(menu, c)
         tiene_aviso = len(conflictos) > 0
         sin_entregador = c.id not in contrato_ids_con_ruta
+        ent = entregador_por_contrato.get(c.id)
         filas.append({
             'plan': c.plan,
             'contrato': c,
@@ -161,11 +200,49 @@ def clientes_reciben_fecha(request):
             'tiene_aviso': tiene_aviso,
             'conflictos_count': len(conflictos),
             'sin_entregador': sin_entregador,
+            'entregador': ent,
         })
+
+    # Aplicar filtros en memoria (plan, entregador, cliente)
+    if filtro_plan:
+        try:
+            plan_id = int(filtro_plan)
+            filas = [f for f in filas if f['plan'].id == plan_id]
+        except ValueError:
+            pass
+    if filtro_entregador:
+        if filtro_entregador == 'sin':
+            filas = [f for f in filas if f['sin_entregador']]
+        else:
+            try:
+                ent_id = int(filtro_entregador)
+                filas = [f for f in filas if f['entregador'] and f['entregador'].id == ent_id]
+            except ValueError:
+                pass
+    if filtro_cliente:
+        q = filtro_cliente.lower()
+        filas = [f for f in filas if q in (f['cliente'].nombre or '').lower()]
 
     cantidad_sin_entregador = sum(1 for f in filas if f['sin_entregador'])
     fecha_anterior = fecha - timedelta(days=1)
     fecha_siguiente = fecha + timedelta(days=1)
+
+    planes_opciones = [(str(pid), nombre) for pid, nombre in Plan.objects.filter(id__in=plan_ids_con_menu, activo=True).order_by('nombre').values_list('id', 'nombre')]
+    entregadores_opciones = [(str(eid), nombre) for eid, nombre in Entregador.objects.filter(activo=True).order_by('nombre').values_list('id', 'nombre')]
+
+    def _query_filtros(override_fecha=None):
+        p = {}
+        p['fecha'] = (override_fecha or fecha).strftime('%Y-%m-%d')
+        if filtro_plan:
+            p['plan'] = filtro_plan
+        if filtro_entregador:
+            p['entregador'] = filtro_entregador
+        if filtro_cliente:
+            p['cliente'] = filtro_cliente
+        if filtro_vigencia:
+            p['vigencia'] = filtro_vigencia
+        return urlencode(p)
+
     context = {
         'fecha': fecha,
         'filas': filas,
@@ -174,6 +251,16 @@ def clientes_reciben_fecha(request):
         'fecha_siguiente': fecha_siguiente,
         'es_feriado': es_feriado(fecha),
         'feriado': get_feriado(fecha),
+        'filtro_plan': filtro_plan,
+        'filtro_entregador': filtro_entregador,
+        'filtro_cliente': filtro_cliente,
+        'filtro_vigencia': filtro_vigencia,
+        'planes_opciones': planes_opciones,
+        'entregadores_opciones': entregadores_opciones,
+        'vigencia_choices': VIGENCIA_CHOICES,
+        'query_filtros': _query_filtros(),
+        'query_filtros_anterior': _query_filtros(fecha_anterior),
+        'query_filtros_siguiente': _query_filtros(fecha_siguiente),
     }
     return render(request, 'planning/clientes_reciben_fecha.html', context)
 
@@ -367,26 +454,27 @@ class PlanificacionMenuListView(LoginRequiredMixin, ListView):
 
 
 class PlanificacionMenuCreateView(LoginRequiredMixin, CreateView):
-    """Crear menú planificado (fecha + plan). Solo puede haber una planificación por fecha."""
+    """Crear menú planificado (fecha + plan). Una sola planificación por (fecha, plan)."""
     model = PlanificacionMenu
     form_class = PlanificacionMenuForm
     template_name = 'planning/planificacion_menu_form.html'
     success_url = reverse_lazy('planning:lista')
 
     def get(self, request, *args, **kwargs):
-        """Si la fecha elegida ya tiene planificación, redirigir a editar esa."""
+        """Si ya existe planificación para esta fecha y plan, redirigir a editar esa."""
         fecha_param = request.GET.get('fecha')
-        if fecha_param:
+        plan_param = request.GET.get('plan')
+        if fecha_param and plan_param:
             try:
                 fecha = date.fromisoformat(fecha_param)
-                existente = PlanificacionMenu.objects.filter(fecha=fecha).first()
+                existente = PlanificacionMenu.objects.filter(fecha=fecha, plan_id=plan_param).first()
                 if existente:
                     messages.info(
                         request,
-                        f'Ya existe una planificación para el {fecha.strftime("%d/%m/%Y")} (plan: {existente.plan.nombre}). Redirigido a edición.'
+                        f'Ya existe una planificación para el {fecha.strftime("%d/%m/%Y")} con ese plan. Redirigido a edición.'
                     )
                     return redirect(reverse('planning:editar', args=[existente.pk]))
-            except ValueError:
+            except (ValueError, TypeError):
                 pass
         return super().get(request, *args, **kwargs)
 
@@ -519,16 +607,20 @@ class PlanificacionMenuUpdateView(LoginRequiredMixin, UpdateView):
         return context
 
     def form_valid(self, form):
-        context = self.get_context_data()
+        form.save()
+        self._guardar_sustituciones_cliente()
+        self._guardar_dietas_personalizadas()
+        context = self.get_context_data(form=form)
         receta_formset = context['receta_formset']
         if receta_formset.is_valid():
-            form.save()
             receta_formset.save()
-            self._guardar_sustituciones_cliente()
-            self._guardar_dietas_personalizadas()
             messages.success(self.request, 'Menú actualizado correctamente.')
             return redirect(self.get_success_url())
-        return self.render_to_response(self.get_context_data(form=form))
+        messages.warning(
+            self.request,
+            'Menú y excepciones guardados. Revise los errores en «Recetas por momento del día» y guarde de nuevo si hace falta.'
+        )
+        return self.render_to_response(context)
 
     def _guardar_sustituciones_cliente(self):
         """Guardar PlanificacionClienteSustituta desde POST sustituir_contrato_X_tipo_Y_receta_Z."""
@@ -778,3 +870,38 @@ def etiqueta_dieta(request, planificacion_id, contrato_id):
         messages.warning(request, 'No hay datos de dieta para este cliente en esta fecha.')
         return redirect('planning:lista')
     return render(request, 'planning/etiqueta_dieta.html', data)
+
+
+@login_required
+@require_http_methods(['GET'])
+def etiquetas_dieta_masivo(request):
+    """
+    Impresión masiva: una sola página con todas las etiquetas seleccionadas.
+    GET ids: planificacion_id/contrato_id separados por coma (ej. ids=27/132,27/133,27/134).
+    """
+    ids_param = request.GET.get('ids', '').strip()
+    if not ids_param:
+        messages.warning(request, 'No se indicaron etiquetas.')
+        return redirect('planning:clientes_por_fecha')
+    etiquetas = []
+    for part in ids_param.split(','):
+        part = part.strip()
+        if not part or '/' not in part:
+            continue
+        try:
+            planificacion_id, contrato_id = part.split('/', 1)
+            planificacion_id = int(planificacion_id.strip())
+            contrato_id = int(contrato_id.strip())
+        except (ValueError, TypeError):
+            continue
+        planificacion = PlanificacionMenu.objects.filter(pk=planificacion_id).select_related('plan').first()
+        contrato = Contrato.objects.filter(pk=contrato_id).select_related('cliente', 'plan').first()
+        if not planificacion or not contrato or contrato.plan_id != planificacion.plan_id:
+            continue
+        data = dieta_etiqueta_contrato(planificacion, contrato)
+        if data:
+            etiquetas.append(data)
+    if not etiquetas:
+        messages.warning(request, 'No hay etiquetas válidas para mostrar.')
+        return redirect('planning:clientes_por_fecha')
+    return render(request, 'planning/etiquetas_dieta_masivo.html', {'etiquetas': etiquetas})
