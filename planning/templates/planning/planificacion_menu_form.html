@@ -32,6 +32,31 @@
         background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;
     }
     .sustituciones-section h2 { margin-top: 0; font-size: 1.2rem; }
+    .dietas-personalizadas-section {
+        margin-top: 28px; padding: 20px;
+        background-color: #e8f5e9; border-left: 4px solid #7CB342; border-radius: 4px;
+    }
+    .dietas-personalizadas-section h2 { margin-top: 0; font-size: 1.2rem; }
+    .cliente-dietas-personalizadas { margin-bottom: 20px; padding: 12px; background: #fff; border-radius: 4px; border: 1px solid #c8e6c9; }
+    .cliente-dietas-personalizadas h3 { margin-top: 0; font-size: 1rem; }
+    .personalizacion-momento { margin-bottom: 14px; }
+    .personalizacion-momento:last-child { margin-bottom: 0; }
+    .momento-label { display: inline-block; font-weight: 600; min-width: 120px; margin-right: 8px; vertical-align: top; padding-top: 6px; }
+    .personalizacion-item { display: inline-block; margin-right: 8px; margin-bottom: 8px; }
+    .personalizacion-select { max-width: 280px; }
+    .dietas-personalizadas-section .aviso-sin-datos { margin: 12px 0 0 0; padding: 12px; background: #fff; border-radius: 4px; border: 1px solid #c8e6c9; color: #555; }
+    .dietas-personalizadas-desc { margin-top: 0; margin-bottom: 12px; font-size: 0.95rem; color: #555; }
+    .tabla-excepciones { width: 100%; max-width: 720px; margin-top: 8px; margin-bottom: 16px; border-collapse: collapse; font-size: 0.95rem; }
+    .tabla-excepciones th, .tabla-excepciones td { padding: 6px 10px; text-align: left; border-bottom: 1px solid #e0e0e0; }
+    .tabla-excepciones th { background: #e8f5e9; font-weight: 600; color: #2e7d32; }
+    .tabla-excepciones .th-quitar, .tabla-excepciones .td-quitar { width: 70px; text-align: center; }
+    .anadir-excepcion { margin-top: 12px; padding: 12px; background: #fff; border-radius: 4px; border: 1px solid #c8e6c9; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .anadir-excepcion-wrap { margin-top: 12px; padding: 12px; background: #fff; border-radius: 4px; border: 1px solid #c8e6c9; }
+    .fila-nueva-excepcion { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .fila-nueva-excepcion:last-of-type:not(.fila-plantilla) { margin-bottom: 0; }
+    .anadir-label { font-weight: 600; margin-right: 4px; }
+    .nuevo-select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; min-width: 140px; }
+    .anadir-hint { font-size: 0.85rem; color: #888; margin-left: 4px; }
     .cliente-conflictos { margin-bottom: 20px; padding: 12px; background: #fff; border-radius: 4px; border: 1px solid #eee; }
     .cliente-conflictos h3 { margin-top: 0; font-size: 1rem; }
     .conflicto-item { margin-bottom: 12px; }
@@ -108,10 +133,10 @@
                 </thead>
                 <tbody id="receta-formset-body">
                     {% for f in receta_formset %}
-                    <tr class="formset-row">
+                    <tr class="formset-row" data-initial-tipo-comida="{{ f.initial.tipo_comida|default:'' }}" data-initial-receta="{{ f.initial.receta|default:'' }}">
                         <td class="drag-cell"><span class="drag-handle" title="Arrastrar para reordenar">⋮⋮</span><span class="orden-input-wrap">{{ f.orden }}</span></td>
                         <td>{{ f.tipo_comida }}</td>
-                        <td>{{ f.receta }}</td>
+                        <td class="td-receta-formset">{{ f.receta }}</td>
                         {% if receta_formset.can_delete %}<td>{{ f.DELETE }}</td>{% endif %}
                         {{ f.id }}
                     </tr>
@@ -129,6 +154,172 @@
             <p style="margin-top: 10px;">
                 <button type="button" class="btn btn-add-row" id="add-receta-row">Añadir fila</button>
             </p>
+        </div>
+        {% endif %}
+
+        {% if show_dietas_personalizadas %}
+        <div class="dietas-personalizadas-section" id="dietas-personalizadas" data-planificacion-id="{{ planificacion_menu.id|default:'' }}">
+            <h2>Recetas distintas al menú del plan</h2>
+            <p class="dietas-personalizadas-desc">Solo se listan excepciones: cuando un cliente recibe algo distinto al menú general. Por defecto todos reciben el menú del plan.</p>
+            {% if not tiene_momentos_en_menu %}
+            <p class="aviso-sin-datos">Añada recetas al menú arriba y guarde para poder definir excepciones.</p>
+            {% elif not contratos_para_anadir %}
+            <p class="aviso-sin-datos">No hay clientes con este plan en esta fecha.</p>
+            {% else %}
+            {% if lista_excepciones %}
+            <table class="tabla-excepciones">
+                <thead>
+                    <tr><th>Cliente</th><th>Momento</th><th>Reemplazando</th><th>Receta</th><th class="th-quitar">Quitar</th></tr>
+                </thead>
+                <tbody>
+                    {% for p in lista_excepciones %}
+                    <tr>
+                        <td>{{ p.contrato.cliente.nombre }}</td>
+                        <td>{{ p.tipo_comida.nombre }}</td>
+                        <td>{% if p.receta_original %}{{ p.receta_original.nombre }}{% else %}—{% endif %}</td>
+                        <td>{{ p.receta.nombre }}</td>
+                        <td class="td-quitar"><label><input type="checkbox" name="quitar_id" value="{{ p.pk }}" title="Quitar esta excepción"> Quitar</label></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="aviso-sin-datos">Ninguna. Use el formulario de abajo para añadir una receta distinta para un cliente y momento.</p>
+            {% endif %}
+            <div class="anadir-excepcion-wrap">
+                <span class="anadir-label">Añadir excepciones:</span>
+                <input type="hidden" name="nuevo_excepciones_total" id="nuevo_excepciones_total" value="1">
+                <div id="nuevas-excepciones-filas">
+                    <div class="fila-nueva-excepcion" data-index="0">
+                        <select name="nuevo_0_contrato" id="nuevo_0_contrato" class="nuevo-select nuevo-contrato">
+                            <option value="">— Cliente —</option>
+                            {% for cid, cnombre in contratos_para_anadir %}
+                            <option value="{{ cid }}">{{ cnombre }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="nuevo_0_tipo_comida" id="nuevo_0_tipo_comida" class="nuevo-select nuevo-tipo-comida">
+                            <option value="">— Momento —</option>
+                            {% for tc in tipos_para_anadir %}
+                            <option value="{{ tc.id }}">{{ tc.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="nuevo_0_receta_original" id="nuevo_0_receta_original" class="nuevo-select nuevo-receta-original" title="Plato del menú que se sustituye">
+                            <option value="">— Reemplazar —</option>
+                        </select>
+                        <select name="nuevo_0_receta" id="nuevo_0_receta" class="nuevo-select nuevo-receta" title="Receta personalizada (solo del momento elegido)">
+                            <option value="">— Receta —</option>
+                        </select>
+                    </div>
+                    <div class="fila-nueva-excepcion fila-plantilla" id="fila-plantilla-excepcion" data-index="__prefix__" style="display: none;">
+                        <select name="nuevo___prefix___contrato" id="nuevo___prefix___contrato" class="nuevo-select nuevo-contrato">
+                            <option value="">— Cliente —</option>
+                            {% for cid, cnombre in contratos_para_anadir %}
+                            <option value="{{ cid }}">{{ cnombre }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="nuevo___prefix___tipo_comida" id="nuevo___prefix___tipo_comida" class="nuevo-select nuevo-tipo-comida">
+                            <option value="">— Momento —</option>
+                            {% for tc in tipos_para_anadir %}
+                            <option value="{{ tc.id }}">{{ tc.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="nuevo___prefix___receta_original" id="nuevo___prefix___receta_original" class="nuevo-select nuevo-receta-original" title="Plato del menú que se sustituye">
+                            <option value="">— Reemplazar —</option>
+                        </select>
+                        <select name="nuevo___prefix___receta" id="nuevo___prefix___receta" class="nuevo-select nuevo-receta" title="Receta personalizada (solo del momento elegido)">
+                            <option value="">— Receta —</option>
+                        </select>
+                    </div>
+                </div>
+                <p style="margin-top: 8px;">
+                    <button type="button" class="btn btn-add-row" id="btn-anadir-otra-excepcion">Añadir otra excepción</button>
+                </p>
+                <span class="anadir-hint">(elija cliente, momento, plato a reemplazar y receta en cada fila; guarde para aplicar)</span>
+            </div>
+            <script>
+            (function() {
+                var section = document.getElementById('dietas-personalizadas');
+                var planificacionId = section ? (section.getAttribute('data-planificacion-id') || '') : '';
+                var urlRecetasPorTipo = '{% url "planning:recetas_por_tipo" %}';
+                var urlRecetasDelMenu = '{% url "planning:recetas_del_menu" %}';
+                var container = document.getElementById('nuevas-excepciones-filas');
+                var totalInput = document.getElementById('nuevo_excepciones_total');
+                var btnAnadir = document.getElementById('btn-anadir-otra-excepcion');
+                var plantilla = document.getElementById('fila-plantilla-excepcion');
+                if (!container || !totalInput || !plantilla) return;
+
+                function poblarSelectDesdeAjax(url, params, select, placeholder, valorInicial) {
+                    if (!select) return;
+                    select.innerHTML = '<option value="">' + placeholder + '</option>';
+                    select.value = '';
+                    if (!params || !params.tipo_comida_id) return;
+                    var qs = new URLSearchParams(params);
+                    fetch(url + '?' + qs.toString(), {
+                        method: 'GET',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        credentials: 'same-origin'
+                    }).then(function(r) { return r.json(); }).then(function(data) {
+                        if (data.recetas && data.recetas.length) {
+                            data.recetas.forEach(function(r) {
+                                var opt = document.createElement('option');
+                                opt.value = r.id;
+                                opt.textContent = r.nombre;
+                                select.appendChild(opt);
+                            });
+                            if (valorInicial) select.value = String(valorInicial);
+                        }
+                    }).catch(function() {});
+                }
+
+                function actualizarOpcionesPorMomento(fila) {
+                    var selMomento = fila.querySelector('.nuevo-tipo-comida');
+                    var selReemplazar = fila.querySelector('.nuevo-receta-original');
+                    var selReceta = fila.querySelector('.nuevo-receta');
+                    if (!selMomento) return;
+                    var tipo = String((selMomento.value || '').trim());
+                    if (selReemplazar) {
+                        poblarSelectDesdeAjax(
+                            urlRecetasDelMenu,
+                            { planificacion_id: planificacionId, tipo_comida_id: tipo },
+                            selReemplazar, '— Reemplazar —', null
+                        );
+                    }
+                    if (selReceta) {
+                        poblarSelectDesdeAjax(
+                            urlRecetasPorTipo,
+                            { tipo_comida_id: tipo },
+                            selReceta, '— Receta —', null
+                        );
+                    }
+                }
+
+                function bindFila(fila) {
+                    var selMomento = fila.querySelector('.nuevo-tipo-comida');
+                    if (selMomento) selMomento.addEventListener('change', function() { actualizarOpcionesPorMomento(fila); });
+                    actualizarOpcionesPorMomento(fila);
+                }
+
+                container.querySelectorAll('.fila-nueva-excepcion:not(.fila-plantilla)').forEach(bindFila);
+
+                if (btnAnadir) {
+                    btnAnadir.addEventListener('click', function() {
+                        var total = parseInt(totalInput.value, 10) || 0;
+                        var nuevoIndex = total;
+                        var clone = plantilla.cloneNode(true);
+                        clone.id = '';
+                        clone.classList.remove('fila-plantilla');
+                        clone.style.display = '';
+                        clone.setAttribute('data-index', nuevoIndex);
+                        var html = clone.innerHTML.replace(/__prefix__/g, nuevoIndex);
+                        clone.innerHTML = html;
+                        plantilla.parentNode.insertBefore(clone, plantilla);
+                        bindFila(clone);
+                        totalInput.value = nuevoIndex + 1;
+                    });
+                }
+            })();
+            </script>
+            {% endif %}
         </div>
         {% endif %}
 
@@ -229,14 +420,16 @@
                         newRow.id = '';
                         newRow.style.display = '';
                         newRow.classList.add('formset-row');
+                        newRow.setAttribute('data-initial-tipo-comida', item.tipo_comida_id || '');
+                        newRow.setAttribute('data-initial-receta', item.receta_id || '');
                         newRow.innerHTML = newRow.innerHTML.replace(/__prefix__/g, ord);
                         var tcSelect = newRow.querySelector('select[name$="-tipo_comida"]');
                         var recSelect = newRow.querySelector('select[name$="-receta"]');
                         var ordInput = newRow.querySelector('input[name$="-orden"]');
                         if (tcSelect) tcSelect.value = String(item.tipo_comida_id);
-                        if (recSelect) recSelect.value = String(item.receta_id);
                         if (ordInput) ordInput.value = item.orden || (ord + 1);
                         tbody.insertBefore(newRow, emptyRow);
+                        if (window.cargarRecetasFormsetFila) window.cargarRecetasFormsetFila(newRow);
                         ord++;
                     });
                     totalInput.value = ord;
@@ -307,7 +500,52 @@
         tbody.insertBefore(newRow, emptyRow);
         totalInput.value = total + 1;
         if (window.initSearchableSelects) window.initSearchableSelects(newRow);
+        if (window.cargarRecetasFormsetFila) window.cargarRecetasFormsetFila(newRow);
     });
+})();
+(function() {
+    var urlRecetasPorTipo = '{% url "planning:recetas_por_tipo" %}';
+    function cargarRecetasEnSelect(tipoComidaId, selectReceta, valorSeleccionado) {
+        if (!selectReceta || !tipoComidaId) return;
+        selectReceta.innerHTML = '<option value="">---------</option>';
+        selectReceta.value = '';
+        var params = new URLSearchParams({ tipo_comida_id: tipoComidaId });
+        fetch(urlRecetasPorTipo + '?' + params.toString(), {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.recetas && data.recetas.length) {
+                data.recetas.forEach(function(r) {
+                    var opt = document.createElement('option');
+                    opt.value = r.id;
+                    opt.textContent = r.nombre;
+                    selectReceta.appendChild(opt);
+                });
+                if (valorSeleccionado) selectReceta.value = String(valorSeleccionado);
+            }
+        }).catch(function() {});
+    }
+    function cargarRecetasFormsetFila(row) {
+        var selTipo = row.querySelector('select[name$="-tipo_comida"]');
+        var selReceta = row.querySelector('select[name$="-receta"]');
+        if (!selTipo || !selReceta) return;
+        var tipoId = (selTipo.value || '').trim();
+        var initialReceta = (row.getAttribute('data-initial-receta') || '').trim();
+        if (tipoId) cargarRecetasEnSelect(tipoId, selReceta, initialReceta);
+    }
+    window.cargarRecetasFormsetFila = cargarRecetasFormsetFila;
+    var tbody = document.getElementById('receta-formset-body');
+    if (tbody) {
+        tbody.addEventListener('change', function(e) {
+            if (!e.target.matches('select[name$="-tipo_comida"]')) return;
+            var row = e.target.closest('tr.formset-row');
+            if (!row) return;
+            var selReceta = row.querySelector('select[name$="-receta"]');
+            if (selReceta) cargarRecetasEnSelect((e.target.value || '').trim(), selReceta, null);
+        });
+        tbody.querySelectorAll('tr.formset-row').forEach(cargarRecetasFormsetFila);
+    }
 })();
 </script>
 {% endblock %}

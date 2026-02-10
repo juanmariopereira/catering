@@ -33,7 +33,7 @@ def _obtener_platos_servidos_recientes(contrato, dias: int = 14) -> list[dict[st
     Obtiene los platos servidos al cliente en los últimos días.
     Devuelve lista de {fecha, momento, receta_nombre}
     """
-    from planning.models import PlanificacionMenu, PlanificacionMenuReceta, PlanificacionClienteSustituta
+    from planning.models import PlanificacionMenu, PlanificacionMenuReceta, PlanificacionClienteSustituta, PlanificacionClienteReceta
 
     hoy = timezone.now().date()
     fecha_desde = hoy - timedelta(days=dias)
@@ -51,20 +51,37 @@ def _obtener_platos_servidos_recientes(contrato, dias: int = 14) -> list[dict[st
         fecha__lte=hoy,
     ).select_related('receta_sustituta', 'receta_original', 'tipo_comida')
     sust_map = {(s.fecha, s.tipo_comida_id, s.receta_original_id): s.receta_sustituta.nombre for s in sustituciones}
+    personalizaciones = PlanificacionClienteReceta.objects.filter(
+        contrato=contrato,
+        fecha__gte=fecha_desde,
+        fecha__lte=hoy,
+    ).order_by('fecha', 'tipo_comida_id', 'orden').select_related('receta')
+    from collections import defaultdict
+    pers_map = defaultdict(list)
+    for s in personalizaciones:
+        pers_map[(s.fecha, s.tipo_comida_id)].append(s.receta.nombre)
 
     for menu in menus:
         if not contrato.activo_en_fecha(menu.fecha):
             continue
         for mr in menu.recetas.all():
-            receta_nombre = sust_map.get(
-                (menu.fecha, mr.tipo_comida_id, mr.receta_id),
-                mr.receta.nombre
-            )
-            platos.append({
-                'fecha': str(menu.fecha),
-                'momento': mr.tipo_comida.nombre,
-                'receta': receta_nombre,
-            })
+            pers_list = pers_map.get((menu.fecha, mr.tipo_comida_id))
+            if pers_list:
+                for receta_nombre in pers_list:
+                    platos.append({
+                        'fecha': str(menu.fecha),
+                        'momento': mr.tipo_comida.nombre,
+                        'receta': receta_nombre,
+                    })
+            else:
+                receta_nombre = sust_map.get(
+                    (menu.fecha, mr.tipo_comida_id, mr.receta_id), mr.receta.nombre
+                )
+                platos.append({
+                    'fecha': str(menu.fecha),
+                    'momento': mr.tipo_comida.nombre,
+                    'receta': receta_nombre,
+                })
 
     return platos
 

@@ -5,11 +5,11 @@ from django.core.validators import MinValueValidator
 
 class PlanificacionMenu(models.Model):
     """
-    Planificación por fecha y plan: define el menú (comidas por momento del día)
-    para un plan en una fecha. Frutas, postres y bebidas se definen por momento
-    (Desayuno, Media mañana, Comida, Merienda, Cena) en PlanificacionMenuReceta.
+    Planificación por fecha: define el menú (comidas por momento del día) para una fecha.
+    Cada planificación tiene fecha y plan (tipo de plan). Solo puede existir una planificación
+    por fecha: no puede haber más de un plan para la misma fecha.
     """
-    fecha = models.DateField(verbose_name="Fecha")
+    fecha = models.DateField(unique=True, verbose_name="Fecha")
     plan = models.ForeignKey(
         'plans.Plan',
         on_delete=models.CASCADE,
@@ -25,7 +25,6 @@ class PlanificacionMenu(models.Model):
     class Meta:
         verbose_name = "Planificación menú (fecha + plan)"
         verbose_name_plural = "Planificaciones menú"
-        unique_together = ['fecha', 'plan']
         ordering = ['-fecha', 'plan']
 
     def __str__(self):
@@ -115,6 +114,59 @@ class PlanificacionClienteSustituta(models.Model):
 
     def __str__(self):
         return f"{self.fecha} - {self.contrato.cliente.nombre}: {self.tipo_comida.nombre} → {self.receta_sustituta.nombre}"
+
+
+class PlanificacionClienteReceta(models.Model):
+    """
+    Dieta personalizada: para un cliente en una fecha, reemplaza receta_original del menú
+    por receta en un momento del día. receta_original indica qué plato del menú se sustituye.
+    """
+    fecha = models.DateField(verbose_name="Fecha")
+    contrato = models.ForeignKey(
+        'contracts.Contrato',
+        on_delete=models.CASCADE,
+        related_name='dietas_personalizadas',
+        verbose_name="Contrato"
+    )
+    tipo_comida = models.ForeignKey(
+        'diets.TipoComida',
+        on_delete=models.PROTECT,
+        related_name='dietas_personalizadas',
+        verbose_name="Momento del día"
+    )
+    receta_original = models.ForeignKey(
+        'recipes.Receta',
+        on_delete=models.PROTECT,
+        related_name='dietas_personalizadas_reemplazando',
+        verbose_name="Reemplaza (plato del menú)",
+        help_text="Plato del menú del plan que se sustituye",
+        null=True,
+        blank=True,
+    )
+    receta = models.ForeignKey(
+        'recipes.Receta',
+        on_delete=models.PROTECT,
+        related_name='dietas_personalizadas',
+        verbose_name="Receta"
+    )
+    orden = models.PositiveIntegerField(
+        default=1,
+        validators=[MinValueValidator(1)],
+        verbose_name="Orden",
+        help_text="Orden de la receta dentro del mismo momento (1 = primera, 2 = segunda, …)"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
+
+    class Meta:
+        verbose_name = "Dieta personalizada (cliente + fecha + momento)"
+        verbose_name_plural = "Dietas personalizadas"
+        unique_together = ['fecha', 'contrato', 'tipo_comida', 'orden']
+        ordering = ['fecha', 'contrato', 'tipo_comida', 'orden']
+
+    def __str__(self):
+        orig = f" en lugar de {self.receta_original.nombre}" if self.receta_original else ""
+        return f"{self.fecha} - {self.contrato.cliente.nombre}: {self.tipo_comida.nombre} = {self.receta.nombre}{orig}"
 
 
 class PlanificacionDieta(models.Model):

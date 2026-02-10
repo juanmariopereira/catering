@@ -1,27 +1,42 @@
 from django import forms
+from django.core.exceptions import ValidationError
 from .models import PlanificacionMenu, PlanificacionMenuReceta
 from recipes.models import Receta
 
 
 class PlanificacionMenuForm(forms.ModelForm):
-    """Formulario para crear/editar menú planificado. Fecha con input tipo calendario."""
+    """Formulario para crear/editar menú planificado. Fecha y plan obligatorios; una sola planificación por fecha."""
 
     class Meta:
         model = PlanificacionMenu
         fields = ['fecha', 'plan', 'notas']
         widgets = {
-            # type='date' requiere valor en YYYY-MM-DD para que se muestre al editar
             'fecha': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'plan': forms.Select(),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['fecha'].input_formats = ['%Y-%m-%d']
+        self.fields['plan'].required = True
+
+    def clean_fecha(self):
+        fecha = self.cleaned_data.get('fecha')
+        if not fecha:
+            return fecha
+        qs = PlanificacionMenu.objects.filter(fecha=fecha)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError(
+                'Ya existe una planificación para esta fecha. Solo puede haber un plan por fecha.'
+            )
+        return fecha
 
 
 class PlanificacionMenuRecetaForm(forms.ModelForm):
-    """Formulario para cada fila del formset de recetas del menú. Muestra en el select de receta
-    la cantidad de clientes a los que no les gusta al menos un ingrediente [N]."""
+    """Formulario para cada fila del formset de recetas del menú. El select de receta se puebla
+    por AJAX según el tipo de comida seleccionado (solo recetas de ese momento)."""
 
     class Meta:
         model = PlanificacionMenuReceta
@@ -29,11 +44,5 @@ class PlanificacionMenuRecetaForm(forms.ModelForm):
 
     def __init__(self, *args, receta_counts=None, **kwargs):
         super().__init__(*args, **kwargs)
-        if receta_counts is not None:
-            recetas = Receta.objects.filter(activa=True).order_by('nombre')
-            choices = [('', '---------')]
-            for r in recetas:
-                count = receta_counts.get(r.id, 0)
-                label = f'{r.nombre} [{count}]' if count else r.nombre
-                choices.append((r.id, label))
-            self.fields['receta'].choices = choices
+        # Receta se carga por AJAX según tipo_comida; solo placeholder para no mostrar todas
+        self.fields['receta'].choices = [('', '---------')]

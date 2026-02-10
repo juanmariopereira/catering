@@ -5,7 +5,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
-from django.db.models import Count, Q
 from django.forms import inlineformset_factory
 from datetime import date, timedelta
 from collections import defaultdict
@@ -13,8 +12,7 @@ from .models import (
     PlanificacionMenu,
     PlanificacionMenuReceta,
     PlanificacionClienteSustituta,
-    PlanificacionDieta,
-    PlanificacionRecetaSustituta,
+    PlanificacionClienteReceta,
 )
 from .forms import PlanificacionMenuForm, PlanificacionMenuRecetaForm
 from .utils import (
@@ -25,7 +23,7 @@ from .utils import (
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
-from contracts.models import Contrato, contratos_activos_en_fecha
+from contracts.models import contratos_activos_en_fecha
 from base.models import es_feriado, get_feriado
 from delivery.utils import contratos_en_ruta_fecha
 from diets.models import TipoComida
@@ -368,11 +366,28 @@ class PlanificacionMenuListView(LoginRequiredMixin, ListView):
 
 
 class PlanificacionMenuCreateView(LoginRequiredMixin, CreateView):
-    """Crear menú planificado (fecha + plan) con recetas por momento del día (comidas, frutas, postres, bebidas)."""
+    """Crear menú planificado (fecha + plan). Solo puede haber una planificación por fecha."""
     model = PlanificacionMenu
     form_class = PlanificacionMenuForm
     template_name = 'planning/planificacion_menu_form.html'
     success_url = reverse_lazy('planning:lista')
+
+    def get(self, request, *args, **kwargs):
+        """Si la fecha elegida ya tiene planificación, redirigir a editar esa."""
+        fecha_param = request.GET.get('fecha')
+        if fecha_param:
+            try:
+                fecha = date.fromisoformat(fecha_param)
+                existente = PlanificacionMenu.objects.filter(fecha=fecha).first()
+                if existente:
+                    messages.info(
+                        request,
+                        f'Ya existe una planificación para el {fecha.strftime("%d/%m/%Y")} (plan: {existente.plan.nombre}). Redirigido a edición.'
+                    )
+                    return redirect(reverse('planning:editar', args=[existente.pk]))
+            except ValueError:
+                pass
+        return super().get(request, *args, **kwargs)
 
     def get_initial(self):
         initial = super().get_initial()
@@ -480,6 +495,26 @@ class PlanificacionMenuUpdateView(LoginRequiredMixin, UpdateView):
             clientes_conflictos.append({'contrato': c, 'conflictos': conflictos})
         context['clientes_conflictos'] = clientes_conflictos
         context['recetas_todas'] = recetas_todas
+        # Dietas personalizadas: solo excepciones (recetas distintas al menú del plan), compacto
+        context['show_dietas_personalizadas'] = True
+        tipos_en_menu = TipoComida.objects.filter(
+            id__in=obj.recetas.values_list('tipo_comida_id', flat=True).distinct()
+        ).order_by('orden', 'nombre')
+        context['tiene_momentos_en_menu'] = tipos_en_menu.exists()
+        # Lista de excepciones: solo filas que existen (cliente + momento + receta + receta_original)
+        lista_excepciones = list(
+            PlanificacionClienteReceta.objects.filter(
+                fecha=fecha, contrato__in=contratos
+            ).select_related('contrato__cliente', 'tipo_comida', 'receta', 'receta_original').order_by(
+                'contrato__cliente__nombre', 'tipo_comida__orden', 'orden'
+            )
+        )
+        context['lista_excepciones'] = lista_excepciones
+        # Para añadir nueva: dropdowns Cliente, Momento, Reemplazar (plato del menú), Receta
+        context['contratos_para_anadir'] = [
+            (c.id, c.cliente.nombre) for c in contratos
+        ]
+        context['tipos_para_anadir'] = list(tipos_en_menu)
         return context
 
     def form_valid(self, form):
@@ -489,6 +524,7 @@ class PlanificacionMenuUpdateView(LoginRequiredMixin, UpdateView):
             form.save()
             receta_formset.save()
             self._guardar_sustituciones_cliente()
+            self._guardar_dietas_personalizadas()
             messages.success(self.request, 'Menú actualizado correctamente.')
             return redirect(self.get_success_url())
         return self.render_to_response(self.get_context_data(form=form))
@@ -542,6 +578,52 @@ class PlanificacionMenuUpdateView(LoginRequiredMixin, UpdateView):
                 tipo_comida_id=tipo_comida_id,
                 receta_original_id=receta_original_id,
                 defaults={'receta_sustituta_id': receta_sustituta_id},
+            )
+
+    def _guardar_dietas_personalizadas(self):
+        """Guardar: quitar excepciones (quitar_id) y añadir las nuevas (nuevo_N_contrato, nuevo_N_tipo_comida, nuevo_N_receta_original, nuevo_N_receta)."""
+        fecha = self.object.fecha
+        # Quitar las marcadas
+        quitar_ids = []
+        for v in self.request.POST.getlist('quitar_id'):
+            try:
+                quitar_ids.append(int(v))
+            except (ValueError, TypeError):
+                pass
+        if quitar_ids:
+            PlanificacionClienteReceta.objects.filter(
+                pk__in=quitar_ids, fecha=fecha
+            ).delete()
+        # Añadir todas las filas nuevas enviadas
+        try:
+            total = int(self.request.POST.get('nuevo_excepciones_total', 1))
+        except (ValueError, TypeError):
+            total = 1
+        for i in range(total):
+            nuevo_contrato = self.request.POST.get('nuevo_%s_contrato' % i, '').strip()
+            nuevo_tipo = self.request.POST.get('nuevo_%s_tipo_comida' % i, '').strip()
+            nuevo_receta_original = self.request.POST.get('nuevo_%s_receta_original' % i, '').strip()
+            nuevo_receta = self.request.POST.get('nuevo_%s_receta' % i, '').strip()
+            if not nuevo_contrato or not nuevo_tipo or not nuevo_receta:
+                continue
+            try:
+                contrato_id = int(nuevo_contrato)
+                tipo_comida_id = int(nuevo_tipo)
+                receta_id = int(nuevo_receta)
+                receta_original_id = int(nuevo_receta_original) if nuevo_receta_original else None
+            except (ValueError, TypeError):
+                continue
+            ultimo = PlanificacionClienteReceta.objects.filter(
+                fecha=fecha, contrato_id=contrato_id, tipo_comida_id=tipo_comida_id
+            ).order_by('-orden').values_list('orden', flat=True).first()
+            orden = (ultimo or 0) + 1
+            PlanificacionClienteReceta.objects.create(
+                fecha=fecha,
+                contrato_id=contrato_id,
+                tipo_comida_id=tipo_comida_id,
+                receta_original_id=receta_original_id,
+                receta_id=receta_id,
+                orden=orden,
             )
 
 
@@ -627,3 +709,50 @@ def calendario_planificacion(request, year=None, month=None):
     }
     
     return render(request, 'planning/calendario.html', context)
+
+
+@login_required
+@require_http_methods(['GET'])
+def recetas_por_tipo_ajax(request):
+    """AJAX: devuelve recetas activas filtradas por tipo de comida (momentos_dia)."""
+    tipo_id = request.GET.get('tipo_comida_id', '').strip()
+    if not tipo_id:
+        return JsonResponse({'recetas': []})
+    try:
+        tipo_id = int(tipo_id)
+    except ValueError:
+        return JsonResponse({'recetas': []})
+    recetas = list(
+        Receta.objects.filter(
+            activa=True,
+            momentos_dia__id=tipo_id,
+        ).order_by('nombre').values_list('id', 'nombre')
+    )
+    return JsonResponse({
+        'recetas': [{'id': r[0], 'nombre': r[1]} for r in recetas],
+    })
+
+
+@login_required
+@require_http_methods(['GET'])
+def recetas_del_menu_ajax(request):
+    """AJAX: devuelve recetas del menú de una planificación para un tipo de comida."""
+    planificacion_id = request.GET.get('planificacion_id', '').strip()
+    tipo_id = request.GET.get('tipo_comida_id', '').strip()
+    if not planificacion_id or not tipo_id:
+        return JsonResponse({'recetas': []})
+    try:
+        planificacion_id = int(planificacion_id)
+        tipo_id = int(tipo_id)
+    except ValueError:
+        return JsonResponse({'recetas': []})
+    menu = get_object_or_404(PlanificacionMenu, pk=planificacion_id)
+    recetas = list(
+        PlanificacionMenuReceta.objects.filter(
+            planificacion_menu=menu,
+            tipo_comida_id=tipo_id,
+        ).select_related('receta').order_by('orden').values_list('receta_id', 'receta__nombre')
+    )
+    return JsonResponse({
+        'recetas': [{'id': r[0], 'nombre': r[1]} for r in recetas],
+    })

@@ -92,8 +92,9 @@
                 <td>{{ planificacion.fecha|date:"d/m/Y" }}</td>
                 <td>{{ planificacion.plan.nombre }}</td>
                 <td class="table-actions">
-                    <a href="{% url 'planning:editar' planificacion.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
-                    <a href="{% url 'planning:eliminar' planificacion.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
+                    <a href="{% url 'planning:editar' planificacion.pk %}" title="Editar menú (fecha, plan, recetas)" aria-label="Editar">✏️</a>
+                    <a href="{% url 'planning:editar' planificacion.pk %}#dietas-personalizadas" title="Personalizar menú por cliente y comida" aria-label="Personalizar">👤</a>
+                    <a href="{% url 'planning:eliminar' planificacion.pk %}" title="Eliminar" aria-label="Eliminar">🗑</a>
                 </td>
             </tr>
             {% empty %}

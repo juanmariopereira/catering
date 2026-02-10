@@ -1,6 +1,6 @@
 from typing import List, Set, Dict, Any
 from django.db.models import Q
-from .models import PlanificacionMenu, PlanificacionMenuReceta, PlanificacionClienteSustituta
+from .models import PlanificacionMenu, PlanificacionMenuReceta, PlanificacionClienteSustituta, PlanificacionClienteReceta
 from clients.models import IngredienteNoGustado
 from diets.models import DietaReceta
 from recipes.models import Receta, RecetaIngrediente, UnidadMedida
@@ -220,12 +220,66 @@ def _receta_efectiva_por_contrato(fecha, contrato_id, tipo_comida_id, receta_ori
     return sustituciones_map.get(key) or receta_original_id
 
 
+def _receta_efectiva_con_personalizacion(
+    contrato_id, tipo_comida_id, receta_del_menu_id,
+    personalizaciones_map, sustituciones_map
+):
+    """
+    Devuelve receta_id efectiva: si hay dieta personalizada (lista de recetas) para (contrato, tipo_comida)
+    no se usa aquí (el caller debe usar _slots_efectivos_contrato). Para un solo slot del menú:
+    sustitución o menú.
+    personalizaciones_map: (contrato_id, tipo_comida_id) -> [receta_id, ...] (lista ordenada)
+    sustituciones_map: (contrato_id, tipo_comida_id, receta_original_id) -> receta_sustituta_id
+    """
+    key_sust = (contrato_id, tipo_comida_id, receta_del_menu_id)
+    return sustituciones_map.get(key_sust) or receta_del_menu_id
+
+
+def _slots_efectivos_contrato(contrato_id, menu_recetas_list, personalizaciones_map, sustituciones_map):
+    """
+    Para un contrato y un menú, devuelve lista de (tipo_comida_id, receta_id, receta_original_id).
+    receta_original_id es la receta del menú para ese slot (para saber si es sustituta/personalizada).
+    Las personalizaciones reemplazan slots específicos: receta_original_id indica qué plato del menú se sustituye.
+    """
+    from collections import defaultdict
+    por_tipo = defaultdict(list)
+    for mr in menu_recetas_list:
+        por_tipo[mr.tipo_comida_id].append(mr)
+    slots = []
+    for tipo_comida_id, mrs in por_tipo.items():
+        key_pers = (contrato_id, tipo_comida_id)
+        pers_list = personalizaciones_map.get(key_pers, [])
+        # Por cada slot del menú: ¿hay una personalización que lo reemplaza?
+        for idx, mr in enumerate(mrs):
+            receta_orig_menu = mr.receta_id
+            replaced = False
+            # 1. Explícito: personalización con receta_original_id == este plato del menú
+            for receta_id_pers, receta_orig_id in pers_list:
+                if receta_orig_id == receta_orig_menu:
+                    slots.append((tipo_comida_id, receta_id_pers, receta_orig_menu))
+                    replaced = True
+                    break
+            # 2. Legacy: personalización sin receta_original, por posición (orden)
+            if not replaced and idx < len(pers_list):
+                receta_id_pers, receta_orig_id = pers_list[idx]
+                if receta_orig_id is None:
+                    slots.append((tipo_comida_id, receta_id_pers, receta_orig_menu))
+                    replaced = True
+            if not replaced:
+                receta_id = _receta_efectiva_con_personalizacion(
+                    contrato_id, mr.tipo_comida_id, receta_orig_menu,
+                    personalizaciones_map, sustituciones_map
+                )
+                slots.append((mr.tipo_comida_id, receta_id, receta_orig_menu))
+    return slots
+
+
 def recetas_a_preparar_por_fecha(fecha) -> List[Dict[str, Any]]:
     """
     Recetas a preparar para una fecha usando PlanificacionMenu y PlanificacionMenuReceta,
-    aplicando PlanificacionClienteSustituta por cliente.
+    aplicando dietas personalizadas (PlanificacionClienteReceta) y sustituciones (PlanificacionClienteSustituta).
     Devuelve lista de dict: receta, cantidad, planificaciones.
-    Cada planificación incluye: menu, contrato, es_sustituta, receta_original_nombre (si es sustituta)
+    Cada planificación incluye: menu, contrato, es_sustituta, receta_original_nombre (si es sustituta/personalizada)
     para que el reporte de cocina muestre qué cliente recibe plato diferente.
     """
     from collections import defaultdict
@@ -236,26 +290,32 @@ def recetas_a_preparar_por_fecha(fecha) -> List[Dict[str, Any]]:
         (s.contrato_id, s.tipo_comida_id, s.receta_original_id): s.receta_sustituta_id
         for s in sustituciones
     }
+    personalizaciones_qs = PlanificacionClienteReceta.objects.filter(fecha=fecha).order_by(
+        'contrato_id', 'tipo_comida_id', 'orden'
+    ).values_list('contrato_id', 'tipo_comida_id', 'receta_id', 'receta_original_id')
+    personalizaciones_map = defaultdict(list)
+    for c, t, r, r_orig in personalizaciones_qs:
+        personalizaciones_map[(c, t)].append((r, r_orig))
     recetas_dict = defaultdict(int)
     planificaciones_por_receta = defaultdict(list)
     recetas_objs_cache = {}
     for menu in menus:
         contratos = contratos_activos_en_fecha(fecha).filter(plan=menu.plan)
+        menu_recetas_list = list(menu.recetas.all())
         for contrato in contratos:
-            for mr in menu.recetas.all():
-                receta_original_id = mr.receta_id
-                receta_id = _receta_efectiva_por_contrato(
-                    fecha, contrato.id, mr.tipo_comida_id, receta_original_id, sustituciones_map
-                )
+            slots = _slots_efectivos_contrato(
+                contrato.id, menu_recetas_list, personalizaciones_map, sustituciones_map
+            )
+            for tipo_comida_id, receta_id, receta_original_id in slots:
                 recetas_dict[receta_id] += 1
                 es_sustituta = receta_id != receta_original_id
                 receta_original_nombre = None
-                if es_sustituta and receta_original_id not in recetas_objs_cache:
+                if es_sustituta and receta_original_id and receta_original_id not in recetas_objs_cache:
                     try:
                         recetas_objs_cache[receta_original_id] = Receta.objects.get(pk=receta_original_id)
                     except Receta.DoesNotExist:
                         recetas_objs_cache[receta_original_id] = None
-                if es_sustituta and recetas_objs_cache.get(receta_original_id):
+                if es_sustituta and receta_original_id and recetas_objs_cache.get(receta_original_id):
                     receta_original_nombre = recetas_objs_cache[receta_original_id].nombre
                 planificaciones_por_receta[receta_id].append({
                     'menu': menu,
@@ -287,6 +347,7 @@ def resumen_cocina_por_momento(fecha) -> List[Dict[str, Any]]:
     """
     from collections import defaultdict
     from diets.models import TipoComida
+    from recipes.models import Receta
     menus = PlanificacionMenu.objects.filter(fecha=fecha).select_related('plan').prefetch_related('recetas')
     sustituciones = PlanificacionClienteSustituta.objects.filter(fecha=fecha).select_related(
         'receta_original', 'contrato__cliente'
@@ -295,30 +356,41 @@ def resumen_cocina_por_momento(fecha) -> List[Dict[str, Any]]:
         (s.contrato_id, s.tipo_comida_id, s.receta_original_id): (s.receta_sustituta_id, s.receta_original.nombre)
         for s in sustituciones
     }
-    # (tipo_comida_id, receta_id) -> { cantidad, sustituciones: [ { cliente_nombre, receta_original_nombre } ] }
+    personalizaciones_qs = PlanificacionClienteReceta.objects.filter(fecha=fecha).order_by(
+        'contrato_id', 'tipo_comida_id', 'orden'
+    ).values_list('contrato_id', 'tipo_comida_id', 'receta_id', 'receta_original_id')
+    personalizaciones_map = defaultdict(list)
+    for c, t, r, r_orig in personalizaciones_qs:
+        personalizaciones_map[(c, t)].append((r, r_orig))
+    sustituciones_map_ids = {k: v[0] for k, v in sustituciones_map.items()}
     por_momento = defaultdict(lambda: defaultdict(lambda: {'cantidad': 0, 'sustituciones': []}))
     tipo_comida_ids = set()
     receta_ids = set()
     for menu in menus:
         contratos = contratos_activos_en_fecha(fecha).filter(plan=menu.plan)
+        menu_recetas_list = list(menu.recetas.all())
         for contrato in contratos:
-            for mr in menu.recetas.all():
-                tipo_comida_ids.add(mr.tipo_comida_id)
-                receta_original_id = mr.receta_id
-                receta_id = _receta_efectiva_por_contrato(
-                    fecha, contrato.id, mr.tipo_comida_id, receta_original_id,
-                    {k: v[0] for k, v in sustituciones_map.items()}
-                )
+            slots = _slots_efectivos_contrato(
+                contrato.id, menu_recetas_list, personalizaciones_map, sustituciones_map_ids
+            )
+            for tipo_comida_id, receta_id, receta_original_id in slots:
+                tipo_comida_ids.add(tipo_comida_id)
                 receta_ids.add(receta_id)
-                entry = por_momento[mr.tipo_comida_id][receta_id]
+                entry = por_momento[tipo_comida_id][receta_id]
                 entry['cantidad'] += 1
                 if receta_id != receta_original_id:
                     receta_orig_nombre = sustituciones_map.get(
-                        (contrato.id, mr.tipo_comida_id, receta_original_id), (None, None)
-                    )[1] or '—'
+                        (contrato.id, tipo_comida_id, receta_original_id), (None, None)
+                    )[1] if receta_original_id else None
+                    if receta_orig_nombre is None and receta_original_id:
+                        try:
+                            r = Receta.objects.get(pk=receta_original_id)
+                            receta_orig_nombre = r.nombre
+                        except Receta.DoesNotExist:
+                            receta_orig_nombre = '—'
                     entry['sustituciones'].append({
                         'cliente_nombre': contrato.cliente.nombre,
-                        'receta_original_nombre': receta_orig_nombre,
+                        'receta_original_nombre': receta_orig_nombre or '—',
                     })
     tipos = {tc.id: tc for tc in TipoComida.objects.filter(id__in=tipo_comida_ids).order_by('orden', 'nombre')}
     recetas_objs = {r.id: r for r in Receta.objects.filter(id__in=receta_ids)} if receta_ids else {}
@@ -369,6 +441,14 @@ def ingredientes_por_rango_fechas(fecha_desde, fecha_hasta) -> Dict[tuple, float
     unidad_ml = UnidadMedida.objects.filter(
         Q(nombre__iexact='Mililitro') | Q(nombre__iexact='ml') | Q(simbolo__iexact='ml')
     ).values_list('pk', flat=True).first()
+    personalizaciones_rango = PlanificacionClienteReceta.objects.filter(
+        fecha__gte=fecha_desde, fecha__lte=fecha_hasta
+    ).order_by('fecha', 'contrato_id', 'tipo_comida_id', 'orden').values_list(
+        'fecha', 'contrato_id', 'tipo_comida_id', 'receta_id', 'receta_original_id'
+    )
+    personalizaciones_por_fecha = defaultdict(lambda: defaultdict(list))
+    for f, c, t, r, r_orig in personalizaciones_rango:
+        personalizaciones_por_fecha[f][(c, t)].append((r, r_orig))
     ingredientes_totales = defaultdict(float)
     for menu in menus:
         sustituciones = PlanificacionClienteSustituta.objects.filter(
@@ -378,12 +458,14 @@ def ingredientes_por_rango_fechas(fecha_desde, fecha_hasta) -> Dict[tuple, float
         sustituciones_map = {
             (c, t, r_orig): r_sust for c, t, r_orig, r_sust in sustituciones
         }
+        personalizaciones_map = personalizaciones_por_fecha.get(menu.fecha, defaultdict(list))
         contratos = contratos_activos_en_fecha(menu.fecha).filter(plan=menu.plan)
+        menu_recetas_list = list(menu.recetas.all())
         for contrato in contratos:
-            for mr in menu.recetas.all():
-                receta_id = _receta_efectiva_por_contrato(
-                    menu.fecha, contrato.id, mr.tipo_comida_id, mr.receta_id, sustituciones_map
-                )
+            slots = _slots_efectivos_contrato(
+                contrato.id, menu_recetas_list, personalizaciones_map, sustituciones_map
+            )
+            for _tipo_comida_id, receta_id, _receta_original_id in slots:
                 for ri in RecetaIngrediente.objects.filter(receta_id=receta_id).select_related(
                     'ingrediente', 'unidad_medida'
                 ):

@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import date
 
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -37,7 +38,7 @@ def composicion_por_fecha(request):
         fecha = timezone.now().date()
 
     from contracts.models import contratos_activos_en_fecha
-    from planning.models import PlanificacionMenu, PlanificacionMenuReceta, PlanificacionClienteSustituta
+    from planning.models import PlanificacionMenu, PlanificacionMenuReceta, PlanificacionClienteSustituta, PlanificacionClienteReceta
 
     dia_semana = DIA_SEMANA_NOMBRE[fecha.weekday()]
     contratos = (
@@ -86,6 +87,12 @@ def composicion_por_fecha(request):
             fecha=fecha, contrato__in=contratos
         ).select_related('receta_sustituta')
     }
+    personalizaciones_qs = PlanificacionClienteReceta.objects.filter(
+        fecha=fecha, contrato__in=contratos
+    ).order_by('contrato_id', 'tipo_comida_id', 'orden').select_related('receta')
+    personalizaciones = defaultdict(list)
+    for s in personalizaciones_qs:
+        personalizaciones[(s.contrato_id, s.tipo_comida_id)].append(s.receta)
 
     # Código de entrega por contrato (desde plantilla; solo contratos en ruta ese día)
     from delivery.utils import contratos_en_ruta_fecha
@@ -101,13 +108,24 @@ def composicion_por_fecha(request):
         composicion = []
         if menu:
             for pmr in menu.recetas.all().order_by('tipo_comida__orden', 'orden'):
-                receta_final = sustituciones.get((c.id, pmr.tipo_comida_id, pmr.receta_id)) or pmr.receta
-                es_sustituta = receta_final != pmr.receta
-                composicion.append({
-                    'tipo_comida': pmr.tipo_comida,
-                    'receta': receta_final,
-                    'es_sustituta': es_sustituta,
-                })
+                pers_list = personalizaciones.get((c.id, pmr.tipo_comida_id))
+                if pers_list:
+                    for receta_final in pers_list:
+                        composicion.append({
+                            'tipo_comida': pmr.tipo_comida,
+                            'receta': receta_final,
+                            'es_sustituta': True,
+                        })
+                else:
+                    receta_final = (
+                        sustituciones.get((c.id, pmr.tipo_comida_id, pmr.receta_id))
+                        or pmr.receta
+                    )
+                    composicion.append({
+                        'tipo_comida': pmr.tipo_comida,
+                        'receta': receta_final,
+                        'es_sustituta': receta_final != pmr.receta,
+                    })
         # Hora de entrega pactada en el contrato
         hora_entrega = (c.horario_entrega.strftime('%H:%M') if c.horario_entrega and hasattr(c.horario_entrega, 'strftime') else '')
         filas.append({

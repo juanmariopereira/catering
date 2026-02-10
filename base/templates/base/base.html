@@ -583,6 +583,10 @@
                 if (select.closest('#empty-form-row') || select.closest('.choices')) return;
                 if (select._choicesInstance) return;
                 if (select.getAttribute('name') === 'tipo_receta') return;
+                if (select.id === 'nuevo_receta_original' || select.getAttribute('name') === 'nuevo_receta_original') return;
+                if ((select.getAttribute('name') || '').indexOf('receta_original') !== -1) return;
+                if ((select.getAttribute('name') || '').match(/^nuevo_\d+_receta$/)) return;
+                if (select.classList && select.classList.contains('nuevo-receta')) return;
                 try {
                     var instance = new Choices(select, { searchEnabled: true, placeholderValue: 'Buscar...' });
                     select._choicesInstance = instance;

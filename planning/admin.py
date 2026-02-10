@@ -4,6 +4,7 @@ from .models import (
     PlanificacionMenu,
     PlanificacionMenuReceta,
     PlanificacionClienteSustituta,
+    PlanificacionClienteReceta,
     PlanificacionDieta,
 )
 
@@ -28,6 +29,13 @@ class PlanificacionMenuAdmin(admin.ModelAdmin):
 class PlanificacionClienteSustitutaAdmin(admin.ModelAdmin):
     list_display = ['fecha', 'contrato', 'tipo_comida', 'receta_original', 'receta_sustituta']
     list_filter = ['fecha', 'tipo_comida']
+
+
+@admin.register(PlanificacionClienteReceta)
+class PlanificacionClienteRecetaAdmin(admin.ModelAdmin):
+    list_display = ['fecha', 'contrato', 'tipo_comida', 'receta_original', 'receta', 'orden']
+    list_filter = ['fecha', 'tipo_comida']
+    date_hierarchy = 'fecha'
 
 
 @admin.register(PlanificacionDieta)
