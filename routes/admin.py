@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Entregador, Ruta, RutaCliente
+from .models import Entregador, Ruta, RutaCliente, HistoricoAsignacionEntrega
 
 
 @admin.register(Entregador)
@@ -36,3 +36,13 @@ class RutaClienteAdmin(admin.ModelAdmin):
     list_filter = ['ruta', 'ruta__fecha']
     search_fields = ['contrato__cliente__nombre', 'ruta__entregador__nombre']
     ordering = ['ruta', 'orden_entrega']
+
+
+@admin.register(HistoricoAsignacionEntrega)
+class HistoricoAsignacionEntregaAdmin(admin.ModelAdmin):
+    list_display = ['fecha', 'entregador', 'contrato', 'planificacion_menu', 'created_at']
+    list_filter = ['fecha', 'entregador']
+    search_fields = ['contrato__cliente__nombre', 'entregador__nombre']
+    readonly_fields = ['created_at']
+    date_hierarchy = 'fecha'
+    ordering = ['-fecha', 'entregador', 'contrato']

@@ -312,3 +312,44 @@ class EntregaDia(models.Model):
 
     def __str__(self):
         return f"{self.fecha} {self.entregador.nombre} - {self.contrato.cliente.nombre}"
+
+
+class HistoricoAsignacionEntrega(models.Model):
+    """
+    Histórico de asignación: qué entregador tenía asignada la entrega de dieta
+    a cada contrato en cada fecha. Se persiste con un comando (ej. crontab diario)
+    a partir del estado de las plantillas y contratos con entrega ese día.
+    Una fila por (fecha, contrato); planificacion_menu indica qué menú/dieta correspondía.
+    """
+    fecha = models.DateField(verbose_name="Fecha")
+    contrato = models.ForeignKey(
+        'contracts.Contrato',
+        on_delete=models.CASCADE,
+        related_name='historico_asignaciones_entrega',
+        verbose_name="Contrato",
+    )
+    entregador = models.ForeignKey(
+        Entregador,
+        on_delete=models.PROTECT,
+        related_name='historico_asignaciones_entrega',
+        verbose_name="Entregador",
+    )
+    planificacion_menu = models.ForeignKey(
+        'planning.PlanificacionMenu',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='historico_asignaciones_entrega',
+        verbose_name="Planificación menú (dieta del día)",
+        help_text="Menú planificado para esa fecha y plan del contrato; null si no había menú.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Creado")
+
+    class Meta:
+        verbose_name = "Histórico asignación entrega"
+        verbose_name_plural = "Histórico asignaciones entrega"
+        unique_together = [['fecha', 'contrato']]
+        ordering = ['-fecha', 'entregador', 'contrato']
+
+    def __str__(self):
+        return f"{self.fecha} {self.entregador.nombre} → {self.contrato.cliente.nombre}"
