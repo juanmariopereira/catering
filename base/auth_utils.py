@@ -101,7 +101,8 @@ def get_user_home_url(user):
                 'delivery:ruta_fecha_entregador',
                 kwargs={'fecha_str': hoy, 'entregador_id': entregador.pk},
             )
-        return reverse('sin_acceso')
+        # Entregador sin ficha asociada: página específica (no "sin acceso" genérica)
+        return reverse('entregador_sin_asignar')
 
     return reverse('dashboard')
 

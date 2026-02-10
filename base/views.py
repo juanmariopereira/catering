@@ -580,6 +580,18 @@ def sin_acceso(request):
     return render(request, 'base/sin_acceso.html')
 
 
+@login_required
+def entregador_sin_asignar(request):
+    """
+    Usuario en grupo Entregador pero sin Entregador asociado (campo user en Entregador).
+    Indica que un administrador debe vincular su usuario a una ficha de entregador.
+    """
+    from .auth_utils import is_entregador, get_entregador_for_user
+    if not is_entregador(request.user) or get_entregador_for_user(request.user):
+        return redirect(get_user_home_url(request.user))
+    return render(request, 'base/entregador_sin_asignar.html')
+
+
 def home_redirect(request):
     """Redirige a la página de inicio según perfil (Cocina, Entregador) o dashboard."""
     if request.user.is_authenticated:

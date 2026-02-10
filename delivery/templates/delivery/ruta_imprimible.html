@@ -233,7 +233,9 @@
     <div class="modal-recorrido-header">
         <h3 id="modal-recorrido-title">Recorrido de la ruta</h3>
         <div style="display: flex; align-items: center; gap: 8px;">
+            {% if is_admin_profile %}
             <button type="button" class="btn-recalcular" id="btn-recalcular-recorrido" data-url="{% url 'delivery:ruta_recalcular_recorrido' fecha_str entregador.id %}" aria-label="Recalcular recorrido usando el punto de partida">🔄 Recalcular recorrido</button>
+            {% endif %}
             <button type="button" class="modal-recorrido-close" id="modal-recorrido-close" aria-label="Cerrar">×</button>
         </div>
     </div>

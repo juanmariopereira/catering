@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entregador sin asignar - {{ catering_name }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #f0f7ed 0%, #e8f5e9 100%);
+        }
+        .box {
+            width: 100%;
+            max-width: 480px;
+            padding: 40px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin: 0 0 16px 0;
+            font-size: 1.5rem;
+            border-bottom: 3px solid #7CB342;
+            padding-bottom: 15px;
+        }
+        p { color: #555; margin: 0 0 20px 0; line-height: 1.6; text-align: left; }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #7CB342;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn:hover { background-color: #689F38; }
+        form { margin: 0; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>Entregador sin asignar</h1>
+        <p>Tu usuario está en el grupo <strong>Entregador</strong>, pero no está vinculado a ninguna ficha de entregador en el sistema.</p>
+        <p>Un administrador debe asociar tu usuario a un entregador: en el panel de administración, ir a <strong>Entregadores</strong>, editar la ficha del entregador que corresponda a tu persona y en el campo <strong>Usuario asociado</strong> seleccionar tu usuario.</p>
+        <p>Después de eso podrás ver tu ruta del día con normalidad.</p>
+        <form action="{% url 'logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn">Cerrar sesión</button>
+        </form>
+    </div>
+</body>
+</html>

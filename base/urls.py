@@ -36,6 +36,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/login/', base_views.CustomLoginView.as_view(), name='login'),
     path('accounts/sin-acceso/', base_views.sin_acceso, name='sin_acceso'),
+    path('accounts/entregador-sin-asignar/', base_views.entregador_sin_asignar, name='entregador_sin_asignar'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('clients/', include('clients.urls')),
     path('contracts/', include('contracts.urls')),
