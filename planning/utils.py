@@ -235,6 +235,94 @@ def _receta_efectiva_con_personalizacion(
     return sustituciones_map.get(key_sust) or receta_del_menu_id
 
 
+def dieta_etiqueta_contrato(planificacion_menu, contrato) -> Dict[str, Any]:
+    """
+    Datos para imprimir la etiqueta de la dieta enviada a un cliente en una fecha.
+    Devuelve: fecha, plan, contrato, platos_por_tipo (lista de {tipo_comida, recetas}),
+    recetas con info_nutricional para mostrar o totalizar.
+    """
+    from collections import defaultdict
+    from diets.models import TipoComida
+
+    fecha = planificacion_menu.fecha
+    if contrato.plan_id != planificacion_menu.plan_id:
+        return {}
+    sustituciones = PlanificacionClienteSustituta.objects.filter(
+        fecha=fecha, contrato=contrato
+    ).values_list('tipo_comida_id', 'receta_original_id', 'receta_sustituta_id')
+    sustituciones_map = {
+        (contrato.id, t, r_orig): r_sust for t, r_orig, r_sust in sustituciones
+    }
+    personalizaciones_qs = PlanificacionClienteReceta.objects.filter(
+        fecha=fecha, contrato=contrato
+    ).order_by('tipo_comida_id', 'orden').values_list('tipo_comida_id', 'receta_id', 'receta_original_id')
+    personalizaciones_map = defaultdict(list)
+    for t, r, r_orig in personalizaciones_qs:
+        personalizaciones_map[(contrato.id, t)].append((r, r_orig))
+    menu_recetas_list = list(
+        planificacion_menu.recetas.select_related('receta', 'tipo_comida').order_by('tipo_comida__orden', 'orden')
+    )
+    slots = _slots_efectivos_contrato(
+        contrato.id, menu_recetas_list,
+        dict(personalizaciones_map), sustituciones_map,
+    )
+    receta_ids = [receta_id for _, receta_id, _ in slots]
+    recetas_objs = {r.id: r for r in Receta.objects.filter(id__in=receta_ids).select_related()}
+    por_tipo = defaultdict(list)
+    for tipo_comida_id, receta_id, _ in slots:
+        receta = recetas_objs.get(receta_id)
+        if receta:
+            por_tipo[tipo_comida_id].append(receta)
+    tipos = TipoComida.objects.filter(id__in=por_tipo.keys()).order_by('orden', 'nombre')
+    def _extraer_nutrientes(info: dict) -> dict:
+        """Extrae valores numéricos de info_nutricional (plano o anidado por_racion/por_100g)."""
+        out = {}
+        nutrientes_clave = ('calorias', 'proteinas', 'carbohidratos', 'grasas', 'fibra')
+        if not isinstance(info, dict):
+            return out
+        # Primero intentar claves directas
+        for k in nutrientes_clave:
+            if k in info:
+                try:
+                    out[k] = float(info[k])
+                except (TypeError, ValueError):
+                    pass
+        if out:
+            return out
+        # Si no, buscar en por_racion o por_100g
+        for sub in ('por_racion', 'por_100g'):
+            subdict = info.get(sub)
+            if isinstance(subdict, dict):
+                for k in nutrientes_clave:
+                    if k in subdict:
+                        try:
+                            out[k] = float(subdict[k])
+                        except (TypeError, ValueError):
+                            pass
+                break
+        return out
+
+    platos_por_tipo = []
+    total_nutri = defaultdict(float)
+    nutrientes_clave = ('calorias', 'proteinas', 'carbohidratos', 'grasas', 'fibra')
+    for tc in tipos:
+        recetas = por_tipo.get(tc.id, [])
+        for r in recetas:
+            info = getattr(r, 'info_nutricional', None) or {}
+            for k, v in _extraer_nutrientes(info).items():
+                total_nutri[k] += v
+        platos_por_tipo.append({'tipo_comida': tc, 'recetas': recetas})
+    info_nutricional_total = {k: round(v, 1) for k, v in total_nutri.items() if v}
+    return {
+        'fecha': fecha,
+        'plan': planificacion_menu.plan,
+        'contrato': contrato,
+        'cliente': contrato.cliente,
+        'platos_por_tipo': platos_por_tipo,
+        'info_nutricional_total': info_nutricional_total,
+    }
+
+
 def _slots_efectivos_contrato(contrato_id, menu_recetas_list, personalizaciones_map, sustituciones_map):
     """
     Para un contrato y un menú, devuelve lista de (tipo_comida_id, receta_id, receta_original_id).

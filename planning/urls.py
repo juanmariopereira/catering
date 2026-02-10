@@ -16,4 +16,5 @@ urlpatterns = [
     path('calendario/<int:year>/<int:month>/', views.calendario_planificacion, name='calendario_mes'),
     path('recetas-por-tipo/', views.recetas_por_tipo_ajax, name='recetas_por_tipo'),
     path('recetas-del-menu/', views.recetas_del_menu_ajax, name='recetas_del_menu'),
+    path('etiqueta-dieta/<int:planificacion_id>/<int:contrato_id>/', views.etiqueta_dieta, name='etiqueta_dieta'),
 ]

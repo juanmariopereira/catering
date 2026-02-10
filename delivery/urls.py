@@ -5,8 +5,6 @@ app_name = 'delivery'
 
 urlpatterns = [
     path('', views.RutaListView.as_view(), name='lista'),
-    path('configurar-punto-partida/', views.punto_partida_config, name='punto_partida_config'),
-    path('generar-rutas/', views.generar_rutas, name='generar_rutas'),
     path('asignar-pendientes/', views.asignar_pendientes, name='asignar_pendientes'),
     path('distribuir/', views.distribuir_entregas, name='distribuir_entregas'),
     path('ruta/entregador/<int:entregador_id>/editar/', views.PlantillaRutaUpdateView.as_view(), name='ruta_editar_plantilla'),

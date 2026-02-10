@@ -16,7 +16,7 @@ from routes.models import (
     PlantillaRuta, PlantillaRutaCliente, EntregaDia,
 )
 from contracts.models import Contrato, q_filtro_estado, contratos_activos_en_fecha
-from .forms import PuntoPartidaEntregaForm, PlantillaRutaForm
+from .forms import PlantillaRutaForm
 from .models import PuntoPartidaEntrega
 from .utils import (
     contratos_con_entrega_en_fecha,
@@ -179,83 +179,6 @@ def _asignar_contratos_a_plantillas(contratos_ids, plantillas):
         )
         asignados += 1
     return asignados
-
-
-@login_required
-def generar_rutas(request):
-    """
-    Asegura plantillas por entregador y asigna contratos pendientes a plantillas (round-robin).
-    Opcional: copiar desde fecha origen (Ruta antigua) a plantillas.
-    """
-    if request.method != 'POST':
-        manana = timezone.now().date() + timedelta(days=1)
-        ultima_ruta = Ruta.objects.order_by('-fecha').values_list('fecha', flat=True).first()
-        return render(request, 'delivery/generar_rutas_form.html', {
-            'entregadores': Entregador.objects.filter(activo=True).order_by('nombre'),
-            'fecha_default': manana.isoformat(),
-            'fecha_origen_default': ultima_ruta.isoformat() if ultima_ruta else '',
-        })
-
-    fecha_str = request.POST.get('fecha')
-    fecha_origen_str = request.POST.get('fecha_origen') or ''
-    if not fecha_str:
-        messages.error(request, 'Indica la fecha de referencia.')
-        return redirect('delivery:generar_rutas')
-
-    try:
-        fecha = date.fromisoformat(fecha_str)
-    except ValueError:
-        messages.error(request, 'Fecha inválida.')
-        return redirect('delivery:generar_rutas')
-
-    fecha_origen = None
-    if fecha_origen_str:
-        try:
-            fecha_origen = date.fromisoformat(fecha_origen_str)
-        except ValueError:
-            pass
-
-    entregadores_activos = list(Entregador.objects.filter(activo=True).order_by('nombre'))
-    if not entregadores_activos:
-        messages.warning(request, 'No hay entregadores activos.')
-        return redirect('delivery:lista')
-
-    # 1) Asegurar plantilla por entregador
-    plantillas = []
-    for e in entregadores_activos:
-        plantillas.append(_get_or_create_plantilla(e))
-
-    # 2) Opcional: copiar desde Ruta(fecha_origen) a plantillas (datos legacy)
-    if fecha_origen:
-        rutas_origen = list(Ruta.objects.filter(fecha=fecha_origen).select_related('entregador'))
-        for ruta_orig in rutas_origen:
-            plantilla = _get_or_create_plantilla(ruta_orig.entregador)
-            for rc in ruta_orig.ruta_clientes.all().order_by('orden_entrega'):
-                if plantilla.clientes.filter(contrato_id=rc.contrato_id).exists():
-                    continue
-                max_orden = plantilla.clientes.aggregate(m=Max('orden_entrega'))['m'] or 0
-                PlantillaRutaCliente.objects.get_or_create(
-                    plantilla_ruta=plantilla,
-                    contrato_id=rc.contrato_id,
-                    defaults={'orden_entrega': max_orden + 1},
-                )
-
-    # 3) Asignar contratos sin plantilla a plantillas (round-robin)
-    sin_ruta = contratos_sin_ruta_en_fecha(fecha)
-    ids_sin_ruta = list(sin_ruta.values_list('pk', flat=True))
-    asignados = _asignar_contratos_a_plantillas(ids_sin_ruta, plantillas)
-
-    if asignados > 0:
-        messages.success(
-            request,
-            f'Se asignaron {asignados} contrato(s) a las plantillas de entregadores.',
-        )
-    else:
-        messages.success(
-            request,
-            'Plantillas actualizadas. Asigna clientes desde la lista o edita cada plantilla.',
-        )
-    return redirect(reverse('delivery:lista') + '?fecha=' + fecha_str)
 
 
 @login_required
@@ -491,32 +414,6 @@ def ruta_cargar_ultima(request, entregador_id):
     else:
         messages.info(request, 'No se añadió ninguno: ya estaban en la plantilla.')
     return redirect('delivery:ruta_editar_plantilla', entregador_id=entregador_id)
-
-
-@login_required
-def punto_partida_config(request):
-    """
-    Configuración del punto de partida para optimización de rutas (cocina/depósito).
-    Usa el primer registro activo o crea uno si no existe.
-    """
-    punto = PuntoPartidaEntrega.objects.filter(activo=True).order_by('-fecha_actualizacion').first()
-    if punto is None:
-        punto = PuntoPartidaEntrega.objects.order_by('-fecha_actualizacion').first()
-    if request.method == 'POST':
-        form = PuntoPartidaEntregaForm(request.POST, instance=punto)
-        if form.is_valid():
-            form.save()
-            messages.success(
-                request,
-                'Punto de partida guardado. El algoritmo de optimización de rutas lo usará como origen y destino.',
-            )
-            return redirect('delivery:lista')
-    else:
-        form = PuntoPartidaEntregaForm(instance=punto)
-    return render(request, 'delivery/punto_partida_form.html', {
-        'form': form,
-        'punto': punto,
-    })
 
 
 def _formatear_tiempo_estimado(segundos):

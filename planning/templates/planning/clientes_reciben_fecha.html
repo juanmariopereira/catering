@@ -112,6 +112,8 @@
                     <a href="{% url 'planning:editar' f.planificacion_menu.pk %}#contrato-{{ f.contrato.id }}" class="accion-link">
                         {% if f.tiene_aviso %}Definir sustituciones{% else %}Ver menú{% endif %}
                     </a>
+                    <br>
+                    <a href="{% url 'planning:etiqueta_dieta' f.planificacion_menu.pk f.contrato.pk %}" class="accion-link" target="_blank" title="Imprimir etiqueta de la dieta enviada">Imprimir etiqueta</a>
                 </td>
             </tr>
             {% empty %}

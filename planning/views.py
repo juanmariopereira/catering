@@ -19,11 +19,12 @@ from .utils import (
     obtener_conflictos_menu_por_cliente,
     recetas_alternativas_para_momento,
     clientes_no_gustan_por_receta,
+    dieta_etiqueta_contrato,
 )
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
-from contracts.models import contratos_activos_en_fecha
+from contracts.models import Contrato, contratos_activos_en_fecha
 from base.models import es_feriado, get_feriado
 from delivery.utils import contratos_en_ruta_fecha
 from diets.models import TipoComida
@@ -756,3 +757,24 @@ def recetas_del_menu_ajax(request):
     return JsonResponse({
         'recetas': [{'id': r[0], 'nombre': r[1]} for r in recetas],
     })
+
+
+@login_required
+def etiqueta_dieta(request, planificacion_id, contrato_id):
+    """
+    Vista para imprimir la etiqueta de la dieta enviada a un cliente.
+    Contiene: logo, nombre empresa, fecha, plan, cliente, platos por tipo de comida, info nutricional.
+    """
+    planificacion = get_object_or_404(PlanificacionMenu, pk=planificacion_id)
+    contrato = get_object_or_404(
+        Contrato.objects.select_related('cliente', 'plan'),
+        pk=contrato_id,
+    )
+    if contrato.plan_id != planificacion.plan_id:
+        messages.warning(request, 'El contrato no corresponde al plan de esta planificación.')
+        return redirect('planning:lista')
+    data = dieta_etiqueta_contrato(planificacion, contrato)
+    if not data:
+        messages.warning(request, 'No hay datos de dieta para este cliente en esta fecha.')
+        return redirect('planning:lista')
+    return render(request, 'planning/etiqueta_dieta.html', data)
