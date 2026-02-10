@@ -13,7 +13,7 @@ def registrar_llamada_ia(
     exito: bool = True,
     mensaje_error: str = '',
     objeto_tipo: str = '',
-    objeto_id: int | None = None,
+    objeto_id: Optional[int] = None,
     usuario=None,
 ) -> None:
     """
