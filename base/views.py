@@ -11,10 +11,12 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy, reverse
 from datetime import date, timedelta, datetime
 
+from django.contrib.auth import get_user_model
+
 from .models import Feriado, ParametroSistema, UserActionLog, es_feriado
-from .forms import FeriadoForm, LogoEmpresaForm, ParametroSistemaForm
+from .forms import FeriadoForm, LogoEmpresaForm, ParametroSistemaForm, UserForm
 from .audit import LogUserActionMixin
-from .auth_utils import get_user_home_url, is_admin
+from .auth_utils import get_user_home_url, is_admin, RequireProfileMixin
 from planning.models import PlanificacionMenu
 from billing.models import Cobro, Pago, _dias_vencimiento_por_frecuencia
 from billing.utils import obtener_cobros_vencidos, periodo_hasta_segun_frecuencia
@@ -323,6 +325,84 @@ class FeriadoDeleteView(LogUserActionMixin, LoginRequiredMixin, DeleteView):
 
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, 'Feriado eliminado.')
+        return super().delete(request, *args, **kwargs)
+
+
+# --- Gestión de usuarios (solo perfil Admin) ---
+
+User = get_user_model()
+
+
+class UserListView(RequireProfileMixin, LoginRequiredMixin, ListView):
+    """Lista de usuarios del sistema."""
+    model = User
+    template_name = 'base/user_list.html'
+    context_object_name = 'usuarios'
+    paginate_by = 25
+
+    def get_queryset(self):
+        qs = super().get_queryset().order_by('username')
+        q = self.request.GET.get('q', '').strip()
+        if q:
+            qs = qs.filter(
+                Q(username__icontains=q)
+                | Q(first_name__icontains=q)
+                | Q(last_name__icontains=q)
+                | Q(email__icontains=q)
+            )
+        return qs
+
+
+class UserCreateView(RequireProfileMixin, LoginRequiredMixin, CreateView):
+    """Crear un nuevo usuario."""
+    model = User
+    form_class = UserForm
+    template_name = 'base/user_form.html'
+    success_url = reverse_lazy('user_lista')
+
+    def form_valid(self, form):
+        user = form.save(commit=False)
+        user.set_password(form.cleaned_data['password'])
+        user.save()
+        form.save_m2m()
+        self.object = user
+        messages.success(self.request, f'Usuario "{user.username}" creado correctamente.')
+        return redirect(self.get_success_url())
+
+
+class UserUpdateView(RequireProfileMixin, LoginRequiredMixin, UpdateView):
+    """Editar un usuario."""
+    model = User
+    form_class = UserForm
+    template_name = 'base/user_form.html'
+    context_object_name = 'usuario'
+    success_url = reverse_lazy('user_lista')
+
+    def form_valid(self, form):
+        user = form.save(commit=False)
+        if form.cleaned_data.get('password'):
+            user.set_password(form.cleaned_data['password'])
+        user.save()
+        form.save_m2m()
+        messages.success(self.request, 'Usuario actualizado correctamente.')
+        return super().form_valid(form)
+
+
+class UserDeleteView(RequireProfileMixin, LoginRequiredMixin, DeleteView):
+    """Eliminar un usuario."""
+    model = User
+    template_name = 'base/user_confirm_delete.html'
+    context_object_name = 'usuario'
+    success_url = reverse_lazy('user_lista')
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # No permitir que un usuario se elimine a sí mismo
+        return qs.exclude(pk=self.request.user.pk)
+
+    def delete(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        messages.success(self.request, f'Usuario "{self.object.username}" eliminado.')
         return super().delete(request, *args, **kwargs)
 
 

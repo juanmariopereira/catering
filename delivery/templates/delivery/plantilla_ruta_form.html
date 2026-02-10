@@ -54,8 +54,7 @@
             <h2>Clientes en la plantilla (orden de entrega)</h2>
             <p>Arrastre las filas para cambiar el orden. Marque "Eliminar" para quitar un cliente de esta plantilla.</p>
             <p style="margin-bottom: 12px;">
-                <a href="{% url 'delivery:ruta_cargar_ultima' plantilla.entregador_id %}" class="btn btn-secondary">Cargar clientes de la última ruta de {{ plantilla.entregador.nombre }}</a>
-                <form method="post" action="{% url 'delivery:ruta_calcular_orden' plantilla.entregador_id %}" style="display: inline-block; margin-left: 12px;">
+                <form method="post" action="{% url 'delivery:ruta_calcular_orden' plantilla.entregador_id %}" style="display: inline-block;">
                     {% csrf_token %}
                     <input type="hidden" name="fecha" value="{{ request.GET.fecha|default:'' }}">
                     <button type="submit" class="btn" style="background-color: #2196F3;">Calcular orden óptimo (hoy)</button>

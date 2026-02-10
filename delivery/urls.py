@@ -8,7 +8,6 @@ urlpatterns = [
     path('asignar-pendientes/', views.asignar_pendientes, name='asignar_pendientes'),
     path('distribuir/', views.distribuir_entregas, name='distribuir_entregas'),
     path('ruta/entregador/<int:entregador_id>/editar/', views.PlantillaRutaUpdateView.as_view(), name='ruta_editar_plantilla'),
-    path('ruta/entregador/<int:entregador_id>/cargar-ultima/', views.ruta_cargar_ultima, name='ruta_cargar_ultima'),
     path('ruta/entregador/<int:entregador_id>/calcular-orden/', views.ruta_calcular_orden, name='ruta_calcular_orden'),
     path('ruta/<int:ruta_id>/', views.ruta_imprimible, name='ruta_imprimible'),
     path('ruta/<str:fecha_str>/<int:entregador_id>/', views.ruta_por_fecha_entregador, name='ruta_fecha_entregador'),

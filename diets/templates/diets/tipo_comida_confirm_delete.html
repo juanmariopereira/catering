@@ -1,0 +1,41 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Eliminar tipo de comida - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'diets:lista' %}">Dietas</a>
+<span class="sep">/</span>
+<a href="{% url 'diets:tipo_comida_lista' %}">Tipos de comida</a>
+<span class="sep">/</span>
+<span>Eliminar {{ tipo_comida.nombre }}</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    .btn-primary { background-color: {{ brand_color }}; }
+    .btn-primary:hover { background-color: {{ brand_color_hover }}; }
+    .btn-danger { background-color: #F44336; }
+    .btn-danger:hover { background-color: #D32F2F; }
+    .aviso { padding: 14px 18px; margin: 20px 0; background-color: #fff3cd; border: 1px solid #ffc107; border-left-width: 4px; border-radius: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Eliminar tipo de comida</h1>
+    <p>¿Está seguro de que desea eliminar el tipo de comida <strong>{{ tipo_comida.nombre }}</strong>?</p>
+    <div class="aviso" role="alert">
+        Si este momento del día está en uso (dietas, planificación, menús), eliminarlo puede afectar esos datos. Compruebe antes de continuar.
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+        <a href="{% url 'diets:tipo_comida_lista' %}" class="btn btn-primary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

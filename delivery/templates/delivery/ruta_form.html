@@ -71,12 +71,6 @@
         <div class="clientes-section">
             <h2>Clientes en la ruta (orden de entrega)</h2>
             <p>Seleccione el contrato. Arrastre las filas para definir el orden de entrega. Marque "Eliminar" para quitar un cliente de la ruta.</p>
-            {% if object.entregador %}
-            <p style="margin-bottom: 12px;">
-                <a href="{% url 'delivery:ruta_cargar_ultima' object.pk %}" class="btn btn-secondary" id="btn-cargar-ultima">Cargar clientes de la última ruta de {{ object.entregador.nombre }}</a>
-                <span style="font-size: 0.9rem; color: #666;"> (solo contratos activos)</span>
-            </p>
-            {% endif %}
             {{ formset.management_form }}
             <table class="formset-table">
                 <thead>

@@ -1,0 +1,76 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Tipos de comida - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'diets:lista' %}">Dietas</a>
+<span class="sep">/</span>
+<span>Tipos de comida</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .actions { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
+    .btn:hover { background-color: {{ brand_color_hover }}; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: {{ brand_color }}; color: white; }
+    tr:hover { background-color: #f5f5f5; }
+    .empty-row { color: #999; text-align: center; padding: 24px; }
+    .orden-badge { display: inline-block; min-width: 28px; padding: 4px 8px; background: #e8f5e9; border-radius: 4px; text-align: center; font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    {% include "base/page_title.html" with title="Tipos de comida" icon="🍽️" %}
+    <p>Momentos del día (Desayuno, Media mañana, Almuerzo, etc.). El valor de ordenación define el orden en el que se muestran en listas y formularios.</p>
+
+    <div class="actions">
+        <a href="{% url 'diets:tipo_comida_crear' %}" class="btn">Nuevo tipo de comida</a>
+    </div>
+
+    <div class="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th>Orden</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tc in tipos_comida %}
+            <tr>
+                <td><span class="orden-badge">{{ tc.orden }}</span></td>
+                <td><strong>{{ tc.nombre }}</strong></td>
+                <td>{{ tc.descripcion|default:"—" }}</td>
+                <td class="table-actions">
+                    <a href="{% url 'diets:tipo_comida_editar' tc.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
+                    <a href="{% url 'diets:tipo_comida_eliminar' tc.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="empty-row">No hay tipos de comida. Cree al menos uno (ej. Desayuno, Media mañana, Almuerzo, Merienda, Cena).</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+
+    {% if is_paginated %}
+    <div class="pagination" style="margin-top: 20px;">
+        {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">Anterior</a>{% endif %}
+        <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">Siguiente</a>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

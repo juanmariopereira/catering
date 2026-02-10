@@ -1,0 +1,39 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Eliminar usuario - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'user_lista' %}">Usuarios</a>
+<span class="sep">/</span>
+<span>Eliminar {{ usuario.username }}</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    .btn-primary { background-color: {{ brand_color }}; }
+    .btn-primary:hover { background-color: {{ brand_color_hover }}; }
+    .btn-danger { background-color: #F44336; }
+    .btn-danger:hover { background-color: #D32F2F; }
+    .aviso { padding: 14px 18px; margin: 20px 0; background-color: #ffebee; border: 1px solid #f44336; border-left-width: 4px; border-radius: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Eliminar usuario</h1>
+    <p>¿Está seguro de que desea eliminar el usuario <strong>{{ usuario.username }}</strong>{% if usuario.get_full_name %} ({{ usuario.get_full_name }}){% endif %}?</p>
+    <div class="aviso" role="alert">
+        El usuario dejará de poder iniciar sesión. Si está asociado a un entregador, la ficha del entregador quedará sin usuario vinculado hasta que se asigne otro.
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Sí, eliminar usuario</button>
+        <a href="{% url 'user_lista' %}" class="btn btn-primary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

@@ -46,6 +46,49 @@
                 {% if form.vehiculo.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.vehiculo.errors }}</div>{% endif %}
             </div>
         </div>
+
+        <h2 style="margin: 1.5rem 0 0.75rem 0; font-size: 1.1rem; border-bottom: 2px solid #7CB342; padding-bottom: 6px;">Datos de acceso</h2>
+        <p class="help-text" style="margin-bottom: 1rem;">Usuario y contraseña para que el entregador inicie sesión y vea su ruta del día. En edición puedes consultar el usuario y cambiar la contraseña si se olvidó.</p>
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+                {{ form.username }}
+                {% if form.username.help_text %}<div class="help-text">{{ form.username.help_text }}</div>{% endif %}
+                {% if form.username.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.username.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+                {{ form.password }}
+                {% if form.password.help_text %}<div class="help-text">{{ form.password.help_text }}</div>{% endif %}
+                {% if form.password.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.password.errors }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.password_confirm.id_for_label }}">{{ form.password_confirm.label }}</label>
+                {{ form.password_confirm }}
+                {% if form.password_confirm.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.password_confirm.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group"></div>
+        </div>
+
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label>{{ form.activo.label }}</label>
+                {{ form.activo }}
+                {% if form.activo.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.activo.errors }}</div>{% endif %}
+            </div>
+            <div class="form-group"></div>
+        </div>
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <label for="{{ form.notas.id_for_label }}">{{ form.notas.label }}</label>
+                {{ form.notas }}
+                {% if form.notas.help_text %}<div class="help-text">{{ form.notas.help_text }}</div>{% endif %}
+                {% if form.notas.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.notas.errors }}</div>{% endif %}
+            </div>
+        </div>
+
         <div class="form-actions">
             <button type="submit" class="btn">Guardar</button>
             <a href="{% url 'routes:entregador_lista' %}" class="btn btn-secondary">Cancelar</a>

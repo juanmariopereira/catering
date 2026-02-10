@@ -1,0 +1,62 @@
+{% extends 'base/base.html' %}
+
+{% block title %}{% if object %}Editar{% else %}Nuevo{% endif %} tipo de comida - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'diets:lista' %}">Dietas</a>
+<span class="sep">/</span>
+<a href="{% url 'diets:tipo_comida_lista' %}">Tipos de comida</a>
+<span class="sep">/</span>
+<span>{% if object %}Editar {{ object.nombre }}{% else %}Nuevo tipo de comida{% endif %}</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: 4px; font-weight: 600; }
+    .form-group input, .form-group textarea { width: 100%; max-width: 400px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+    .form-group .help-text { font-size: 0.85rem; color: #666; margin-top: 4px; }
+    .form-group ul.errorlist { color: #c62828; font-size: 12px; margin-top: 4px; list-style: none; padding: 0; }
+    .form-actions { margin-top: 24px; display: flex; gap: 10px; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; }
+    .btn:hover { background-color: {{ brand_color_hover }}; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>{% if object %}Editar{% else %}Nuevo{% endif %} tipo de comida</h1>
+    <p>Momento del día (Desayuno, Media mañana, Almuerzo, Merienda, Cena, etc.). El <strong>orden</strong> define cómo se listan en selecciones y planificación.</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="{{ form.nombre.id_for_label }}">{{ form.nombre.label }}</label>
+            {{ form.nombre }}
+            {% if form.nombre.help_text %}<div class="help-text">{{ form.nombre.help_text }}</div>{% endif %}
+            {% if form.nombre.errors %}<ul class="errorlist">{{ form.nombre.errors }}</ul>{% endif %}
+        </div>
+        <div class="form-group">
+            <label for="{{ form.orden.id_for_label }}">{{ form.orden.label }}</label>
+            {{ form.orden }}
+            <div class="help-text">{{ form.orden.help_text }}</div>
+            {% if form.orden.errors %}<ul class="errorlist">{{ form.orden.errors }}</ul>{% endif %}
+        </div>
+        <div class="form-group">
+            <label for="{{ form.descripcion.id_for_label }}">{{ form.descripcion.label }}</label>
+            {{ form.descripcion }}
+            {% if form.descripcion.errors %}<ul class="errorlist">{{ form.descripcion.errors }}</ul>{% endif %}
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn">Guardar</button>
+            <a href="{% url 'diets:tipo_comida_lista' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -499,15 +499,17 @@
             </li>
             {% if is_admin_profile %}
             <li class="nav-item nav-dropdown">
-                <span class="nav-link nav-dropdown-toggle {% if '/clients/' in request.path or '/plans/' in request.path or '/recipes/' in request.path or '/diets/' in request.path or '/routes/' in request.path or '/feriados/' in request.path or '/parametros/' in request.path or '/historial/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true"><span class="nav-toggle-icon" aria-hidden="true">📚</span>Catálogos</span>
+                <span class="nav-link nav-dropdown-toggle {% if '/clients/' in request.path or '/plans/' in request.path or '/recipes/' in request.path or '/diets/' in request.path or '/routes/' in request.path or '/feriados/' in request.path or '/parametros/' in request.path or '/historial/' in request.path or '/usuarios/' in request.path %}active{% endif %}" tabindex="0" role="button" aria-haspopup="true"><span class="nav-toggle-icon" aria-hidden="true">📚</span>Catálogos</span>
                 <ul class="nav-dropdown-menu">
+                    <li><a href="{% url 'user_lista' %}" class="{% if '/usuarios/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">👤</span>Usuarios</a></li>
                     <li><a href="{% url 'clients:lista' %}" class="{% if '/clients/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">👥</span>Clientes</a></li>
                     <li><a href="{% url 'plans:lista' %}" class="{% if '/plans/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📑</span>Planes</a></li>
                     <li><a href="{% url 'recipes:lista' %}" class="{% if '/recipes/' in request.path and 'ingredientes' not in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🍽️</span>Recetas</a></li>
                     <li><a href="{% url 'recipes:ingrediente_lista' %}" class="{% if 'ingredientes' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🥗</span>Ingredientes</a></li>
                     <li><a href="{% url 'recipes:unidad_medida_lista' %}" class="{% if 'unidades-medida' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📏</span>Unidades de medida</a></li>
                     <li><a href="{% url 'recipes:tipo_receta_lista' %}" class="{% if 'tipos-receta' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🏷️</span>Tipos de receta</a></li>
-                    <li><a href="{% url 'diets:lista' %}" class="{% if '/diets/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📋</span>Dietas</a></li>
+                    <li><a href="{% url 'diets:lista' %}" class="{% if '/diets/' in request.path and 'tipos-comida' not in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📋</span>Dietas</a></li>
+                    <li><a href="{% url 'diets:tipo_comida_lista' %}" class="{% if '/diets/tipos-comida/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🍽️</span>Tipos de comida</a></li>
                     <li><a href="{% url 'routes:entregador_lista' %}" class="{% if '/routes/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">🚚</span>Entregadores</a></li>
                     <li><a href="{% url 'feriado_lista' %}" class="{% if '/feriados/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">📅</span>Feriados</a></li>
                     <li><a href="{% url 'parametros_sistema' %}" class="{% if '/parametros/' in request.path %}active{% endif %}"><span class="nav-item-icon" aria-hidden="true">⚙️</span>Parámetros del sistema</a></li>

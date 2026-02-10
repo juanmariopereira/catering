@@ -385,54 +385,6 @@ def distribuir_entregas(request):
     })
 
 
-@login_required
-def ruta_cargar_ultima(request, entregador_id):
-    """
-    Añade a la plantilla del entregador los contratos que tuvo en la "última ruta" (última fecha
-    con entregas o ayer). Solo añade los que no están ya en la plantilla.
-    """
-    if not user_can_access_entregador(request.user, entregador_id):
-        return redirect(get_user_home_url(request.user))
-    entregador = get_object_or_404(Entregador, pk=entregador_id)
-    plantilla = _get_or_create_plantilla(entregador)
-    # Última fecha con entregas para este entregador, o ayer
-    ultima_fecha = (
-        EntregaDia.objects.filter(entregador=entregador)
-        .order_by('-fecha')
-        .values_list('fecha', flat=True)
-        .first()
-    ) or (timezone.now().date() - timedelta(days=1))
-    paradas = get_paradas_ruta_fecha(entregador, ultima_fecha)
-    if not paradas:
-        messages.info(
-            request,
-            f'No hay paradas que cargar para {entregador.nombre} en la fecha de referencia ({ultima_fecha}).',
-        )
-        return redirect('delivery:ruta_editar_plantilla', entregador_id=entregador_id)
-    ya_en_plantilla = set(plantilla.clientes.values_list('contrato_id', flat=True))
-    max_orden = plantilla.clientes.aggregate(m=Max('orden_entrega'))['m'] or 0
-    creados = 0
-    for prc, _ in paradas:
-        if prc.contrato_id in ya_en_plantilla:
-            continue
-        max_orden += 1
-        PlantillaRutaCliente.objects.get_or_create(
-            plantilla_ruta=plantilla,
-            contrato_id=prc.contrato_id,
-            defaults={'orden_entrega': max_orden},
-        )
-        ya_en_plantilla.add(prc.contrato_id)
-        creados += 1
-    if creados:
-        messages.success(
-            request,
-            f'Se añadieron {creados} cliente(s) a la plantilla de {entregador.nombre}.',
-        )
-    else:
-        messages.info(request, 'No se añadió ninguno: ya estaban en la plantilla.')
-    return redirect('delivery:ruta_editar_plantilla', entregador_id=entregador_id)
-
-
 def _formatear_tiempo_estimado(segundos):
     """Convierte segundos a texto: 'X min' o 'Xh Y min'."""
     if segundos is None or segundos < 0:

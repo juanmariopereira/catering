@@ -73,6 +73,10 @@
     }
     .sin-codigo { font-style: italic; color: #888; font-size: 0.9em; }
     .hora-entrega-registrada { font-size: 0.9rem; color: #2e7d32; font-weight: 600; background: #e8f5e9; padding: 2px 8px; border-radius: 4px; margin-left: 4px; }
+    .bloque-contrato .meta-contrato { padding: 8px 16px 12px; background: #f9f9f9; border-bottom: 1px solid #eee; font-size: 0.9rem; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+    .bloque-contrato .meta-contrato .plan { background: transparent; padding: 0; color: #333; }
+    .bloque-contrato .meta-contrato .horario-entrega { color: #1565c0; font-weight: 600; }
+    .bloque-contrato .meta-contrato .horario-sin-definir { color: #888; font-style: italic; }
     .sin-menu { padding: 14px 16px; color: #666; font-style: italic; }
     .vacio { padding: 20px; text-align: center; color: #666; background: #f9f9f9; border-radius: 8px; }
 </style>
@@ -129,7 +133,10 @@
         {% for fila in filas %}
         <div class="bloque-contrato">
             <h3>{{ fila.cliente.nombre }}{% if fila.codigo_entrega %} <span class="codigo-entrega" title="Código único de entrega">{{ fila.codigo_entrega }}</span>{% endif %}{% if fila.hora_entrega %} <span class="hora-entrega-registrada" title="Hora de entrega pactada en el contrato">🕐 {{ fila.hora_entrega }}</span>{% endif %}</h3>
-            <div class="plan">Plan: {{ fila.plan.nombre }}{% if not fila.codigo_entrega %} <span class="sin-codigo">(sin ruta asignada)</span>{% endif %}</div>
+            <div class="meta-contrato">
+                <span class="plan">Plan: {{ fila.plan.nombre }}{% if not fila.codigo_entrega %} <span class="sin-codigo">(sin ruta asignada)</span>{% endif %}</span>
+                <span class="{% if fila.hora_entrega %}horario-entrega{% else %}horario-sin-definir{% endif %}">Horario de entrega: {% if fila.hora_entrega %}🕐 {{ fila.hora_entrega }}{% else %}No definido{% endif %}</span>
+            </div>
             {% if fila.composicion %}
             <table>
                 <tbody>

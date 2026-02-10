@@ -1,0 +1,128 @@
+{% extends 'base/base.html' %}
+
+{% block title %}{% if object %}Editar usuario{% else %}Nuevo usuario{% endif %} - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<a href="{% url 'user_lista' %}">Usuarios</a>
+<span class="sep">/</span>
+<span>{% if object %}Editar {{ object.username }}{% else %}Nuevo usuario{% endif %}</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-layout .form-group { margin-bottom: 1rem; }
+    .form-layout .form-group label { display: block; margin-bottom: 4px; font-weight: 600; }
+    .form-layout .form-group input[type="text"],
+    .form-layout .form-group input[type="password"],
+    .form-layout .form-group input[type="email"] { width: 100%; max-width: 320px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+    .form-layout .form-group .help-text { font-size: 0.85rem; color: #666; margin-top: 4px; }
+    .form-layout .form-group ul.errorlist { color: #c62828; font-size: 12px; margin-top: 4px; list-style: none; padding: 0; }
+    .form-layout .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 600px) { .form-layout .form-row-2 { grid-template-columns: 1fr; } }
+    .form-layout .groups-table { margin-top: 6px; border-collapse: collapse; }
+    .form-layout .groups-table td { padding: 6px 12px 6px 0; vertical-align: middle; }
+    .form-layout .groups-table label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+    .form-layout .groups-table input[type="checkbox"] { margin: 0; }
+    .form-actions { margin-top: 24px; display: flex; gap: 10px; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; }
+    .btn:hover { background-color: {{ brand_color_hover }}; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    h2.section { margin: 1.5rem 0 0.75rem 0; font-size: 1.1rem; border-bottom: 2px solid {{ brand_color }}; padding-bottom: 6px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>{% if object %}Editar usuario{% else %}Nuevo usuario{% endif %}</h1>
+    <p>Datos del usuario y grupos de acceso (Admin, Cocina, Entregador).</p>
+
+    <form method="post" class="form-layout">
+        {% csrf_token %}
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+                {{ form.username }}
+                {% if form.username.help_text %}<div class="help-text">{{ form.username.help_text }}</div>{% endif %}
+                {% if form.username.errors %}<ul class="errorlist">{{ form.username.errors }}</ul>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+                {{ form.email }}
+                {% if form.email.errors %}<ul class="errorlist">{{ form.email.errors }}</ul>{% endif %}
+            </div>
+        </div>
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
+                {{ form.first_name }}
+                {% if form.first_name.errors %}<ul class="errorlist">{{ form.first_name.errors }}</ul>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }}</label>
+                {{ form.last_name }}
+                {% if form.last_name.errors %}<ul class="errorlist">{{ form.last_name.errors }}</ul>{% endif %}
+            </div>
+        </div>
+
+        <h2 class="section">Contraseña</h2>
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+                {{ form.password }}
+                {% if form.password.help_text %}<div class="help-text">{{ form.password.help_text }}</div>{% endif %}
+                {% if form.password.errors %}<ul class="errorlist">{{ form.password.errors }}</ul>{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.password_confirm.id_for_label }}">{{ form.password_confirm.label }}</label>
+                {{ form.password_confirm }}
+                {% if form.password_confirm.errors %}<ul class="errorlist">{{ form.password_confirm.errors }}</ul>{% endif %}
+            </div>
+        </div>
+
+        <h2 class="section">Permisos</h2>
+        <div class="form-row form-row-2">
+            <div class="form-group">
+                <label>{{ form.is_staff.label }}</label>
+                {{ form.is_staff }}
+                <div class="help-text">Puede acceder al panel de administración de Django (/admin/).</div>
+                {% if form.is_staff.errors %}<ul class="errorlist">{{ form.is_staff.errors }}</ul>{% endif %}
+            </div>
+            <div class="form-group">
+                <label>{{ form.is_active.label }}</label>
+                {{ form.is_active }}
+                <div class="help-text">Si está desmarcado, el usuario no podrá iniciar sesión.</div>
+                {% if form.is_active.errors %}<ul class="errorlist">{{ form.is_active.errors }}</ul>{% endif %}
+            </div>
+        </div>
+        <div class="form-group">
+            <label>{{ form.groups.label }}</label>
+            <table class="groups-table">
+                <tbody>
+                    {% for choice in form.groups.field.queryset %}
+                    <tr>
+                        <td>
+                            <label for="id_groups_{{ forloop.counter0 }}">
+                                <input type="checkbox" name="groups" value="{{ choice.pk }}" id="id_groups_{{ forloop.counter0 }}" {% if choice.pk in form.groups.value %}checked{% endif %}>
+                                {{ choice.name }}
+                            </label>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="help-text">Admin (acceso completo), Cocina (cocina y recetas), Entregador (solo su ruta).</div>
+            {% if form.groups.errors %}<ul class="errorlist">{{ form.groups.errors }}</ul>{% endif %}
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn">Guardar</button>
+            <a href="{% url 'user_lista' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

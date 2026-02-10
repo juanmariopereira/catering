@@ -14,6 +14,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 
 from .models import Dieta, DietaReceta, TipoComida
+from .forms import TipoComidaForm, DietaRecetaForm
 from .services.ai_dietas import sugerir_dieta_personalizada, OBJETIVOS_VALIDOS
 
 # Día de la semana: Python weekday() 0=lunes, 6=domingo -> valor en contrato.dias_entrega
@@ -201,10 +202,61 @@ def sugerir_dieta_view(request):
 DietaRecetaFormSet = inlineformset_factory(
     Dieta,
     DietaReceta,
+    form=DietaRecetaForm,
     fields=['tipo_comida', 'receta', 'orden'],
     extra=15,
     can_delete=True,
 )
+
+
+# --- Tipos de comida (momentos del día) ---
+
+class TipoComidaListView(LoginRequiredMixin, ListView):
+    """Lista de tipos de comida ordenados por el campo orden."""
+    model = TipoComida
+    template_name = 'diets/tipo_comida_lista.html'
+    context_object_name = 'tipos_comida'
+    paginate_by = 50
+
+    def get_queryset(self):
+        return super().get_queryset().order_by('orden', 'nombre')
+
+
+class TipoComidaCreateView(LoginRequiredMixin, CreateView):
+    """Crear un nuevo tipo de comida."""
+    model = TipoComida
+    form_class = TipoComidaForm
+    template_name = 'diets/tipo_comida_form.html'
+    success_url = reverse_lazy('diets:tipo_comida_lista')
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Tipo de comida creado correctamente.')
+        return super().form_valid(form)
+
+
+class TipoComidaUpdateView(LoginRequiredMixin, UpdateView):
+    """Editar un tipo de comida."""
+    model = TipoComida
+    form_class = TipoComidaForm
+    template_name = 'diets/tipo_comida_form.html'
+    context_object_name = 'tipo_comida'
+    success_url = reverse_lazy('diets:tipo_comida_lista')
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Tipo de comida actualizado correctamente.')
+        return super().form_valid(form)
+
+
+class TipoComidaDeleteView(LoginRequiredMixin, DeleteView):
+    """Eliminar un tipo de comida."""
+    model = TipoComida
+    template_name = 'diets/tipo_comida_confirm_delete.html'
+    context_object_name = 'tipo_comida'
+    success_url = reverse_lazy('diets:tipo_comida_lista')
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Tipo de comida eliminado.')
+        return super().form_valid(form)
 
 
 class DietaListView(LoginRequiredMixin, ListView):

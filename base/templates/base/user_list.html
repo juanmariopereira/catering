@@ -1,0 +1,94 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Usuarios - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<span>Usuarios</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .actions { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
+    .btn:hover { background-color: {{ brand_color_hover }}; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    .filtro-q { display: flex; gap: 8px; align-items: center; }
+    .filtro-q input { width: 200px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: {{ brand_color }}; color: white; }
+    tr:hover { background-color: #f5f5f5; }
+    .empty-row { color: #999; text-align: center; padding: 24px; }
+    .badge-staff { background: #2196F3; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+    .badge-inactive { background: #9e9e9e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    {% include "base/page_title.html" with title="Usuarios" icon="👤" %}
+    <p>Administración de usuarios del sistema. Asigne grupos (Admin, Cocina, Entregador) para definir el acceso de cada usuario.</p>
+
+    <div class="actions">
+        <a href="{% url 'user_crear' %}" class="btn">Nuevo usuario</a>
+        <form method="get" class="filtro-q">
+            <input type="search" name="q" id="q" value="{{ request.GET.q }}" placeholder="Buscar por usuario, nombre, email">
+            <button type="submit" class="btn btn-secondary">Buscar</button>
+            {% if request.GET.q %}<a href="{% url 'user_lista' %}" class="btn btn-secondary">Ver todos</a>{% endif %}
+        </form>
+    </div>
+
+    <div class="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th>Usuario</th>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Grupos</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in usuarios %}
+            <tr>
+                <td><strong>{{ u.username }}</strong></td>
+                <td>{{ u.get_full_name|default:"—" }}</td>
+                <td>{{ u.email|default:"—" }}</td>
+                <td>{% for g in u.groups.all %}<span class="badge-staff">{{ g.name }}</span> {% empty %}—{% endfor %}</td>
+                <td>
+                    {% if u.is_staff %}<span class="badge-staff">Staff</span>{% endif %}
+                    {% if not u.is_active %}<span class="badge-inactive">Inactivo</span>{% endif %}
+                    {% if u.is_staff and u.is_active and not u.groups.exists %}—{% endif %}
+                </td>
+                <td class="table-actions">
+                    <a href="{% url 'user_editar' u.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
+                    {% if u.pk != request.user.pk %}
+                    <a href="{% url 'user_eliminar' u.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
+                    {% else %}
+                    <span title="No puede eliminarse a sí mismo" style="color: #ccc; cursor: not-allowed;">🗑</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="empty-row">No hay usuarios.{% if request.GET.q %} Pruebe otra búsqueda o <a href="{% url 'user_lista' %}">ver todos</a>.{% endif %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+
+    {% if is_paginated %}
+    <div class="pagination" style="margin-top: 20px;">
+        {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Anterior</a>{% endif %}
+        <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Siguiente</a>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

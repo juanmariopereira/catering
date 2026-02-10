@@ -2,6 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from .models import PlanificacionMenu, PlanificacionMenuReceta
 from recipes.models import Receta
+from diets.models import TipoComida
 
 
 class PlanificacionMenuForm(forms.ModelForm):
@@ -46,5 +47,7 @@ class PlanificacionMenuRecetaForm(forms.ModelForm):
 
     def __init__(self, *args, receta_counts=None, **kwargs):
         super().__init__(*args, **kwargs)
+        # Tipo de comida ordenado por valor de ordenación (Desayuno, Media mañana, Almuerzo, etc.)
+        self.fields['tipo_comida'].queryset = TipoComida.objects.order_by('orden', 'nombre')
         # Receta se carga por AJAX según tipo_comida; solo placeholder para no mostrar todas
         self.fields['receta'].choices = [('', '---------')]

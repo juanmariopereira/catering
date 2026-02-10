@@ -2,7 +2,12 @@
 Formularios del proyecto base.
 """
 from django import forms
+from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+
 from .models import Feriado, ParametroSistema
+
+User = get_user_model()
 
 
 class ParametroSistemaForm(forms.ModelForm):
@@ -60,3 +65,74 @@ class LogoEmpresaForm(forms.Form):
         label="Quitar logo actual",
         help_text="Marque para eliminar el logo actual (no suba ningún archivo).",
     )
+
+
+class UserForm(forms.ModelForm):
+    """Formulario para crear y editar usuarios (fuera del admin)."""
+    password = forms.CharField(
+        label='Contraseña',
+        required=False,
+        widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}),
+        help_text='En edición: dejar en blanco para no cambiar.',
+    )
+    password_confirm = forms.CharField(
+        label='Confirmar contraseña',
+        required=False,
+        widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}),
+    )
+
+    class Meta:
+        model = User
+        fields = ('username', 'first_name', 'last_name', 'email', 'is_staff', 'is_active', 'groups')
+        labels = {
+            'groups': 'Perfiles (grupos)',
+        }
+        widgets = {
+            'username': forms.TextInput(attrs={'autocomplete': 'username'}),
+            'email': forms.EmailInput(attrs={'autocomplete': 'email'}),
+            'groups': forms.CheckboxSelectMultiple(),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._is_edit = self.instance and self.instance.pk
+        if self._is_edit:
+            self.fields['username'].disabled = True
+            self.fields['username'].help_text = 'No se puede cambiar el nombre de usuario.'
+        else:
+            self.fields['password'].required = True
+            self.fields['password_confirm'].required = True
+
+    def clean_username(self):
+        if self.fields['username'].disabled:
+            return self.instance.username if (self.instance and self.instance.pk) else ''
+        username = (self.cleaned_data.get('username') or '').strip()
+        if not username:
+            raise forms.ValidationError('El usuario es obligatorio.')
+        qs = User.objects.filter(username__iexact=username)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError('Ya existe un usuario con ese nombre.')
+        return username
+
+    def clean(self):
+        data = super().clean()
+        password = data.get('password')
+        password_confirm = data.get('password_confirm')
+        if password or password_confirm:
+            if password != password_confirm:
+                self.add_error('password_confirm', 'Las contraseñas no coinciden.')
+            elif password and not self._is_edit:
+                try:
+                    validate_password(password)
+                except forms.ValidationError as e:
+                    self.add_error('password', e)
+            elif password and self._is_edit:
+                try:
+                    validate_password(password)
+                except forms.ValidationError as e:
+                    self.add_error('password', e)
+        elif not self._is_edit and not password:
+            self.add_error('password', 'La contraseña es obligatoria al crear el usuario.')
+        return data
