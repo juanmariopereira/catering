@@ -1,13 +1,17 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
-from django.db.models import Q, Max, Exists, OuterRef
 from django.urls import reverse_lazy, reverse
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.forms import inlineformset_factory
 
 from .models import Cliente, IngredienteNoGustado
-
+from .services import (
+    list_clientes_queryset,
+    get_cliente_detalle_data,
+    get_cliente_delete_context,
+    save_cliente_con_ingredientes_no_gustados,
+)
 
 IngredienteNoGustadoFormSet = inlineformset_factory(
     Cliente,
@@ -25,45 +29,11 @@ class ClienteListView(LoginRequiredMixin, ListView):
     paginate_by = 30
     PER_PAGE_OPTIONS = (30, 50, 100, 500)
 
-    ORDER_FIELDS = {
-        'nombre': 'nombre',
-        '-nombre': '-nombre',
-        'email': 'email',
-        '-email': '-email',
-        'estado': 'activo',
-        '-estado': '-activo',
-        'ultimo_contrato': 'ultimo_contrato_fecha',
-        '-ultimo_contrato': '-ultimo_contrato_fecha',
-    }
-
     def get_queryset(self):
-        from contracts.models import Contrato, q_filtro_estado
-        queryset = super().get_queryset()
         busqueda = self.request.GET.get('q')
-        if busqueda:
-            queryset = queryset.filter(
-                Q(nombre__icontains=busqueda) | Q(email__icontains=busqueda) | Q(telefono__icontains=busqueda)
-            )
-        q_vigentes = q_filtro_estado('activo') | q_filtro_estado('pausado') | q_filtro_estado('vencido')
-        subq = Contrato.objects.filter(cliente_id=OuterRef('pk')).filter(q_vigentes)
-        queryset = queryset.annotate(
-            ultimo_contrato_fecha=Max('contratos__fecha_creacion'),
-            tiene_contrato_vigente=Exists(subq),
-        )
         activo = self.request.GET.get('activo')
-        if activo is not None and activo != '':
-            if activo == 'sin_contrato':
-                queryset = queryset.filter(tiene_contrato_vigente=False)
-            else:
-                queryset = queryset.filter(activo=activo == '1')
-
         order = (self.request.GET.get('order') or 'nombre').strip()
-        if order in self.ORDER_FIELDS:
-            order_field = self.ORDER_FIELDS[order]
-            queryset = queryset.order_by(order_field)
-        else:
-            queryset = queryset.order_by('nombre')
-        return queryset
+        return list_clientes_queryset(busqueda=busqueda, activo=activo, order=order)
 
     def get_paginate_by(self, queryset):
         per = self.request.GET.get('per_page')
@@ -104,29 +74,8 @@ class ClienteDetailView(LoginRequiredMixin, DetailView):
     context_object_name = 'cliente'
 
     def get_context_data(self, **kwargs):
-        from django.db.models import Q
-        from contracts.models import Contrato
-        from billing.models import Cobro
         context = super().get_context_data(**kwargs)
-        cliente = self.object
-        contratos_todos = (
-            Contrato.objects.filter(
-                Q(cliente=cliente) | Q(cliente__titular=cliente)
-            )
-            .select_related('cliente', 'plan')
-            .order_by('-fecha_creacion')
-        )
-        cobro_pendiente_por_contrato = {}
-        if contratos_todos:
-            ids = [c.pk for c in contratos_todos]
-            for c in Cobro.objects.filter(
-                contrato_id__in=ids,
-                estado__in=['pendiente', 'vencida']
-            ).order_by('contrato_id', 'periodo_desde'):
-                if c.contrato_id not in cobro_pendiente_por_contrato:
-                    cobro_pendiente_por_contrato[c.contrato_id] = c
-        context['contratos_todos'] = contratos_todos
-        context['cobro_pendiente_por_contrato'] = cobro_pendiente_por_contrato
+        context.update(get_cliente_detalle_data(self.object))
         return context
 
 
@@ -156,10 +105,13 @@ class ClienteUpdateView(LoginRequiredMixin, UpdateView):
         return context
 
     def form_valid(self, form):
-        self.object = form.save()
         formset = IngredienteNoGustadoFormSet(self.request.POST, instance=self.object)
         if formset.is_valid():
-            formset.save()
+            save_cliente_con_ingredientes_no_gustados(
+                self.object,
+                form.cleaned_data,
+                [f.cleaned_data for f in formset if f.cleaned_data and not f.cleaned_data.get('DELETE')],
+            )
             messages.success(self.request, 'Cliente e ingredientes no gustados guardados correctamente.')
             return redirect(self.get_success_url())
         return self.render_to_response(
@@ -174,16 +126,7 @@ class ClienteDeleteView(LoginRequiredMixin, DeleteView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        from contracts.models import Contrato, q_filtro_estado
-        cliente = self.object
-        context['contratos_activos'] = Contrato.objects.filter(
-            cliente=cliente
-        ).filter(q_filtro_estado('activo')).select_related('plan').order_by('-fecha_creacion')
-        contratos_activos_ids = Contrato.objects.filter(q_filtro_estado('activo')).values_list('id', flat=True)
-        context['dependientes_con_contratos_activos'] = Cliente.objects.filter(
-            titular=cliente,
-            contratos__in=contratos_activos_ids,
-        ).distinct()
+        context.update(get_cliente_delete_context(self.object))
         return context
 
     def form_valid(self, form):
