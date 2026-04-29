@@ -189,6 +189,13 @@ SENTRY_DSN = os.environ.get('SENTRY_DSN', '').strip()
 if SENTRY_DSN:
     import sentry_sdk
     from sentry_sdk.integrations.django import DjangoIntegration
+    from django.core.exceptions import DisallowedHost
+
+    def _sentry_before_send(event, hint):
+        exc_info = hint.get('exc_info')
+        if exc_info and len(exc_info) >= 2 and isinstance(exc_info[1], DisallowedHost):
+            return None
+        return event
 
     sentry_sdk.init(
         dsn=SENTRY_DSN,
@@ -196,4 +203,5 @@ if SENTRY_DSN:
         environment=os.environ.get('DJANGO_ENV', 'development'),
         traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
         send_default_pii=os.environ.get('SENTRY_SEND_DEFAULT_PII', 'false').lower() in ('true', '1', 'yes'),
+        before_send=_sentry_before_send,
     )

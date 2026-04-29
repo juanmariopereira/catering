@@ -62,6 +62,11 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'django.security.DisallowedHost': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
         'django.db.backends': {
             'handlers': ['console'],
             'level': 'ERROR',  # Ver queries SQL en desarrollo
