@@ -17,8 +17,8 @@
     .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .actions { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
-    .btn-primary { background-color: #7CB342; }
-    .btn-primary:hover { background-color: #689F38; }
+    .btn-primary { background-color: var(--brand-color); }
+    .btn-primary:hover { background-color: var(--brand-color-hover); }
     .btn-secondary { background-color: #6c757d; }
     .btn-secondary:hover { background-color: #5a6268; }
     .btn-danger { background-color: #F44336; }
@@ -35,13 +35,13 @@
     .btn-ai:disabled { opacity: 0.6; cursor: not-allowed; }
     .sugerir-status { font-size: 0.9rem; color: #555; }
     .sugerir-status.error { color: #c62828; }
-    .sugerir-status.success { color: #2e7d32; }
+    .sugerir-status.success { color: var(--brand-dark); }
     .dl-horizontal dt { float: left; width: 140px; clear: left; font-weight: 600; color: #555; }
     .dl-horizontal dd { margin-left: 160px; margin-bottom: 8px; }
     .dl-horizontal::after { content: ""; display: table; clear: both; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-    th { background-color: #e8f5e9; font-weight: 600; }
+    th { background-color: var(--brand-bg-soft); font-weight: 600; }
     .badge-pendiente { background-color: #ffc107; color: #000; }
     .badge-pagada { background-color: #4CAF50; color: white; }
     .badge-vencida { background-color: #F44336; color: white; }

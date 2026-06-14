@@ -18,22 +18,22 @@
 <style>
     /* Etiqueta compacta para 1/4 de página carta (aprox. 4.25" x 5.5") */
     .etiqueta-dieta { max-width: 320px; margin: 0 auto; padding: 10px; border: 1px solid #ddd; background: #fff; font-size: 10px; line-height: 1.25; }
-    .etiqueta-dieta .cabecera { text-align: center; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid {{ brand_color|default:'#7CB342' }}; }
+    .etiqueta-dieta .cabecera { text-align: center; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid {{ brand_color|default:'var(--brand-color)' }}; }
     .etiqueta-dieta .cabecera img { max-height: 28px; max-width: 100px; }
     .etiqueta-dieta .cabecera h1 { margin: 2px 0 0; font-size: 11px; font-weight: bold; color: #333; }
     .etiqueta-dieta .fecha-plan { margin-bottom: 4px; font-size: 9px; }
     .etiqueta-dieta .cliente-block { font-size: 11px; font-weight: bold; margin-bottom: 6px; padding: 4px 6px; background: #f0f0f0; border-radius: 2px; }
     .etiqueta-dieta .platos-por-tipo { margin-bottom: 6px; }
     .etiqueta-dieta .platos-por-tipo > strong { font-size: 9px; }
-    .etiqueta-dieta .tipo-comida { font-weight: 600; color: {{ brand_color|default:'#7CB342' }}; margin-top: 3px; margin-bottom: 1px; font-size: 9px; }
+    .etiqueta-dieta .tipo-comida { font-weight: 600; color: {{ brand_color|default:'var(--brand-color)' }}; margin-top: 3px; margin-bottom: 1px; font-size: 9px; }
     .etiqueta-dieta .platos-lista { margin: 0 0 0 8px; padding: 0; list-style: none; font-size: 9px; }
     .etiqueta-dieta .platos-lista li { padding: 0; }
     .etiqueta-dieta .info-nutricional { margin-top: 6px; padding: 4px 6px; background: #f9f9f9; border-radius: 2px; font-size: 8px; }
     .etiqueta-dieta .info-nutricional h3 { margin: 0 0 2px; font-size: 9px; }
     .etiqueta-dieta .info-nutricional p { margin: 0; }
     .etiqueta-dieta .accion-impresion { margin-top: 10px; text-align: center; }
-    .etiqueta-dieta .accion-impresion .btn { display: inline-block; padding: 6px 14px; background: {{ brand_color|default:'#7CB342' }}; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; text-decoration: none; }
-    .etiqueta-dieta .accion-impresion .btn:hover { background: {{ brand_color_hover|default:'#689F38' }}; }
+    .etiqueta-dieta .accion-impresion .btn { display: inline-block; padding: 6px 14px; background: {{ brand_color|default:'var(--brand-color)' }}; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; text-decoration: none; }
+    .etiqueta-dieta .accion-impresion .btn:hover { background: {{ brand_color_hover|default:'var(--brand-color-hover)' }}; }
     @media print {
         .no-print, .accion-impresion, nav, footer, .breadcrumb { display: none !important; }
         .etiqueta-dieta { border: 1px solid #ccc; box-shadow: none; max-width: 4.25in; width: 4.25in; min-height: 5.5in; padding: 0.15in; margin: 0; font-size: 9pt; }

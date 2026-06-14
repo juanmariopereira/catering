@@ -90,7 +90,7 @@
     {% endif %}
 
     {% if fecha_seleccionada and total_con_entrega > 0 and cantidad_sin_ruta == 0 %}
-    <p style="margin-bottom: 12px; color: #2e7d32;">Todos los contratos con entrega el {{ fecha_seleccionada|date:"d/m/Y" }} están asignados a una ruta.</p>
+    <p style="margin-bottom: 12px; color: var(--brand-dark);">Todos los contratos con entrega el {{ fecha_seleccionada|date:"d/m/Y" }} están asignados a una ruta.</p>
     {% endif %}
 
     <div class="table-responsive">

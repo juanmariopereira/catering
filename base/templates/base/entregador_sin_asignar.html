@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entregador sin asignar - {{ catering_name }}</title>
     <style>
+        :root {
+            --brand-color: {{ brand_color }};
+            --brand-color-hover: {{ brand_color_hover }};
+            --brand-bg-light: color-mix(in srgb, var(--brand-color) 8%, #ffffff);
+            --brand-bg-soft: color-mix(in srgb, var(--brand-color) 18%, #ffffff);
+        }
         * { box-sizing: border-box; }
         body {
             font-family: Arial, sans-serif;
@@ -13,7 +19,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #f0f7ed 0%, #e8f5e9 100%);
+            background: linear-gradient(135deg, var(--brand-bg-light) 0%, var(--brand-bg-soft) 100%);
         }
         .box {
             width: 100%;
@@ -28,14 +34,14 @@
             color: #333;
             margin: 0 0 16px 0;
             font-size: 1.5rem;
-            border-bottom: 3px solid #7CB342;
+            border-bottom: 3px solid var(--brand-color);
             padding-bottom: 15px;
         }
         p { color: #555; margin: 0 0 20px 0; line-height: 1.6; text-align: left; }
         .btn {
             display: inline-block;
             padding: 12px 24px;
-            background-color: #7CB342;
+            background-color: var(--brand-color);
             color: white;
             border: none;
             border-radius: 4px;
@@ -44,7 +50,7 @@
             cursor: pointer;
             text-decoration: none;
         }
-        .btn:hover { background-color: #689F38; }
+        .btn:hover { background-color: var(--brand-color-hover); }
         form { margin: 0; }
     </style>
 </head>

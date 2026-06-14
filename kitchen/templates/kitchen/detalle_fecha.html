@@ -28,12 +28,12 @@
     }
     .fecha-navegacion a {
         padding: 8px 16px;
-        background-color: #7CB342;
+        background-color: var(--brand-color);
         color: white;
         text-decoration: none;
         border-radius: 4px;
     }
-    .fecha-navegacion a:hover { background-color: #689F38; }
+    .fecha-navegacion a:hover { background-color: var(--brand-color-hover); }
     .fecha-actual { font-size: 18px; font-weight: bold; color: #333; }
     .recetas-lista { margin-top: 30px; }
     .receta-item {
@@ -51,7 +51,7 @@
     }
     .receta-nombre { font-size: 20px; font-weight: bold; color: #333; }
     .receta-cantidad {
-        background-color: #7CB342;
+        background-color: var(--brand-color);
         color: white;
         padding: 5px 15px;
         border-radius: 20px;
@@ -69,9 +69,9 @@
     .clientes-raciones {
         margin-top: 12px;
         padding: 10px 14px;
-        background-color: #f0f7ed;
+        background-color: var(--brand-bg-light);
         border-radius: 4px;
-        border-left: 3px solid #7CB342;
+        border-left: 3px solid var(--brand-color);
     }
     .clientes-raciones h4 { margin: 0 0 8px 0; font-size: 14px; color: #333; }
     .cliente-item { padding: 4px 0; font-size: 0.95rem; }
@@ -81,7 +81,7 @@
         display: inline-block;
         margin-right: 8px;
         padding: 2px 8px;
-        background-color: #2e7d32;
+        background-color: var(--brand-dark);
         color: white;
         font-size: 12px;
         font-weight: 600;
@@ -92,7 +92,7 @@
         display: inline-block;
         margin-right: 8px;
         font-size: 0.9rem;
-        color: #2e7d32;
+        color: var(--brand-dark);
         font-weight: 600;
     }
     .notas {
@@ -109,10 +109,10 @@
     .sin-recetas { text-align: center; padding: 40px; color: #999; font-size: 18px; }
     /* Resumen por momento */
     .resumen-cocina { margin-bottom: 32px; }
-    .resumen-cocina h2 { font-size: 1.25rem; margin: 0 0 12px 0; color: #333; border-bottom: 2px solid #7CB342; padding-bottom: 6px; }
+    .resumen-cocina h2 { font-size: 1.25rem; margin: 0 0 12px 0; color: #333; border-bottom: 2px solid var(--brand-color); padding-bottom: 6px; }
     .resumen-tabla { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.95rem; }
     .resumen-tabla th, .resumen-tabla td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
-    .resumen-tabla th { background-color: #e8f5e9; font-weight: 600; color: #2e7d32; }
+    .resumen-tabla th { background-color: var(--brand-bg-soft); font-weight: 600; color: var(--brand-dark); }
     .resumen-tabla .momento-nombre { font-weight: 600; color: #333; }
     .resumen-tabla .receta-cant { white-space: nowrap; }
     .resumen-tabla .cambios { font-size: 0.9rem; color: #856404; }
@@ -128,13 +128,13 @@
         font-size: 1.2rem;
         font-weight: 600;
         color: #555;
-        background-color: #e8f5e9;
-        border: 1px solid #c8e6c9;
+        background-color: var(--brand-bg-soft);
+        border: 1px solid var(--brand-bg-muted);
         border-radius: 6px;
         cursor: pointer;
         text-align: left;
     }
-    .detalle-completo-toggle:hover { background-color: #c8e6c9; color: #2e7d32; }
+    .detalle-completo-toggle:hover { background-color: var(--brand-bg-muted); color: var(--brand-dark); }
     .detalle-completo-toggle .toggle-icon { font-size: 0.9rem; transition: transform 0.2s; }
     .detalle-completo.is-open .detalle-completo-toggle .toggle-icon { transform: rotate(180deg); }
     .detalle-completo-contenido { display: none; margin-top: 16px; }

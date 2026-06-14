@@ -54,13 +54,13 @@
         </form>
     </div>
 
-    <div class="resumen-rapido" style="display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; padding: 16px; background: #f0f7ed; border-radius: 8px; border-left: 4px solid #7CB342;">
+    <div class="resumen-rapido" style="display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; padding: 16px; background: var(--brand-bg-light); border-radius: 8px; border-left: 4px solid var(--brand-color);">
         <span><strong>{{ total_clientes }}</strong> clientes reciben menú</span>
         <span><strong>{{ menus_creados }}</strong> menús definidos</span>
         {% if avisos_pendientes > 0 %}
         <span style="color: #856404;"><strong>{{ avisos_pendientes }}</strong> avisos (ingredientes no deseados) — <a href="{% url 'planning:clientes_por_fecha' %}?fecha={{ fecha|date:'Y-m-d' }}">revisar</a></span>
         {% else %}
-        <span style="color: #2e7d32;">Sin avisos pendientes</span>
+        <span style="color: var(--brand-dark);">Sin avisos pendientes</span>
         {% endif %}
     </div>
 

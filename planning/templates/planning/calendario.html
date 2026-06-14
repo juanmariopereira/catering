@@ -24,12 +24,12 @@
     .calendar-header h1 { margin: 0; }
     .calendar-nav {
         padding: 8px 16px;
-        background-color: #7CB342;
+        background-color: var(--brand-color);
         color: white;
         text-decoration: none;
         border-radius: 4px;
     }
-    .calendar-nav:hover { background-color: #689F38; }
+    .calendar-nav:hover { background-color: var(--brand-color-hover); }
     .calendar {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
@@ -41,7 +41,7 @@
         margin: 0 auto;
     }
     .calendar-day-header {
-        background-color: #7CB342;
+        background-color: var(--brand-color);
         color: white;
         padding: 10px;
         text-align: center;
@@ -63,7 +63,7 @@
         font-size: 11px;
         padding: 2px 5px;
         margin: 2px 0;
-        background-color: #e8f5e9;
+        background-color: var(--brand-bg-soft);
         border-radius: 3px;
         overflow: hidden;
         text-overflow: ellipsis;

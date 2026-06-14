@@ -5,16 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ catering_name }}{% endblock %}</title>
     <style>
+        :root {
+            /* Colores de marca (configurables por empresa vía settings) */
+            --brand-color: {{ brand_color }};
+            --brand-color-hover: {{ brand_color_hover }};
+            /* Tonos derivados automáticamente del color de marca */
+            --brand-bg-light: color-mix(in srgb, var(--brand-color) 8%, #ffffff);
+            --brand-bg-soft: color-mix(in srgb, var(--brand-color) 18%, #ffffff);
+            --brand-bg-muted: color-mix(in srgb, var(--brand-color) 32%, #ffffff);
+            --brand-dark: color-mix(in srgb, var(--brand-color) 65%, #000000);
+            --brand-darker: color-mix(in srgb, var(--brand-color) 48%, #000000);
+            --brand-footer-bg: color-mix(in srgb, var(--brand-color) 22%, #1e1e1e);
+            --brand-footer-text: color-mix(in srgb, var(--brand-color) 35%, #ffffff);
+            --brand-footer-link: color-mix(in srgb, var(--brand-color) 50%, #ffffff);
+            --brand-footer-link-hover: color-mix(in srgb, var(--brand-color) 30%, #ffffff);
+        }
         * { box-sizing: border-box; }
         body {
             font-family: Arial, sans-serif;
             margin: 0;
-            background-color: #f0f7ed;
+            background-color: var(--brand-bg-light);
             color: #333;
         }
         .navbar {
             background-color: #ffffff;
-            border-bottom: 3px solid #7CB342;
+            border-bottom: 3px solid var(--brand-color);
             padding: 0 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.08);
             display: flex;
@@ -28,11 +43,11 @@
             gap: 10px;
             font-size: 1.25rem;
             font-weight: bold;
-            color: #7CB342;
+            color: var(--brand-color);
             text-decoration: none;
             padding: 15px 0;
         }
-        .navbar-brand:hover { color: #689F38; }
+        .navbar-brand:hover { color: var(--brand-color-hover); }
         .navbar-logo {
             max-height: 40px;
             width: auto;
@@ -59,13 +74,13 @@
             font-size: 0.95rem;
         }
         .nav-link:hover {
-            color: #7CB342;
-            background-color: #f0f7ed;
+            color: var(--brand-color);
+            background-color: var(--brand-bg-light);
         }
         .nav-link.active {
-            color: #7CB342;
+            color: var(--brand-color);
             font-weight: 600;
-            border-bottom-color: #7CB342;
+            border-bottom-color: var(--brand-color);
         }
         .nav-dropdown-toggle {
             display: inline-flex;
@@ -87,7 +102,7 @@
             border-top-color: #666;
         }
         .nav-item:hover .nav-dropdown-toggle::after {
-            border-top-color: #7CB342;
+            border-top-color: var(--brand-color);
         }
         .nav-dropdown-menu {
             display: none;
@@ -99,7 +114,7 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             border-radius: 0 0 6px 6px;
             border: 1px solid #e0e0e0;
-            border-top: 2px solid #7CB342;
+            border-top: 2px solid var(--brand-color);
             list-style: none;
             margin: 0;
             padding: 6px 0;
@@ -120,12 +135,12 @@
             transition: background 0.15s, color 0.15s;
         }
         .nav-dropdown-menu a:hover {
-            background: linear-gradient(90deg, #e8f5e9 0%, #f1f8e9 100%);
-            color: #2e7d32;
+            background: linear-gradient(90deg, var(--brand-bg-soft) 0%, var(--brand-bg-light) 100%);
+            color: var(--brand-dark);
         }
         .nav-dropdown-menu a.active {
-            background: linear-gradient(90deg, #c8e6c9 0%, #dcedc8 100%);
-            color: #1b5e20;
+            background: linear-gradient(90deg, var(--brand-bg-muted) 0%, var(--brand-bg-muted) 100%);
+            color: var(--brand-darker);
             font-weight: 600;
         }
         .nav-dropdown-menu .nav-item-icon {
@@ -198,7 +213,7 @@
         }
         h1 {
             color: #333;
-            border-bottom: 3px solid #7CB342;
+            border-bottom: 3px solid var(--brand-color);
             padding-bottom: 10px;
             margin-top: 0;
         }
@@ -209,7 +224,7 @@
             gap: 12px;
             padding: 14px 0;
             margin: 0 0 1rem 0;
-            border-bottom: 3px solid #7CB342;
+            border-bottom: 3px solid var(--brand-color);
             font-size: 1.5rem;
             color: #333;
             font-weight: 700;
@@ -221,13 +236,13 @@
             width: 44px;
             height: 44px;
             font-size: 1.75rem;
-            background: linear-gradient(145deg, #e8f5e9 0%, #f1f8e9 100%);
-            border: 1px solid #c8e6c9;
+            background: linear-gradient(145deg, var(--brand-bg-soft) 0%, var(--brand-bg-light) 100%);
+            border: 1px solid var(--brand-bg-muted);
             border-radius: 10px;
             flex-shrink: 0;
         }
         .page-title-text { flex: 1; }
-        a { color: #7CB342; text-decoration: none; }
+        a { color: var(--brand-color); text-decoration: none; }
         a:hover { text-decoration: underline; }
         /* Formularios e inputs no desbordan en móvil */
         .container input,
@@ -298,8 +313,8 @@
             font-size: 1.1rem;
         }
         .table-actions a:hover {
-            background-color: #e8f5e9;
-            color: #2e7d32;
+            background-color: var(--brand-bg-soft);
+            color: var(--brand-dark);
         }
         .table-actions a[aria-label] span {
             font-style: normal;
@@ -317,7 +332,7 @@
             border-bottom: 1px solid #e8e8e8;
         }
         .breadcrumb-nav a {
-            color: #7CB342;
+            color: var(--brand-color);
             text-decoration: none;
         }
         .breadcrumb-nav a:hover {
@@ -457,18 +472,18 @@
         .site-footer {
             margin-top: auto;
             padding: 20px 24px;
-            background-color: #2d3e2d;
-            color: #e8f0e8;
+            background-color: var(--brand-footer-bg);
+            color: var(--brand-footer-text);
             font-size: 0.875rem;
             text-align: center;
-            border-top: 3px solid #7CB342;
+            border-top: 3px solid var(--brand-color);
         }
         .site-footer a {
-            color: #a5d6a7;
+            color: var(--brand-footer-link);
             text-decoration: none;
         }
         .site-footer a:hover {
-            color: #c8e6c9;
+            color: var(--brand-footer-link-hover);
             text-decoration: underline;
         }
         .site-footer .footer-sep {

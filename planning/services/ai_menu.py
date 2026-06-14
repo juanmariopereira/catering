@@ -152,7 +152,7 @@ def sugerir_menu_ia(fecha, plan, request=None, idea_menu: Optional[str] = None) 
     menus_json = json.dumps(ctx['menus_recientes'], ensure_ascii=False)
     dietas_json = json.dumps(ctx['dietas_del_plan'], ensure_ascii=False)
 
-    system_prompt = """Eres un asistente experto en planificación de menús para un servicio de catering de comida saludable.
+    system_prompt = """Eres un asistente experto en planificación de menús para un servicio de catering.
 Tu tarea es proponer un menú diario variado y equilibrado, asignando recetas a cada momento del día (Desayuno, Media mañana, Comida, Merienda, Cena).
 
 Reglas:

@@ -22,6 +22,13 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
+// Identificador de la app configurable por empresa (cada catering publica con el suyo).
+// Definir 'courier.applicationId' en local.properties para sobreescribir el valor por defecto.
+def courierApplicationId = localProperties.getProperty('courier.applicationId')
+if (courierApplicationId == null) {
+    courierApplicationId = 'com.catering.courier_app'
+}
+
 android {
     namespace "com.catering.courier_app"
     compileSdkVersion 36
@@ -41,7 +48,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.catering.courier_app"
+        applicationId courierApplicationId
         minSdkVersion flutter.minSdkVersion
         targetSdkVersion 34
         versionCode flutterVersionCode.toInteger()

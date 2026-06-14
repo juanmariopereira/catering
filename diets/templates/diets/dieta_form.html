@@ -14,17 +14,17 @@
 
 {% block extra_css %}
 <style>
-    .btn { display: inline-block; padding: 10px 20px; background-color: #7CB342; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
-    .btn:hover { background-color: #689F38; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: var(--brand-color); color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    .btn:hover { background-color: var(--brand-color-hover); }
     .btn-secondary { background-color: #6c757d; }
     .btn-secondary:hover { background-color: #5a6268; }
     .form-layout .form-group.checkbox-group label { font-weight: normal; margin-left: 8px; }
     .form-layout .form-group.checkbox-group input { width: auto; }
-    .recetas-section { margin-top: 30px; padding-top: 20px; border-top: 2px solid #7CB342; }
+    .recetas-section { margin-top: 30px; padding-top: 20px; border-top: 2px solid var(--brand-color); }
     .recetas-section h2 { margin-bottom: 15px; }
     .formset-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     .formset-table th, .formset-table td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
-    .formset-table th { background-color: #e8f5e9; }
+    .formset-table th { background-color: var(--brand-bg-soft); }
     .formset-table input, .formset-table select { width: 100%; padding: 6px; }
     .formset-table .delete { width: 50px; text-align: center; }
     .formset-table .drag-cell { width: 36px; padding: 4px 8px; vertical-align: middle; cursor: grab; user-select: none; }
@@ -36,7 +36,7 @@
     .btn-ai:hover { background-color: #4f46e5 !important; }
     .sugerir-status { margin-left: 8px; font-size: 0.9rem; color: #555; }
     .sugerir-status.error { color: #c62828; }
-    .sugerir-status.success { color: #2e7d32; }
+    .sugerir-status.success { color: var(--brand-dark); }
 </style>
 {% endblock %}
 

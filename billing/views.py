@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
@@ -689,7 +690,7 @@ def reporte_ventas(request):
         )
     chart_labels = [d.strftime('%d/%m') for d in days]
     chart_datasets = []
-    colores = ['#2196F3', '#7CB342', '#FF9800', '#9C27B0', '#00BCD4', '#E91E63', '#8BC34A', '#673AB7']
+    colores = settings.CHART_PALETTE
     for i, pl in enumerate(planes_chart):
         data = [ventas_por_dia_plan[d].get(pl['id'], 0) for d in days]
         chart_datasets.append({

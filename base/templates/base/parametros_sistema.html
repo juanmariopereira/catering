@@ -11,7 +11,7 @@
 {% block extra_css %}
 <style>
     .param-section { margin-bottom: 32px; }
-    .param-section h2 { font-size: 1.25rem; color: #333; border-bottom: 2px solid #7CB342; padding-bottom: 8px; margin-top: 0; margin-bottom: 16px; }
+    .param-section h2 { font-size: 1.25rem; color: #333; border-bottom: 2px solid var(--brand-color); padding-bottom: 8px; margin-top: 0; margin-bottom: 16px; }
     .form-layout .form-group { margin-bottom: 16px; }
     .form-layout label { display: block; margin-bottom: 4px; font-weight: 600; }
     .form-layout input, .form-layout textarea { width: 100%; max-width: 480px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
@@ -53,7 +53,7 @@
     {% if messages %}
     <ul class="messages" style="list-style: none; padding: 0; margin: 0 0 20px 0;">
         {% for message in messages %}
-        <li style="padding: 10px 14px; margin-bottom: 8px; border-radius: 4px; background: {% if message.tags == 'success' %}#e8f5e9{% else %}#fff3e0{% endif %}; color: #333;">{{ message }}</li>
+        <li style="padding: 10px 14px; margin-bottom: 8px; border-radius: 4px; background: {% if message.tags == 'success' %}var(--brand-bg-soft){% else %}#fff3e0{% endif %}; color: #333;">{{ message }}</li>
         {% endfor %}
     </ul>
     {% endif %}

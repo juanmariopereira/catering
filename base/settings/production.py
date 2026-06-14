@@ -60,13 +60,9 @@ SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-# Marca / nombre del catering (opcional desde env)
-if os.environ.get('CATERING_NAME'):
-    CATERING_NAME = os.environ.get('CATERING_NAME')
-if os.environ.get('BRAND_COLOR'):
-    BRAND_COLOR = os.environ.get('BRAND_COLOR')
-if os.environ.get('BRAND_COLOR_HOVER'):
-    BRAND_COLOR_HOVER = os.environ.get('BRAND_COLOR_HOVER')
+# Marca, idioma y zona horaria se configuran desde variables de entorno
+# directamente en base.py (CATERING_NAME, BRAND_COLOR, BRAND_COLOR_HOVER,
+# LANGUAGE_CODE, TIME_ZONE), por lo que aquí no es necesario re-leerlas.
 
 # Email: en producción usar backend real (SMTP, etc.)
 EMAIL_BACKEND = os.environ.get(

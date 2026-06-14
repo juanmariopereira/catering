@@ -24,11 +24,11 @@
 .distribuir-filtro .btn-copiar-ultima { padding: 8px 16px; background: #607D8B; color: white; border-radius: 4px; font-size: 0.95rem; text-decoration: none; display: inline-block; }
 .distribuir-filtro .btn-copiar-ultima:hover { background: #455A64; color: white; }
     .distribuir-ayuda { padding: 12px 16px; background: #e3f2fd; border: 1px solid #2196F3; border-radius: 6px; margin-bottom: 16px; font-size: 0.9rem; color: #1565c0; }
-    .distribuir-resumen { padding: 10px 14px; background: #f1f8e9; border: 1px solid #7CB342; border-radius: 6px; margin-bottom: 16px; }
-    .distribuir-resumen strong { color: #2e7d32; }
+    .distribuir-resumen { padding: 10px 14px; background: var(--brand-bg-light); border: 1px solid var(--brand-color); border-radius: 6px; margin-bottom: 16px; }
+    .distribuir-resumen strong { color: var(--brand-dark); }
     .distribuir-tabla { width: 100%; border-collapse: collapse; margin-top: 8px; }
     .distribuir-tabla th, .distribuir-tabla td { padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0; vertical-align: middle; }
-    .distribuir-tabla th { background: #7CB342; color: white; font-weight: 600; }
+    .distribuir-tabla th { background: var(--brand-color); color: white; font-weight: 600; }
     .distribuir-tabla tr:hover { background: #f9f9f9; }
     .distribuir-tabla .col-cliente { min-width: 140px; }
     .distribuir-tabla .col-plan { min-width: 100px; }
@@ -39,8 +39,8 @@
     .distribuir-tabla .link-maps:hover { text-decoration: underline; }
     .distribuir-actions { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .distribuir-actions-arriba { margin-top: 0; margin-bottom: 20px; }
-    .btn-guardar { padding: 12px 24px; background: #7CB342; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600; }
-    .btn-guardar:hover { background: #689F38; }
+    .btn-guardar { padding: 12px 24px; background: var(--brand-color); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600; }
+    .btn-guardar:hover { background: var(--brand-color-hover); }
     .btn-volver { padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 0.95rem; }
     .btn-volver:hover { background: #5a6268; color: white; }
     .sin-entregas { padding: 24px; text-align: center; background: #fff8e1; border: 1px solid #ffc107; border-radius: 8px; color: #e65100; }
@@ -53,8 +53,8 @@
     .mapa-info-window .info-direccion { font-size: 0.9rem; color: #555; margin-bottom: 8px; }
     .mapa-info-window label { display: block; font-size: 0.85rem; margin-bottom: 4px; }
     .mapa-info-window select { width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; }
-    .mapa-info-window .btn-guardar-modal { margin-top: 12px; width: 100%; padding: 10px 16px; background: #7CB342; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.95rem; font-weight: 600; }
-    .mapa-info-window .btn-guardar-modal:hover { background: #689F38; }
+    .mapa-info-window .btn-guardar-modal { margin-top: 12px; width: 100%; padding: 10px 16px; background: var(--brand-color); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.95rem; font-weight: 600; }
+    .mapa-info-window .btn-guardar-modal:hover { background: var(--brand-color-hover); }
     .mapa-leyenda-colores { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-top: 10px; padding: 10px 12px; background: #f9f9f9; border-radius: 6px; font-size: 0.9rem; }
     .mapa-leyenda-colores .leyenda-item { display: flex; align-items: center; gap: 8px; }
     .mapa-leyenda-colores .leyenda-bola { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #333; flex-shrink: 0; }
@@ -176,7 +176,7 @@
     var contratosList = JSON.parse(contratosEl.textContent);
     var entregadoresList = JSON.parse(entregadoresTablaEl.textContent);
     var COLOR_SIN_ASIGNAR = '#9E9E9E';
-    var COLORES_ENTREGADORES = ['#2196F3', '#4CAF50', '#FF9800', '#9C27B0', '#00BCD4', '#E91E63', '#8BC34A', '#FF5722', '#673AB7', '#009688', '#F44336', '#3F51B5'];
+    var COLORES_ENTREGADORES = ['#2196F3', '#4CAF50', '#FF9800', '#9C27B0', '#00BCD4', '#E91E63', 'var(--brand-color)', '#FF5722', '#673AB7', '#009688', '#F44336', '#3F51B5'];
     function nombreEntregador(id) {
         if (!id) return 'Sin asignar';
         var e = entregadoresList.find(function(x) { return x.id === id || x.id === parseInt(id, 10); });
@@ -253,7 +253,7 @@
     var mapsKey = "{{ google_maps_browser_key|escapejs }}";
     if (!mapsKey) return;
     var COLOR_SIN_ASIGNAR = '#9E9E9E';
-    var COLORES_ENTREGADORES = ['#2196F3', '#4CAF50', '#FF9800', '#9C27B0', '#00BCD4', '#E91E63', '#8BC34A', '#FF5722', '#673AB7', '#009688', '#F44336', '#3F51B5'];
+    var COLORES_ENTREGADORES = ['#2196F3', '#4CAF50', '#FF9800', '#9C27B0', '#00BCD4', '#E91E63', 'var(--brand-color)', '#FF5722', '#673AB7', '#009688', '#F44336', '#3F51B5'];
     function colorParaEntregador(entregadorId) {
         if (!entregadorId) return COLOR_SIN_ASIGNAR;
         var idx = entregadores.findIndex(function(e) { return e.id === entregadorId || e.id === parseInt(entregadorId, 10); });

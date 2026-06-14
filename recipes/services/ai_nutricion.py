@@ -331,7 +331,7 @@ def sugerir_descripcion_receta_ia(receta, request=None) -> str:
     momentos = [m.nombre for m in receta.momentos_dia.all()]
 
     system_prompt = """Eres un chef y redactor de recetas. Escribes descripciones breves y atractivas
-para recetas de catering/comida saludable. La descripción debe ser 2-4 oraciones, en español,
+para recetas de catering. La descripción debe ser 2-4 oraciones, en español,
 destacando el plato, sus ingredientes principales y para qué momento es adecuado."""
 
     user_prompt = f"""Receta: {receta.nombre}
@@ -404,7 +404,7 @@ def sugerir_ingredientes_receta_ia(receta, request=None) -> Tuple[List[Dict[str,
 
     catalogo_vacio = not ingredientes_cat
 
-    system_prompt = """Eres un chef experto. Sugieres ingredientes para una receta de catering/comida saludable.
+    system_prompt = """Eres un chef experto. Sugieres ingredientes para una receta de catering.
 Responde ÚNICAMENTE con un JSON: {"ingredientes": [{"nombre_ingrediente": "texto", "cantidad": N, "unidad": "gr" o "kg" o "ml" o "un" etc.}, ...]}
 Usa nombres de ingredientes (en español). Cantidades numéricas razonables. Unidades: gr, kg, ml, l, un, etc."""
 

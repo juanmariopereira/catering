@@ -15,14 +15,14 @@
 {% block extra_css %}
 <style>
     .btn {
-        display: inline-block; padding: 10px 20px; background-color: {{ brand_color|default:'#7CB342' }};
+        display: inline-block; padding: 10px 20px; background-color: {{ brand_color|default:'var(--brand-color)' }};
         color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;
     }
-    .btn:hover { background-color: {{ brand_color_hover|default:'#689F38' }}; }
+    .btn:hover { background-color: {{ brand_color_hover|default:'var(--brand-color-hover)' }}; }
     .btn-secondary { background-color: #6c757d; }
     .btn-secondary:hover { background-color: #5a6268; }
-    .btn-add-row { background-color: #5a9e38; font-size: 0.95rem; }
-    .btn-add-row:hover { background-color: #4a8e28; }
+    .btn-add-row { background-color: var(--brand-color-hover); font-size: 0.95rem; }
+    .btn-add-row:hover { background-color: var(--brand-darker); }
     .recetas-formset { margin-top: 24px; }
     .recetas-formset table { width: 100%; border-collapse: collapse; margin-top: 12px; }
     .recetas-formset th, .recetas-formset td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
@@ -34,7 +34,7 @@
         color: #212529; appearance: auto;
     }
     .recetas-formset td select:hover { border-color: #adb5bd; }
-    .recetas-formset td select:focus { outline: none; border-color: {{ brand_color|default:'#7CB342' }}; box-shadow: 0 0 0 2px rgba(124, 179, 66, 0.2); }
+    .recetas-formset td select:focus { outline: none; border-color: {{ brand_color|default:'var(--brand-color)' }}; box-shadow: 0 0 0 2px rgba(124, 179, 66, 0.2); }
     .sustituciones-section {
         margin-top: 28px; padding: 20px;
         background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;
@@ -42,24 +42,24 @@
     .sustituciones-section h2 { margin-top: 0; font-size: 1.2rem; }
     .dietas-personalizadas-section {
         margin-top: 28px; padding: 20px;
-        background-color: #e8f5e9; border-left: 4px solid #7CB342; border-radius: 4px;
+        background-color: var(--brand-bg-soft); border-left: 4px solid var(--brand-color); border-radius: 4px;
     }
     .dietas-personalizadas-section h2 { margin-top: 0; font-size: 1.2rem; }
-    .cliente-dietas-personalizadas { margin-bottom: 20px; padding: 12px; background: #fff; border-radius: 4px; border: 1px solid #c8e6c9; }
+    .cliente-dietas-personalizadas { margin-bottom: 20px; padding: 12px; background: #fff; border-radius: 4px; border: 1px solid var(--brand-bg-muted); }
     .cliente-dietas-personalizadas h3 { margin-top: 0; font-size: 1rem; }
     .personalizacion-momento { margin-bottom: 14px; }
     .personalizacion-momento:last-child { margin-bottom: 0; }
     .momento-label { display: inline-block; font-weight: 600; min-width: 120px; margin-right: 8px; vertical-align: top; padding-top: 6px; }
     .personalizacion-item { display: inline-block; margin-right: 8px; margin-bottom: 8px; }
     .personalizacion-select { max-width: 280px; }
-    .dietas-personalizadas-section .aviso-sin-datos { margin: 12px 0 0 0; padding: 12px; background: #fff; border-radius: 4px; border: 1px solid #c8e6c9; color: #555; }
+    .dietas-personalizadas-section .aviso-sin-datos { margin: 12px 0 0 0; padding: 12px; background: #fff; border-radius: 4px; border: 1px solid var(--brand-bg-muted); color: #555; }
     .dietas-personalizadas-desc { margin-top: 0; margin-bottom: 12px; font-size: 0.95rem; color: #555; }
     .tabla-excepciones { width: 100%; max-width: 720px; margin-top: 8px; margin-bottom: 16px; border-collapse: collapse; font-size: 0.95rem; }
     .tabla-excepciones th, .tabla-excepciones td { padding: 6px 10px; text-align: left; border-bottom: 1px solid #e0e0e0; }
-    .tabla-excepciones th { background: #e8f5e9; font-weight: 600; color: #2e7d32; }
+    .tabla-excepciones th { background: var(--brand-bg-soft); font-weight: 600; color: var(--brand-dark); }
     .tabla-excepciones .th-quitar, .tabla-excepciones .td-quitar { width: 70px; text-align: center; }
-    .anadir-excepcion { margin-top: 12px; padding: 12px; background: #fff; border-radius: 4px; border: 1px solid #c8e6c9; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-    .anadir-excepcion-wrap { margin-top: 12px; padding: 12px; background: #fff; border-radius: 4px; border: 1px solid #c8e6c9; }
+    .anadir-excepcion { margin-top: 12px; padding: 12px; background: #fff; border-radius: 4px; border: 1px solid var(--brand-bg-muted); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .anadir-excepcion-wrap { margin-top: 12px; padding: 12px; background: #fff; border-radius: 4px; border: 1px solid var(--brand-bg-muted); }
     .fila-nueva-excepcion { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
     .fila-nueva-excepcion:last-of-type:not(.fila-plantilla) { margin-bottom: 0; }
     .anadir-label { font-weight: 600; margin-right: 4px; }
@@ -81,7 +81,7 @@
     .btn-ai:disabled { opacity: 0.6; cursor: not-allowed; }
     .sugerir-ia-status { margin-left: 10px; font-size: 0.9rem; color: #555; }
     .sugerir-ia-status.error { color: #c62828; }
-    .sugerir-ia-status.success { color: #2e7d32; }
+    .sugerir-ia-status.success { color: var(--brand-dark); }
 </style>
 {% endblock %}
 

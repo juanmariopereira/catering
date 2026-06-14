@@ -125,7 +125,8 @@ def generar_mensaje_cliente_ia(contrato, tipo_mensaje: str, request=None) -> str
         else:
             contexto_platos = "\n(No hay registros de platos servidos en los últimos 14 días.)"
 
-    system_prompt = """Eres un asistente de un servicio de catering de comida saludable.
+    catering_nombre = getattr(settings, 'CATERING_NAME', 'el catering')
+    system_prompt = f"""Eres un asistente de {catering_nombre}, un servicio de catering.
 Generas mensajes breves, cordiales y personalizados para clientes.
 El tono es cercano pero profesional. Los mensajes deben ser adecuados para WhatsApp o email.
 Escribe en español. Solo el texto del mensaje, sin encabezado ni firma (el usuario lo añadirá si quiere).

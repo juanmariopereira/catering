@@ -16,13 +16,13 @@
     .btn {
         display: inline-block;
         padding: 10px 20px;
-        background-color: #7CB342;
+        background-color: var(--brand-color);
         color: white;
         text-decoration: none;
         border-radius: 4px;
         margin-right: 0;
     }
-    .btn:hover { background-color: #689F38; }
+    .btn:hover { background-color: var(--brand-color-hover); }
     .btn-secondary { background-color: #6c757d; }
     .btn-secondary:hover { background-color: #5a6268; }
     .filtros-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; padding: 12px; background: #f9f9f9; border-radius: 8px; border: 1px solid #eee; }
@@ -30,14 +30,14 @@
     .filtros-form label { font-size: 0.9rem; color: #555; margin-right: 4px; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-    th { background-color: #7CB342; color: white; }
+    th { background-color: var(--brand-color); color: white; }
     tr:hover { background-color: #f5f5f5; }
     .th-sortable a { color: white; text-decoration: underline; }
-    .th-sortable a:hover { color: #e8f5e9; }
+    .th-sortable a:hover { color: var(--brand-bg-soft); }
     .pagination { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 0.875rem; }
     .pagination a, .pagination span { padding: 5px 10px; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; color: #333; background: #fff; }
-    .pagination a:hover { background: #e8f5e9; color: #2e7d32; }
-    .pagination .current { background: #7CB342; color: white; border-color: #7CB342; }
+    .pagination a:hover { background: var(--brand-bg-soft); color: var(--brand-dark); }
+    .pagination .current { background: var(--brand-color); color: white; border-color: var(--brand-color); }
     .pagination .disabled { color: #999; cursor: not-allowed; }
 </style>
 {% endblock %}

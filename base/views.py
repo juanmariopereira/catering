@@ -1,6 +1,7 @@
 """
 Vistas principales del proyecto.
 """
+from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -141,7 +142,7 @@ def dashboard(request):
         for s in semanas_inicio
     ]
     chart_datasets = []
-    colores_plan = ['#7CB342', '#1565c0', '#ff9800', '#9c27b0', '#00acc1', '#5d4037']
+    colores_plan = settings.CHART_PALETTE
     for idx, plan_id in enumerate(sorted(plan_nombres.keys(), key=lambda x: (plan_nombres.get(x) or '', x))):
         chart_datasets.append({
             'label': plan_nombres[plan_id],
@@ -153,7 +154,7 @@ def dashboard(request):
     chart_datasets.append({
         'label': 'Total',
         'data': [total_por_semana[s] for s in semanas_inicio],
-        'borderColor': '#1b5e20',
+        'borderColor': settings.CHART_TOTAL_COLOR,
         'backgroundColor': 'transparent',
         'borderWidth': 2,
         'tension': 0.2,
@@ -562,7 +563,6 @@ def parametros_sistema(request):
         elif request.POST.get('guardar_logo_empresa'):
             form_logo = LogoEmpresaForm(request.POST, request.FILES)
             if form_logo.is_valid():
-                from django.conf import settings
                 import os
 
                 quitar = form_logo.cleaned_data.get('quitar_logo')

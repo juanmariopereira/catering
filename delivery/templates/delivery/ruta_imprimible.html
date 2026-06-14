@@ -35,7 +35,7 @@
     .ruta-print .info-value { font-size: 0.9rem; font-weight: bold; color: #333; margin-top: 2px; }
     .ruta-print .info-note { font-size: 0.65rem; color: #666; margin-left: 4px; font-weight: normal; }
     .ruta-print .tiempo-llegada { font-size: 0.7rem; color: #1565c0; font-weight: 600; margin-left: 6px; }
-    .ruta-print .hora-entrega-pactada { font-size: 0.75rem; color: #2e7d32; font-weight: 600; margin-left: 8px; background: #e8f5e9; padding: 2px 6px; border-radius: 4px; }
+    .ruta-print .hora-entrega-pactada { font-size: 0.75rem; color: var(--brand-dark); font-weight: 600; margin-left: 8px; background: var(--brand-bg-soft); padding: 2px 6px; border-radius: 4px; }
     .ruta-print .clientes-lista { margin-top: 8px; }
     .ruta-print .cliente-item {
         border-bottom: 1px solid #e0e0e0;
@@ -83,11 +83,11 @@
     .ruta-print .notas { margin-top: 2px; padding: 2px 4px; font-size: 0.65rem; background: #fff3cd; border-left: 2px solid #ffc107; }
     .ruta-print .notas-entregador { margin-top: 2px; padding: 2px 4px; font-size: 0.65rem; color: #1565c0; border-left: 2px solid #2196F3; }
     .ruta-print .sin-clientes { text-align: center; padding: 16px; color: #999; font-size: 0.9rem; }
-    .ruta-print .entregada-badge { font-size: 0.7rem; font-weight: 600; color: #2e7d32; background: #e8f5e9; padding: 2px 8px; border-radius: 4px; margin-left: 8px; }
+    .ruta-print .entregada-badge { font-size: 0.7rem; font-weight: 600; color: var(--brand-dark); background: var(--brand-bg-soft); padding: 2px 8px; border-radius: 4px; margin-left: 8px; }
     .ruta-print .registro-marcado { font-size: 0.65rem; color: #666; margin-top: 2px; margin-left: 8px; }
     .ruta-print .btn-marcar-entregada { font-size: 0.75rem; padding: 4px 10px; margin-left: 8px; cursor: pointer; background: #e3f2fd; color: #1565c0; border: 1px solid #2196F3; border-radius: 4px; }
     .ruta-print .btn-marcar-entregada:hover { background: #bbdefb; }
-    .ruta-print .cliente-item.entregada { background: #f1f8e9; }
+    .ruta-print .cliente-item.entregada { background: var(--brand-bg-light); }
     .ruta-print .cliente-item.no-entregada { background: #ffebee; }
     .ruta-print .no-entregada-badge { font-size: 0.7rem; font-weight: 600; color: #c62828; background: #ffcdd2; padding: 2px 8px; border-radius: 4px; margin-left: 8px; }
     .ruta-print .motivo-no-entrega { font-size: 0.7rem; color: #b71c1c; margin-top: 4px; padding-left: 8px; border-left: 2px solid #ef5350; font-style: italic; }
@@ -100,8 +100,8 @@
     .modal-entregada .modal-footer { padding: 12px 18px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; }
     .modal-entregada .modal-footer button { padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
     .modal-entregada .btn-cancel { background: #f5f5f5; border: 1px solid #ddd; color: #333; }
-    .modal-entregada .btn-confirm { background: #2e7d32; color: white; border: none; }
-    .modal-entregada .btn-confirm:hover { background: #1b5e20; }
+    .modal-entregada .btn-confirm { background: var(--brand-dark); color: white; border: none; }
+    .modal-entregada .btn-confirm:hover { background: var(--brand-darker); }
     @media print {
         .ruta-print { font-size: 10px; }
         .ruta-print .cliente-item { page-break-inside: avoid; }
@@ -121,7 +121,7 @@
     .modal-recorrido .modal-recorrido-header .btn-recalcular { padding: 6px 14px; font-size: 0.9rem; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 8px; }
     .modal-recorrido .modal-recorrido-header .btn-recalcular:hover { background: #1976D2; }
     .modal-recorrido .modal-recorrido-header .btn-recalcular:disabled { opacity: 0.7; cursor: not-allowed; }
-    .modal-recorrido .recorrido-recalculado-msg { padding: 8px 12px; margin: 0 16px 8px; background: #e8f5e9; border: 1px solid #4caf50; border-radius: 4px; font-size: 0.9rem; color: #2e7d32; display: none; }
+    .modal-recorrido .recorrido-recalculado-msg { padding: 8px 12px; margin: 0 16px 8px; background: var(--brand-bg-soft); border: 1px solid #4caf50; border-radius: 4px; font-size: 0.9rem; color: var(--brand-dark); display: none; }
     .modal-recorrido .modal-recorrido-body { flex: 1; min-height: 0; position: relative; }
     .modal-recorrido #mapa-recorrido { width: 100%; height: 100%; min-height: 400px; }
     .modal-recorrido .sin-puntos { padding: 24px; text-align: center; color: #666; }
@@ -379,7 +379,7 @@
             for (var j = 0; j < puntos.length; j++) {
                 var pto = puntos[j];
                 var opts = { position: path[j], map: mapRecorridoInstance, title: pto.label };
-                if (j === 0 && data.tiene_punto_partida) opts.icon = { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#4CAF50', fillOpacity: 1, strokeColor: '#2E7D32', strokeWeight: 2 };
+                if (j === 0 && data.tiene_punto_partida) opts.icon = { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#4CAF50', fillOpacity: 1, strokeColor: 'var(--brand-dark)', strokeWeight: 2 };
                 var marker = new google.maps.Marker(opts);
                 mapRecorridoMarkers.push(marker);
                 var isPartida = (j === 0 && data.tiene_punto_partida);
@@ -392,7 +392,7 @@
                         mkr.addListener('click', function() {
                             var html = '<div class="mapa-recorrido-popup" style="padding:8px;min-width:200px;max-width:320px;">';
                             html += '<div style="font-weight:600;margin-bottom:6px;">' + (pt.cliente || '').replace(/</g, '&lt;') + '</div>';
-                            if (pt.hora_entrega) html += '<div style="font-size:0.9rem;color:#2e7d32;font-weight:600;margin-bottom:4px;">🕐 Hora pactada: ' + (pt.hora_entrega || '').replace(/</g, '&lt;') + '</div>';
+                            if (pt.hora_entrega) html += '<div style="font-size:0.9rem;color:var(--brand-dark);font-weight:600;margin-bottom:4px;">🕐 Hora pactada: ' + (pt.hora_entrega || '').replace(/</g, '&lt;') + '</div>';
                             if (pt.codigo_entrega) html += '<div style="font-size:0.9rem;color:#1565c0;margin-bottom:4px;">' + (pt.codigo_entrega || '').replace(/</g, '&lt;') + '</div>';
                             if (pt.direccion) html += '<div style="font-size:0.85rem;color:#555;">' + (pt.direccion || '').replace(/</g, '&lt;').replace(/\n/g, '<br>') + '</div>';
                             html += '</div>';

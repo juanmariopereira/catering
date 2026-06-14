@@ -136,9 +136,10 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'es-es'
+# Idioma y zona horaria (configurables por empresa vía variables de entorno)
+LANGUAGE_CODE = os.environ.get('LANGUAGE_CODE', 'es')
 
-TIME_ZONE = 'America/Mexico_City'
+TIME_ZONE = os.environ.get('TIME_ZONE', 'America/Mexico_City')
 
 USE_I18N = True
 
@@ -150,12 +151,23 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-# Nombre del catering (configurable para usar el sistema con otros caterings)
-CATERING_NAME = 'Catering Healthy Life'
+# Nombre del catering (configurable por empresa vía variable de entorno)
+CATERING_NAME = os.environ.get('CATERING_NAME', 'Catering')
 
-# Colores de marca (verde retoño y blanco del logo)
-BRAND_COLOR = '#7CB342'
-BRAND_COLOR_HOVER = '#689F38'
+# Colores de marca (configurables por empresa; los tonos derivados se calculan en CSS).
+# Estos son solo el tema por defecto y pueden sobreescribirse con variables de entorno.
+BRAND_COLOR = os.environ.get('BRAND_COLOR', '#7CB342')
+BRAND_COLOR_HOVER = os.environ.get('BRAND_COLOR_HOVER', '#689F38')
+
+# Paleta de colores para gráficas. La primera entrada es el color de marca y el
+# resto son colores categóricos distinguibles entre sí (una serie por plan, etc.).
+# Configurable vía la variable de entorno CHART_PALETTE (colores separados por comas).
+CHART_PALETTE = [c.strip() for c in os.environ.get('CHART_PALETTE', '').split(',') if c.strip()] or [
+    BRAND_COLOR, '#1565c0', '#ff9800', '#9c27b0', '#00acc1',
+    '#5d4037', '#e91e63', '#673ab7', '#00bcd4',
+]
+# Color para las líneas/series de totales o agregados en gráficas.
+CHART_TOTAL_COLOR = os.environ.get('CHART_TOTAL_COLOR', '#37474f')
 
 # Autenticación
 LOGIN_URL = 'login'

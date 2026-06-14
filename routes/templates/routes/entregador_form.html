@@ -14,8 +14,8 @@
 
 {% block extra_css %}
 <style>
-    .btn { display: inline-block; padding: 10px 20px; background-color: #7CB342; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
-    .btn:hover { background-color: #689F38; }
+    .btn { display: inline-block; padding: 10px 20px; background-color: var(--brand-color); color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    .btn:hover { background-color: var(--brand-color-hover); }
     .btn-secondary { background-color: #6c757d; }
 </style>
 {% endblock %}
@@ -47,7 +47,7 @@
             </div>
         </div>
 
-        <h2 style="margin: 1.5rem 0 0.75rem 0; font-size: 1.1rem; border-bottom: 2px solid #7CB342; padding-bottom: 6px;">Datos de acceso</h2>
+        <h2 style="margin: 1.5rem 0 0.75rem 0; font-size: 1.1rem; border-bottom: 2px solid var(--brand-color); padding-bottom: 6px;">Datos de acceso</h2>
         <p class="help-text" style="margin-bottom: 1rem;">Usuario y contraseña para que el entregador inicie sesión y vea su ruta del día. En edición puedes consultar el usuario y cambiar la contraseña si se olvidó.</p>
         <div class="form-row form-row-2">
             <div class="form-group">
