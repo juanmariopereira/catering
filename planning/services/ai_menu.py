@@ -12,24 +12,9 @@ import logging
 from datetime import timedelta
 from typing import Any, Dict, List, Optional
 
-from django.conf import settings
-
-from base.ai_logging import extraer_usage, registrar_llamada_ia
+from base.ai_provider import completar_ia
 
 logger = logging.getLogger(__name__)
-
-
-def _get_openai_client():
-    """Obtiene el cliente de OpenAI (lazy para evitar import al arrancar)."""
-    from openai import OpenAI
-
-    api_key = getattr(settings, 'OPENAI_API_KEY', '') or ''
-    if not api_key:
-        raise ValueError(
-            'OPENAI_API_KEY no está configurada. '
-            'Defínela en las variables de entorno para usar la sugerencia de menús con IA.'
-        )
-    return OpenAI(api_key=api_key)
 
 
 def _normalize_info_nutricional(info: Optional[Dict]) -> Optional[Dict]:
@@ -144,7 +129,6 @@ def sugerir_menu_ia(fecha, plan, request=None, idea_menu: Optional[str] = None) 
     Raises:
         ValueError: si OPENAI_API_KEY no está configurada
     """
-    client = _get_openai_client()
     ctx = _build_context(fecha, plan)
 
     tipos_json = json.dumps(ctx['tipos_comida'], ensure_ascii=False)
@@ -190,25 +174,16 @@ Dietas típicas del plan (referencia de recetas por momento):
 Genera un menú variado para esta fecha.{" Ten en cuenta la idea del usuario indicada arriba." if idea_menu else ""} Responde solo con el JSON (objeto con clave "recetas"), sin texto adicional."""
 
     try:
-        response = client.chat.completions.create(
-            model='gpt-4o-mini',
-            messages=[
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': user_prompt},
-            ],
-            response_format={'type': 'json_object'},
+        content = completar_ia(
+            'sugerir_menu',
+            system_prompt,
+            user_prompt,
+            json_mode=True,
             temperature=0.7,
-        )
-        u = extraer_usage(response)
-        registrar_llamada_ia(
-            accion='sugerir_menu',
-            modelo='gpt-4o-mini',
+            request=request,
             objeto_tipo='plan',
             objeto_id=plan.pk if plan else None,
-            usuario=getattr(request, 'user', None) if request else None,
-            **u,
         )
-        content = response.choices[0].message.content
         if not content:
             return []
 
@@ -251,26 +226,8 @@ Genera un menú variado para esta fecha.{" Ten en cuenta la idea del usuario ind
         return result
 
     except json.JSONDecodeError as e:
-        registrar_llamada_ia(
-            accion='sugerir_menu',
-            modelo='gpt-4o-mini',
-            exito=False,
-            mensaje_error=str(e),
-            objeto_tipo='plan',
-            objeto_id=plan.pk if plan else None,
-            usuario=getattr(request, 'user', None) if request else None,
-        )
-        logger.warning('OpenAI devolvió JSON inválido: %s', e)
+        logger.warning('La IA devolvió JSON inválido: %s', e)
         return []
     except Exception as e:
-        registrar_llamada_ia(
-            accion='sugerir_menu',
-            modelo='gpt-4o-mini',
-            exito=False,
-            mensaje_error=str(e),
-            objeto_tipo='plan',
-            objeto_id=plan.pk if plan else None,
-            usuario=getattr(request, 'user', None) if request else None,
-        )
-        logger.exception('Error al llamar a OpenAI para sugerir menú: %s', e)
+        logger.exception('Error al llamar a la IA para sugerir menú: %s', e)
         raise

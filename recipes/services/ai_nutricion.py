@@ -10,9 +10,7 @@ import re
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
-from django.conf import settings
-
-from base.ai_logging import extraer_usage, registrar_llamada_ia
+from base.ai_provider import ConfiguracionIAError, LimiteIAExcedido, completar_ia
 
 logger = logging.getLogger(__name__)
 
@@ -59,19 +57,6 @@ UNIDAD_A_GRAMOS = {
 }
 
 
-def _get_openai_client():
-    """Obtiene el cliente de OpenAI."""
-    from openai import OpenAI
-
-    api_key = getattr(settings, 'OPENAI_API_KEY', '') or ''
-    if not api_key:
-        raise ValueError(
-            'OPENAI_API_KEY no está configurada. '
-            'Defínela en las variables de entorno para usar la estimación nutricional con IA.'
-        )
-    return OpenAI(api_key=api_key)
-
-
 def estimar_info_nutricional_ingrediente(nombre_ingrediente: str, unidad_nombre: str, request=None) -> Dict[str, Any]:
     """
     Estima la información nutricional de un ingrediente por 100g usando OpenAI.
@@ -80,8 +65,6 @@ def estimar_info_nutricional_ingrediente(nombre_ingrediente: str, unidad_nombre:
     Returns:
         Dict con estructura: {"por_100g": {...}, "gramos_por_unidad": N opcional}
     """
-    client = _get_openai_client()
-
     system_prompt = """Eres un nutricionista experto. Estimas información nutricional de alimentos.
 Responde ÚNICAMENTE con un JSON válido, sin texto adicional.
 Formato: {"por_100g": {"calorias": N, "proteinas": N, "carbohidratos": N, "grasas": N, "fibra": N}, "alergenos": ["alergeno1", "alergeno2"]}
@@ -97,23 +80,14 @@ Estima la información nutricional por 100g. Si es por unidad, incluye "gramos_p
 Responde solo el JSON."""
 
     try:
-        response = client.chat.completions.create(
-            model='gpt-4o-mini',
-            messages=[
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': user_prompt},
-            ],
-            response_format={'type': 'json_object'},
+        content = completar_ia(
+            'estimar_nutricion_ingrediente',
+            system_prompt,
+            user_prompt,
+            json_mode=True,
             temperature=0.2,
+            request=request,
         )
-        u = extraer_usage(response)
-        registrar_llamada_ia(
-            accion='estimar_nutricion_ingrediente',
-            modelo='gpt-4o-mini',
-            usuario=getattr(request, 'user', None) if request else None,
-            **u,
-        )
-        content = response.choices[0].message.content
         if not content:
             return {}
 
@@ -136,23 +110,9 @@ Responde solo el JSON."""
         return result
 
     except json.JSONDecodeError as e:
-        registrar_llamada_ia(
-            accion='estimar_nutricion_ingrediente',
-            modelo='gpt-4o-mini',
-            exito=False,
-            mensaje_error=str(e),
-            usuario=getattr(request, 'user', None) if request else None,
-        )
-        logger.warning('OpenAI devolvió JSON inválido para ingrediente %s: %s', nombre_ingrediente, e)
+        logger.warning('La IA devolvió JSON inválido para ingrediente %s: %s', nombre_ingrediente, e)
         return {}
     except Exception as e:
-        registrar_llamada_ia(
-            accion='estimar_nutricion_ingrediente',
-            modelo='gpt-4o-mini',
-            exito=False,
-            mensaje_error=str(e),
-            usuario=getattr(request, 'user', None) if request else None,
-        )
         logger.exception('Error al estimar nutrición de %s: %s', nombre_ingrediente, e)
         raise
 
@@ -237,8 +197,6 @@ def estimar_info_nutricional_receta_ia(receta, request=None) -> Dict[str, Any]:
     """
     from recipes.models import RecetaIngrediente
 
-    client = _get_openai_client()
-
     # Construir descripción de ingredientes
     ingredientes_texto = []
     for ri in RecetaIngrediente.objects.filter(receta=receta).select_related(
@@ -263,25 +221,16 @@ Ingredientes:
 Estima calorías y macronutrientes para una ración típica de esta receta. Responde solo el JSON."""
 
     try:
-        response = client.chat.completions.create(
-            model='gpt-4o-mini',
-            messages=[
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': user_prompt},
-            ],
-            response_format={'type': 'json_object'},
+        content = completar_ia(
+            'estimar_nutricion_receta',
+            system_prompt,
+            user_prompt,
+            json_mode=True,
             temperature=0.2,
-        )
-        u = extraer_usage(response)
-        registrar_llamada_ia(
-            accion='estimar_nutricion_receta',
-            modelo='gpt-4o-mini',
+            request=request,
             objeto_tipo='receta',
             objeto_id=receta.pk if receta else None,
-            usuario=getattr(request, 'user', None) if request else None,
-            **u,
         )
-        content = response.choices[0].message.content
         if not content:
             return {}
 
@@ -296,16 +245,9 @@ Estima calorías y macronutrientes para una ración típica de esta receta. Resp
                     result[k] = 0
         return result
 
-    except (json.JSONDecodeError, Exception) as e:
-        registrar_llamada_ia(
-            accion='estimar_nutricion_receta',
-            modelo='gpt-4o-mini',
-            exito=False,
-            mensaje_error=str(e),
-            objeto_tipo='receta',
-            objeto_id=receta.pk if receta else None,
-            usuario=getattr(request, 'user', None) if request else None,
-        )
+    except (ConfiguracionIAError, LimiteIAExcedido):
+        raise
+    except Exception as e:
         logger.warning('Error al estimar nutrición receta %s: %s', receta.nombre, e)
         return {}
 
@@ -316,8 +258,6 @@ def sugerir_descripcion_receta_ia(receta, request=None) -> str:
     tipos, momentos e ingredientes.
     """
     from recipes.models import RecetaIngrediente
-
-    client = _get_openai_client()
 
     ingredientes_texto = []
     for ri in RecetaIngrediente.objects.filter(receta=receta).select_related(
@@ -343,35 +283,19 @@ Ingredientes:
 Escribe una descripción breve y atractiva para esta receta. Solo el texto, sin título ni formato especial."""
 
     try:
-        response = client.chat.completions.create(
-            model='gpt-4o-mini',
-            messages=[
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': user_prompt},
-            ],
+        content = completar_ia(
+            'sugerir_descripcion_receta',
+            system_prompt,
+            user_prompt,
             temperature=0.6,
-        )
-        u = extraer_usage(response)
-        registrar_llamada_ia(
-            accion='sugerir_descripcion_receta',
-            modelo='gpt-4o-mini',
+            request=request,
             objeto_tipo='receta',
             objeto_id=receta.pk if receta else None,
-            usuario=getattr(request, 'user', None) if request else None,
-            **u,
         )
-        content = (response.choices[0].message.content or '').strip()
-        return content
+        return (content or '').strip()
+    except (ConfiguracionIAError, LimiteIAExcedido):
+        raise
     except Exception as e:
-        registrar_llamada_ia(
-            accion='sugerir_descripcion_receta',
-            modelo='gpt-4o-mini',
-            exito=False,
-            mensaje_error=str(e),
-            objeto_tipo='receta',
-            objeto_id=receta.pk if receta else None,
-            usuario=getattr(request, 'user', None) if request else None,
-        )
         logger.warning('Error al sugerir descripción para %s: %s', receta.nombre, e)
         return ''
 
@@ -389,8 +313,6 @@ def sugerir_ingredientes_receta_ia(receta, request=None) -> Tuple[List[Dict[str,
         - catalogo_vacio: True si no hay ingredientes en el catálogo
     """
     from recipes.models import Ingrediente, UnidadMedida
-
-    client = _get_openai_client()
 
     ingredientes_cat = list(
         Ingrediente.objects.filter(activo=True).values('id', 'nombre')
@@ -426,25 +348,16 @@ Momento(s): {', '.join(momentos) if momentos else '—'}
 Responde solo el JSON con clave "ingredientes"."""
 
     try:
-        response = client.chat.completions.create(
-            model='gpt-4o-mini',
-            messages=[
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': user_prompt},
-            ],
-            response_format={'type': 'json_object'},
+        content = completar_ia(
+            'sugerir_ingredientes_receta',
+            system_prompt,
+            user_prompt,
+            json_mode=True,
             temperature=0.5,
-        )
-        u = extraer_usage(response)
-        registrar_llamada_ia(
-            accion='sugerir_ingredientes_receta',
-            modelo='gpt-4o-mini',
+            request=request,
             objeto_tipo='receta',
             objeto_id=receta.pk if receta else None,
-            usuario=getattr(request, 'user', None) if request else None,
-            **u,
         )
-        content = response.choices[0].message.content
         if not content:
             return [], [], catalogo_vacio
 
@@ -495,16 +408,9 @@ Responde solo el JSON con clave "ingredientes"."""
 
         return ingredientes, no_encontrados, catalogo_vacio
 
+    except (ConfiguracionIAError, LimiteIAExcedido):
+        raise
     except Exception as e:
-        registrar_llamada_ia(
-            accion='sugerir_ingredientes_receta',
-            modelo='gpt-4o-mini',
-            exito=False,
-            mensaje_error=str(e),
-            objeto_tipo='receta',
-            objeto_id=receta.pk if receta else None,
-            usuario=getattr(request, 'user', None) if request else None,
-        )
         logger.warning('Error al sugerir ingredientes para %s: %s', receta.nombre, e)
         return [], [], False
 
@@ -523,8 +429,6 @@ def importar_receta_desde_texto_ia(texto: str, request=None) -> Dict[str, Any]:
     """
     from recipes.models import Ingrediente, UnidadMedida, TipoReceta
     from diets.models import TipoComida
-
-    client = _get_openai_client()
 
     ingredientes_cat = list(Ingrediente.objects.filter(activo=True).values('id', 'nombre'))
     unidades_cat = list(UnidadMedida.objects.filter(activo=True).values('id', 'nombre', 'simbolo'))
@@ -562,23 +466,14 @@ Ingredientes del catálogo (prioriza estos nombres): {cat_ing}
 Extrae la receta en JSON. Para ingredientes, si el nombre coincide con el catálogo úsalo; si no, sugiere el más cercano en español."""
 
     try:
-        response = client.chat.completions.create(
-            model='gpt-4o-mini',
-            messages=[
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': user_prompt},
-            ],
-            response_format={'type': 'json_object'},
+        content = completar_ia(
+            'importar_receta',
+            system_prompt,
+            user_prompt,
+            json_mode=True,
             temperature=0.3,
+            request=request,
         )
-        u = extraer_usage(response)
-        registrar_llamada_ia(
-            accion='importar_receta',
-            modelo='gpt-4o-mini',
-            usuario=getattr(request, 'user', None) if request else None,
-            **u,
-        )
-        content = response.choices[0].message.content
         if not content:
             return {}
 
@@ -666,13 +561,6 @@ Extrae la receta en JSON. Para ingredientes, si el nombre coincide con el catál
         }
 
     except Exception as e:
-        registrar_llamada_ia(
-            accion='importar_receta',
-            modelo='gpt-4o-mini',
-            exito=False,
-            mensaje_error=str(e),
-            usuario=getattr(request, 'user', None) if request else None,
-        )
         logger.warning('Error al importar receta desde texto: %s', e)
         raise
 

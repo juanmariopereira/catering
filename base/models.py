@@ -224,3 +224,162 @@ class UserActionLog(models.Model):
     def __str__(self):
         user = self.usuario.get_username() if self.usuario else '—'
         return f"{user} | {self.get_accion_display()} | {self.modelo} | {self.fecha_hora}"
+
+
+class ProveedorIA(models.Model):
+    """
+    Proveedor de IA (OpenAI, Anthropic, Gemini, Grok). Guarda la clave API y si
+    está habilitado. OpenAI, Gemini y Grok se consumen vía el SDK de OpenAI
+    (endpoint compatible); Anthropic vía su propio SDK.
+    """
+    CODIGO_CHOICES = [
+        ('openai', 'OpenAI'),
+        ('anthropic', 'Anthropic (Claude)'),
+        ('gemini', 'Google Gemini'),
+        ('grok', 'xAI Grok'),
+    ]
+
+    codigo = models.CharField(
+        max_length=20,
+        unique=True,
+        choices=CODIGO_CHOICES,
+        verbose_name='Proveedor',
+        help_text='Proveedor de IA. Determina el SDK y el endpoint usados.',
+    )
+    nombre = models.CharField(max_length=100, blank=True, verbose_name='Nombre visible')
+    api_key = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        verbose_name='Clave API',
+        help_text='Clave de API del proveedor. Si está vacía, el proveedor no se puede usar.',
+    )
+    activo = models.BooleanField(
+        default=False,
+        verbose_name='Habilitado',
+        help_text='Si está deshabilitado, ninguno de sus modelos se podrá usar.',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
+
+    class Meta:
+        ordering = ['codigo']
+        verbose_name = 'Proveedor de IA'
+        verbose_name_plural = 'Proveedores de IA'
+
+    def __str__(self):
+        return self.nombre or self.get_codigo_display()
+
+    @property
+    def disponible(self):
+        return self.activo and bool((self.api_key or '').strip())
+
+
+class ModeloIA(models.Model):
+    """
+    Modelo concreto de un proveedor (ej. gpt-4o-mini, claude-opus-4-8,
+    gemini-2.0-flash, grok-2-latest), con sus límites de uso editables.
+    Un límite en 0 significa "sin límite".
+    """
+    proveedor = models.ForeignKey(
+        ProveedorIA,
+        on_delete=models.CASCADE,
+        related_name='modelos',
+        verbose_name='Proveedor',
+    )
+    modelo_id = models.CharField(
+        max_length=100,
+        verbose_name='ID del modelo',
+        help_text='Identificador exacto del modelo en el proveedor (ej. gpt-4o-mini, claude-opus-4-8).',
+    )
+    nombre = models.CharField(max_length=120, blank=True, verbose_name='Nombre visible')
+    activo = models.BooleanField(default=True, verbose_name='Habilitado')
+
+    # Límites de uso (0 = sin límite). Valores por defecto editables.
+    tokens_por_minuto = models.PositiveIntegerField(default=100000, verbose_name='Tokens por minuto')
+    tokens_por_dia = models.PositiveIntegerField(default=2000000, verbose_name='Tokens por día')
+    requests_por_minuto = models.PositiveIntegerField(default=60, verbose_name='Solicitudes por minuto')
+    requests_por_dia = models.PositiveIntegerField(default=5000, verbose_name='Solicitudes por día')
+
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
+
+    class Meta:
+        ordering = ['proveedor__codigo', 'modelo_id']
+        verbose_name = 'Modelo de IA'
+        verbose_name_plural = 'Modelos de IA'
+        constraints = [
+            models.UniqueConstraint(fields=['proveedor', 'modelo_id'], name='uniq_proveedor_modelo'),
+        ]
+
+    def __str__(self):
+        return self.nombre or f"{self.proveedor.get_codigo_display()} · {self.modelo_id}"
+
+    @property
+    def disponible(self):
+        return self.activo and self.proveedor.disponible
+
+    def _limites_en_defecto_generico(self):
+        from base.ai_catalog import DEFAULTS_GENERICOS
+        return all(
+            getattr(self, k) == DEFAULTS_GENERICOS[k]
+            for k in ('tokens_por_minuto', 'tokens_por_dia', 'requests_por_minuto', 'requests_por_dia')
+        )
+
+    def save(self, *args, **kwargs):
+        # Defaults dinámicos: al crear un modelo cuyos límites siguen en el valor
+        # genérico, se rellenan con los recomendados para ese modelo_id (catálogo).
+        if self._state.adding and self.proveedor_id and self._limites_en_defecto_generico():
+            from base.ai_catalog import defaults_para
+            for k, v in defaults_para(self.modelo_id, self.proveedor.codigo).items():
+                setattr(self, k, v)
+        super().save(*args, **kwargs)
+
+
+class AsignacionUsoIA(models.Model):
+    """
+    Asigna modelos de IA a cada tipo de uso del sistema (acción de
+    AIRequestLog.ACCION_CHOICES) formando una cadena de fallback ordenada por
+    prioridad: para un mismo uso puede haber varias filas con distinto ``orden``.
+
+    El sistema usa el modelo de menor ``orden`` disponible; si falla, no está
+    disponible o supera su límite, pasa al siguiente en la jerarquía.
+    """
+    accion = models.CharField(
+        max_length=50,
+        db_index=True,
+        choices=AIRequestLog.ACCION_CHOICES,
+        verbose_name='Uso de IA',
+    )
+    modelo = models.ForeignKey(
+        ModeloIA,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='asignaciones',
+        verbose_name='Modelo asignado',
+    )
+    orden = models.PositiveSmallIntegerField(
+        default=0,
+        verbose_name='Orden (prioridad)',
+        help_text='Menor = mayor prioridad. Si este modelo falla o no está disponible, '
+                  'se intenta el siguiente del mismo uso.',
+    )
+    activo = models.BooleanField(
+        default=True,
+        verbose_name='Habilitado',
+        help_text='Si está deshabilitado, este nivel se omite de la cadena de fallback.',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, verbose_name="Creado")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
+
+    class Meta:
+        ordering = ['accion', 'orden']
+        verbose_name = 'Asignación de uso de IA'
+        verbose_name_plural = 'Asignaciones de uso de IA'
+        constraints = [
+            models.UniqueConstraint(fields=['accion', 'modelo'], name='uniq_accion_modelo'),
+        ]
+
+    def __str__(self):
+        return f"{self.get_accion_display()} #{self.orden} → {self.modelo or '—'}"

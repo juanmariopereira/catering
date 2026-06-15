@@ -11,7 +11,8 @@ def catering_context(request):
     """Expone el nombre, colores de marca y logo del catering a todas las plantillas."""
     from base.models import ParametroSistema
 
-    openai_key = getattr(settings, 'OPENAI_API_KEY', '') or ''
+    from base.ai_provider import ia_disponible
+
     maps_key = getattr(settings, 'GOOGLE_MAPS_BROWSER_API_KEY', '') or ''
     param_logo = ParametroSistema.objects.filter(clave='logo_empresa').first()
     path_logo = (param_logo.valor or '').strip() if param_logo else ''
@@ -28,7 +29,7 @@ def catering_context(request):
         'brand_color': getattr(settings, 'BRAND_COLOR', '#7CB342'),
         'brand_color_hover': getattr(settings, 'BRAND_COLOR_HOVER', '#689F38'),
         'logo_empresa_url': logo_empresa_url,
-        'openai_available': bool(openai_key.strip()),
+        'openai_available': ia_disponible(),
         'google_maps_browser_key': maps_key,
     }
     # Perfiles para menú y redirección (Admin, Cocina, Entregador)

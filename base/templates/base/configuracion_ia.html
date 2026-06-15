@@ -1,0 +1,253 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Configuración de IA - {{ catering_name }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}">Inicio</a>
+<span class="sep">/</span>
+<span>Catálogos</span>
+<span class="sep">/</span>
+<span>Configuración de IA</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ia-section { background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; padding: 18px 20px; margin-bottom: 22px; }
+    .ia-section h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid var(--brand-color); padding-bottom: 8px; }
+    .ia-help { color: #666; font-size: 0.9rem; margin: 4px 0 14px; }
+    .ia-table { width: 100%; border-collapse: collapse; }
+    .ia-table th, .ia-table td { padding: 7px 8px; border-bottom: 1px solid #eee; text-align: left; vertical-align: middle; font-size: 0.9rem; }
+    .ia-table th { color: #555; font-weight: 600; background: var(--brand-bg-light); }
+    .ia-table input[type="text"], .ia-table input[type="number"], .ia-table select { width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.85rem; box-sizing: border-box; }
+    .ia-table input.num { text-align: right; }
+    .ia-table .col-num { width: 120px; }
+    .btn { display: inline-block; padding: 9px 18px; background-color: var(--brand-color); color: #fff; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; }
+    .btn:hover { background-color: var(--brand-color-hover); }
+    .btn-secondary { background-color: #6c757d; }
+    .form-actions { margin-top: 14px; }
+    .add-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; align-items: end; }
+    .add-grid label { display: block; font-size: 0.82rem; color: #555; margin-bottom: 3px; font-weight: 600; }
+    .add-grid input, .add-grid select { width: 100%; padding: 7px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+    .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 0.75rem; }
+    .pill-ok { background: var(--brand-bg-soft); color: var(--brand-dark); }
+    .pill-off { background: #fdecea; color: #c62828; }
+    .uso-block { border: 1px solid #eee; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; }
+    .uso-block h3 { margin: 0 0 8px; font-size: 1rem; }
+    .ia-msgs { list-style: none; padding: 0; margin: 0 0 16px; }
+    .ia-msgs li { padding: 10px 14px; border-radius: 6px; margin-bottom: 8px; }
+    .ia-msgs .success { background: var(--brand-bg-soft); color: var(--brand-dark); }
+    .ia-msgs .error { background: #fdecea; color: #c62828; }
+    .chk { width: auto !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>🤖 Configuración de IA</h1>
+    <p class="ia-help">Gestiona los proveedores, sus modelos (con límites de uso) y la cadena de fallback de cada función de IA. Al añadir un modelo conocido, sus límites recomendados se rellenan solos (puedes ajustarlos).</p>
+
+    {% if messages %}
+    <ul class="ia-msgs">
+        {% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+
+    <!-- 1. PROVEEDORES -->
+    <div class="ia-section">
+        <h2>Proveedores</h2>
+        <p class="ia-help">Define la clave API de cada proveedor y habilítalo. Sin clave o deshabilitado, sus modelos no se usan.</p>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="seccion" value="proveedores">
+            <table class="ia-table">
+                <thead><tr><th>Proveedor</th><th>Nombre visible</th><th>Clave API</th><th>Habilitado</th></tr></thead>
+                <tbody>
+                {% for p in proveedores %}
+                    <tr>
+                        <td><strong>{{ p.get_codigo_display }}</strong><br><small style="color:#999">{{ p.codigo }}</small></td>
+                        <td><input type="text" name="prov_{{ p.id }}_nombre" value="{{ p.nombre }}"></td>
+                        <td><input type="text" name="prov_{{ p.id }}_api_key" value="{{ p.api_key }}" autocomplete="off" placeholder="(sin configurar)"></td>
+                        <td><input class="chk" type="checkbox" name="prov_{{ p.id }}_activo" {% if p.activo %}checked{% endif %}></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <div class="form-actions"><button type="submit" class="btn">Guardar proveedores</button></div>
+        </form>
+    </div>
+
+    <!-- 2. MODELOS -->
+    <div class="ia-section">
+        <h2>Modelos y límites</h2>
+        <p class="ia-help">Límites por modelo (0 = sin límite). Se controla el uso reciente de cada modelo y, si se supera, el sistema pasa al siguiente de la cadena de fallback.</p>
+
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="seccion" value="modelos">
+            <table class="ia-table">
+                <thead><tr>
+                    <th>Proveedor</th><th>Modelo</th><th>Nombre</th><th>Activo</th>
+                    <th class="col-num">Tokens/min</th><th class="col-num">Tokens/día</th>
+                    <th class="col-num">Req/min</th><th class="col-num">Req/día</th><th>Eliminar</th>
+                </tr></thead>
+                <tbody>
+                {% for m in modelos %}
+                    <tr>
+                        <td>{{ m.proveedor.get_codigo_display }}</td>
+                        <td><code>{{ m.modelo_id }}</code></td>
+                        <td><input type="text" name="modelo_{{ m.id }}_nombre" value="{{ m.nombre }}"></td>
+                        <td><input class="chk" type="checkbox" name="modelo_{{ m.id }}_activo" {% if m.activo %}checked{% endif %}></td>
+                        <td><input class="num" type="number" min="0" name="modelo_{{ m.id }}_tokens_por_minuto" value="{{ m.tokens_por_minuto }}"></td>
+                        <td><input class="num" type="number" min="0" name="modelo_{{ m.id }}_tokens_por_dia" value="{{ m.tokens_por_dia }}"></td>
+                        <td><input class="num" type="number" min="0" name="modelo_{{ m.id }}_requests_por_minuto" value="{{ m.requests_por_minuto }}"></td>
+                        <td><input class="num" type="number" min="0" name="modelo_{{ m.id }}_requests_por_dia" value="{{ m.requests_por_dia }}"></td>
+                        <td><input class="chk" type="checkbox" name="del_modelo_{{ m.id }}"></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <div class="form-actions"><button type="submit" class="btn">Guardar modelos</button></div>
+        </form>
+
+        <h3 style="margin-top:22px;">Añadir modelo</h3>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="seccion" value="modelo_nuevo">
+            <div class="add-grid">
+                <div style="grid-column: 1 / -1;">
+                    <label>Modelo conocido (autocompleta los límites)</label>
+                    <select id="catalogo-select">
+                        <option value="">— elegir un modelo conocido o rellenar manualmente —</option>
+                        {% for grupo in catalogo %}
+                        <optgroup label="{{ grupo.nombre }}">
+                            {% for mc in grupo.modelos %}
+                            <option value="{{ mc.modelo_id }}"
+                                data-proveedor="{{ grupo.codigo }}"
+                                data-nombre="{{ mc.nombre }}"
+                                data-tpm="{{ mc.tokens_por_minuto }}"
+                                data-tpd="{{ mc.tokens_por_dia }}"
+                                data-rpm="{{ mc.requests_por_minuto }}"
+                                data-rpd="{{ mc.requests_por_dia }}">{{ mc.modelo_id }} — {{ mc.nombre }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label>Proveedor</label>
+                    <select name="nuevo_proveedor" id="nuevo-proveedor">
+                        {% for p in proveedores %}
+                        <option value="{{ p.id }}" data-codigo="{{ p.codigo }}">{{ p.get_codigo_display }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label>ID del modelo</label>
+                    <input type="text" name="nuevo_modelo_id" id="nuevo-modelo-id" placeholder="ej. claude-opus-4-8">
+                </div>
+                <div>
+                    <label>Nombre visible</label>
+                    <input type="text" name="nuevo_nombre" id="nuevo-nombre">
+                </div>
+                <div>
+                    <label>Tokens/min</label>
+                    <input class="num" type="number" min="0" name="nuevo_tokens_por_minuto" id="nuevo-tpm">
+                </div>
+                <div>
+                    <label>Tokens/día</label>
+                    <input class="num" type="number" min="0" name="nuevo_tokens_por_dia" id="nuevo-tpd">
+                </div>
+                <div>
+                    <label>Req/min</label>
+                    <input class="num" type="number" min="0" name="nuevo_requests_por_minuto" id="nuevo-rpm">
+                </div>
+                <div>
+                    <label>Req/día</label>
+                    <input class="num" type="number" min="0" name="nuevo_requests_por_dia" id="nuevo-rpd">
+                </div>
+                <div>
+                    <label>Activo</label>
+                    <input class="chk" type="checkbox" name="nuevo_activo" checked>
+                </div>
+            </div>
+            <div class="form-actions"><button type="submit" class="btn">Añadir modelo</button></div>
+        </form>
+    </div>
+
+    <!-- 3. CADENA DE FALLBACK -->
+    <div class="ia-section">
+        <h2>Cadena de fallback por uso</h2>
+        <p class="ia-help">Para cada función, ordena los modelos por prioridad (menor orden = se intenta primero). Si un modelo falla, no está disponible o supera su límite, se usa el siguiente.</p>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="seccion" value="asignaciones">
+            {% for uso in usos %}
+            <div class="uso-block">
+                <h3>{{ uso.label }}</h3>
+                <table class="ia-table">
+                    <thead><tr><th class="col-num">Orden</th><th>Modelo</th><th>Activo</th><th>Eliminar</th></tr></thead>
+                    <tbody>
+                    {% for a in uso.niveles %}
+                        <tr>
+                            <td class="col-num"><input class="num" type="number" min="0" name="asig_{{ a.id }}_orden" value="{{ a.orden }}"></td>
+                            <td>
+                                <select name="asig_{{ a.id }}_modelo">
+                                    <option value="">— ninguno —</option>
+                                    {% for m in modelos %}
+                                    <option value="{{ m.id }}" {% if a.modelo_id == m.id %}selected{% endif %}>{{ m }}{% if not m.disponible %} (no disponible){% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><input class="chk" type="checkbox" name="asig_{{ a.id }}_activo" {% if a.activo %}checked{% endif %}></td>
+                            <td><input class="chk" type="checkbox" name="del_asig_{{ a.id }}"></td>
+                        </tr>
+                    {% endfor %}
+                        <tr>
+                            <td class="col-num"><input class="num" type="number" min="0" name="nuevo_{{ uso.accion }}_orden" placeholder="{{ uso.niveles|length }}"></td>
+                            <td>
+                                <select name="nuevo_{{ uso.accion }}_modelo">
+                                    <option value="">— añadir modelo de respaldo —</option>
+                                    {% for m in modelos %}
+                                    <option value="{{ m.id }}">{{ m }}{% if not m.disponible %} (no disponible){% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td colspan="2"><small style="color:#999">nuevo nivel</small></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+            <div class="form-actions"><button type="submit" class="btn">Guardar cadena de fallback</button></div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    var cat = document.getElementById('catalogo-select');
+    if (!cat) return;
+    cat.addEventListener('change', function() {
+        var opt = cat.options[cat.selectedIndex];
+        if (!opt || !opt.value) return;
+        var set = function(id, val) { var el = document.getElementById(id); if (el) el.value = val; };
+        set('nuevo-modelo-id', opt.value);
+        set('nuevo-nombre', opt.getAttribute('data-nombre') || '');
+        set('nuevo-tpm', opt.getAttribute('data-tpm') || '');
+        set('nuevo-tpd', opt.getAttribute('data-tpd') || '');
+        set('nuevo-rpm', opt.getAttribute('data-rpm') || '');
+        set('nuevo-rpd', opt.getAttribute('data-rpd') || '');
+        // Seleccionar el proveedor correspondiente
+        var codigo = opt.getAttribute('data-proveedor');
+        var prov = document.getElementById('nuevo-proveedor');
+        if (prov && codigo) {
+            for (var i = 0; i < prov.options.length; i++) {
+                if (prov.options[i].getAttribute('data-codigo') === codigo) { prov.selectedIndex = i; break; }
+            }
+        }
+    });
+})();
+</script>
+{% endblock %}

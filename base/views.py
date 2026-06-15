@@ -14,7 +14,16 @@ from datetime import date, timedelta, datetime
 
 from django.contrib.auth import get_user_model
 
-from .models import Feriado, ParametroSistema, UserActionLog, es_feriado
+from .models import (
+    AIRequestLog,
+    AsignacionUsoIA,
+    Feriado,
+    ModeloIA,
+    ParametroSistema,
+    ProveedorIA,
+    UserActionLog,
+    es_feriado,
+)
 from .forms import FeriadoForm, LogoEmpresaForm, ParametroSistemaForm, UserForm
 from .audit import LogUserActionMixin
 from .auth_utils import get_user_home_url, is_admin, RequireProfileMixin
@@ -646,6 +655,135 @@ def parametro_crear(request):
         'form': form,
         'parametro': None,
         'es_edicion': False,
+    })
+
+
+# --- Configuración de IA (proveedores, modelos, cadena de fallback) ---
+
+def _int_o_none(valor):
+    try:
+        v = int(str(valor).strip())
+        return v if v >= 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+@login_required
+def configuracion_ia(request):
+    """
+    Gestión de proveedores de IA, sus modelos (con límites por defecto que se
+    autocompletan según el modelo) y la cadena de fallback por cada uso.
+    """
+    from base.ai_catalog import catalogo_para_select, defaults_para
+
+    if not is_admin(request.user):
+        return redirect(get_user_home_url(request.user) or 'dashboard')
+
+    if request.method == 'POST':
+        seccion = request.POST.get('seccion')
+
+        # 1) Proveedores: clave API y habilitado
+        if seccion == 'proveedores':
+            for prov in ProveedorIA.objects.all():
+                prov.nombre = (request.POST.get(f'prov_{prov.id}_nombre') or prov.nombre).strip()
+                prov.api_key = (request.POST.get(f'prov_{prov.id}_api_key') or '').strip()
+                prov.activo = bool(request.POST.get(f'prov_{prov.id}_activo'))
+                prov.save()
+            messages.success(request, 'Proveedores actualizados.')
+            return redirect('configuracion_ia')
+
+        # 2) Alta de un modelo nuevo
+        if seccion == 'modelo_nuevo':
+            prov = ProveedorIA.objects.filter(pk=request.POST.get('nuevo_proveedor')).first()
+            modelo_id = (request.POST.get('nuevo_modelo_id') or '').strip()
+            if not prov or not modelo_id:
+                messages.error(request, 'Selecciona un proveedor e indica el ID del modelo.')
+                return redirect('configuracion_ia')
+            if ModeloIA.objects.filter(proveedor=prov, modelo_id=modelo_id).exists():
+                messages.error(request, f'El modelo "{modelo_id}" ya existe para {prov}.')
+                return redirect('configuracion_ia')
+            base = defaults_para(modelo_id, prov.codigo)
+            limites = {}
+            for k in ('tokens_por_minuto', 'tokens_por_dia', 'requests_por_minuto', 'requests_por_dia'):
+                v = _int_o_none(request.POST.get(f'nuevo_{k}'))
+                limites[k] = v if v is not None else base[k]
+            ModeloIA.objects.create(
+                proveedor=prov,
+                modelo_id=modelo_id,
+                nombre=(request.POST.get('nuevo_nombre') or '').strip(),
+                activo=bool(request.POST.get('nuevo_activo')),
+                **limites,
+            )
+            messages.success(request, f'Modelo "{modelo_id}" añadido.')
+            return redirect('configuracion_ia')
+
+        # 3) Actualización/eliminación de modelos existentes
+        if seccion == 'modelos':
+            for modelo in ModeloIA.objects.all():
+                if request.POST.get(f'del_modelo_{modelo.id}'):
+                    modelo.delete()
+                    continue
+                modelo.nombre = (request.POST.get(f'modelo_{modelo.id}_nombre') or '').strip()
+                modelo.activo = bool(request.POST.get(f'modelo_{modelo.id}_activo'))
+                for k in ('tokens_por_minuto', 'tokens_por_dia', 'requests_por_minuto', 'requests_por_dia'):
+                    v = _int_o_none(request.POST.get(f'modelo_{modelo.id}_{k}'))
+                    if v is not None:
+                        setattr(modelo, k, v)
+                modelo.save()
+            messages.success(request, 'Modelos actualizados.')
+            return redirect('configuracion_ia')
+
+        # 4) Cadena de fallback por uso
+        if seccion == 'asignaciones':
+            # Actualizar / eliminar existentes
+            for asig in AsignacionUsoIA.objects.all():
+                if request.POST.get(f'del_asig_{asig.id}'):
+                    asig.delete()
+                    continue
+                orden = _int_o_none(request.POST.get(f'asig_{asig.id}_orden'))
+                modelo_pk = request.POST.get(f'asig_{asig.id}_modelo')
+                asig.orden = orden if orden is not None else asig.orden
+                asig.modelo = ModeloIA.objects.filter(pk=modelo_pk).first() if modelo_pk else None
+                asig.activo = bool(request.POST.get(f'asig_{asig.id}_activo'))
+                asig.save()
+            # Nuevos niveles por acción
+            for accion, _label in AIRequestLog.ACCION_CHOICES:
+                modelo_pk = request.POST.get(f'nuevo_{accion}_modelo')
+                if not modelo_pk:
+                    continue
+                modelo = ModeloIA.objects.filter(pk=modelo_pk).first()
+                if not modelo:
+                    continue
+                if AsignacionUsoIA.objects.filter(accion=accion, modelo=modelo).exists():
+                    continue
+                orden = _int_o_none(request.POST.get(f'nuevo_{accion}_orden'))
+                AsignacionUsoIA.objects.create(
+                    accion=accion, modelo=modelo,
+                    orden=orden if orden is not None else 0, activo=True,
+                )
+            messages.success(request, 'Asignaciones de uso actualizadas.')
+            return redirect('configuracion_ia')
+
+    # GET
+    proveedores = list(ProveedorIA.objects.all())
+    modelos = list(ModeloIA.objects.select_related('proveedor').all())
+    modelos_disponibles = [m for m in modelos]
+
+    # Cadena de fallback agrupada por uso
+    asignaciones = (
+        AsignacionUsoIA.objects.select_related('modelo', 'modelo__proveedor').all()
+    )
+    usos = []
+    for accion, label in AIRequestLog.ACCION_CHOICES:
+        niveles = [a for a in asignaciones if a.accion == accion]
+        usos.append({'accion': accion, 'label': label, 'niveles': niveles})
+
+    return render(request, 'base/configuracion_ia.html', {
+        'proveedores': proveedores,
+        'modelos': modelos,
+        'modelos_disponibles': modelos_disponibles,
+        'usos': usos,
+        'catalogo': catalogo_para_select(),
     })
 
 

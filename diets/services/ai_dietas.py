@@ -8,9 +8,7 @@ import json
 import logging
 from typing import Any, Dict, List
 
-from django.conf import settings
-
-from base.ai_logging import extraer_usage, registrar_llamada_ia
+from base.ai_provider import completar_ia
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +20,6 @@ OBJETIVOS_VALIDOS = [
     'alta_proteina',
     'equilibrado',
 ]
-
-
-def _get_openai_client():
-    from openai import OpenAI
-    api_key = getattr(settings, 'OPENAI_API_KEY', '') or ''
-    if not api_key:
-        raise ValueError('OPENAI_API_KEY no está configurada.')
-    return OpenAI(api_key=api_key)
 
 
 def _build_context(plan_id=None):
@@ -76,7 +66,6 @@ def sugerir_dieta_personalizada(objetivo: str, plan_id: int = None, request=None
     if objetivo not in OBJETIVOS_VALIDOS:
         objetivo = 'equilibrado'
 
-    client = _get_openai_client()
     ctx = _build_context(plan_id)
 
     objetivos_desc = {
@@ -106,25 +95,16 @@ Recetas disponibles (id, nombre, momentos_aptos):
 Genera un menú diario sugerido. Responde solo el JSON con clave "recetas"."""
 
     try:
-        response = client.chat.completions.create(
-            model='gpt-4o-mini',
-            messages=[
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': user_prompt},
-            ],
-            response_format={'type': 'json_object'},
+        content = completar_ia(
+            'sugerir_dieta',
+            system_prompt,
+            user_prompt,
+            json_mode=True,
             temperature=0.6,
-        )
-        u = extraer_usage(response)
-        registrar_llamada_ia(
-            accion='sugerir_dieta',
-            modelo='gpt-4o-mini',
+            request=request,
             objeto_tipo='plan',
             objeto_id=plan_id,
-            usuario=getattr(request, 'user', None) if request else None,
-            **u,
         )
-        content = response.choices[0].message.content
         if not content:
             return []
 
@@ -155,14 +135,5 @@ Genera un menú diario sugerido. Responde solo el JSON con clave "recetas"."""
         return result
 
     except Exception as e:
-        registrar_llamada_ia(
-            accion='sugerir_dieta',
-            modelo='gpt-4o-mini',
-            exito=False,
-            mensaje_error=str(e),
-            objeto_tipo='plan',
-            objeto_id=plan_id,
-            usuario=getattr(request, 'user', None) if request else None,
-        )
         logger.exception('Error al sugerir dieta: %s', e)
         raise

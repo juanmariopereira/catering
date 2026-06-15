@@ -9,7 +9,7 @@ from typing import Any, Dict, List
 from django.conf import settings
 from django.utils import timezone
 
-from base.ai_logging import extraer_usage, registrar_llamada_ia
+from base.ai_provider import completar_ia
 
 logger = logging.getLogger(__name__)
 
@@ -18,14 +18,6 @@ TIPOS_MENSAJE = [
     ('plan_por_vencer', 'Avisar que su plan está por vencer'),
     ('plan_vencido', 'Avisar que su plan venció'),
 ]
-
-
-def _get_openai_client():
-    from openai import OpenAI
-    api_key = getattr(settings, 'OPENAI_API_KEY', '') or ''
-    if not api_key:
-        raise ValueError('OPENAI_API_KEY no está configurada.')
-    return OpenAI(api_key=api_key)
 
 
 def _obtener_platos_servidos_recientes(contrato, dias: int = 14) -> List[Dict[str, Any]]:
@@ -101,8 +93,6 @@ def generar_mensaje_cliente_ia(contrato, tipo_mensaje: str, request=None) -> str
     if tipo_mensaje not in [t[0] for t in TIPOS_MENSAJE]:
         raise ValueError(f'Tipo de mensaje inválido: {tipo_mensaje}')
 
-    client = _get_openai_client()
-
     cliente_nombre = contrato.cliente.nombre
     plan_nombre = contrato.plan.nombre
     fecha_inicio = contrato.fecha_inicio.strftime('%d/%m/%Y') if contrato.fecha_inicio else '—'
@@ -159,35 +149,16 @@ DEBE incluir la fecha de vencimiento ({fecha_fin}) y el nombre del plan ({plan_n
 Invítale a renovar para seguir disfrutando del servicio."""
 
     try:
-        response = client.chat.completions.create(
-            model='gpt-4o-mini',
-            messages=[
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': user_prompt},
-            ],
+        content = completar_ia(
+            'generar_mensaje_cliente',
+            system_prompt,
+            user_prompt,
             temperature=0.7,
-            timeout=60.0,
-        )
-        u = extraer_usage(response)
-        registrar_llamada_ia(
-            accion='generar_mensaje_cliente',
-            modelo='gpt-4o-mini',
+            request=request,
             objeto_tipo='contrato',
             objeto_id=contrato.pk,
-            usuario=getattr(request, 'user', None) if request else None,
-            **u,
         )
-        content = (response.choices[0].message.content or '').strip()
-        return content
+        return (content or '').strip()
     except Exception as e:
-        registrar_llamada_ia(
-            accion='generar_mensaje_cliente',
-            modelo='gpt-4o-mini',
-            exito=False,
-            mensaje_error=str(e),
-            objeto_tipo='contrato',
-            objeto_id=contrato.pk,
-            usuario=getattr(request, 'user', None) if request else None,
-        )
         logger.warning('Error al generar mensaje cliente %s: %s', contrato.pk, e)
         raise

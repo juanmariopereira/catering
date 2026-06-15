@@ -30,6 +30,7 @@ urlpatterns = [
     path('feriados/nuevo/', base_views.FeriadoCreateView.as_view(), name='feriado_crear'),
     path('feriados/<int:pk>/editar/', base_views.FeriadoUpdateView.as_view(), name='feriado_editar'),
     path('feriados/<int:pk>/eliminar/', base_views.FeriadoDeleteView.as_view(), name='feriado_eliminar'),
+    path('configuracion-ia/', base_views.configuracion_ia, name='configuracion_ia'),
     path('parametros/', base_views.parametros_sistema, name='parametros_sistema'),
     path('parametros/nuevo/', base_views.parametro_crear, name='parametro_crear'),
     path('parametros/<int:pk>/editar/', base_views.parametro_editar, name='parametro_editar'),
