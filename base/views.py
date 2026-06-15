@@ -811,10 +811,43 @@ def entregador_sin_asignar(request):
 
 
 def home_redirect(request):
-    """Redirige a la página de inicio según perfil (Cocina, Entregador) o dashboard."""
+    """
+    Inicio: si hay sesión, va a la página según perfil (Cocina, Entregador o
+    dashboard); si no, muestra la landing pública que ofrece el SISTEMA de
+    gestión a empresas de catering (B2B / SaaS).
+    """
     if request.user.is_authenticated:
         return redirect(get_user_home_url(request.user))
-    return redirect('dashboard')
+
+    from urllib.parse import quote
+
+    def _param(clave, defecto):
+        p = ParametroSistema.objects.filter(clave=clave).first()
+        valor = (p.valor.strip() if p and p.valor else '')
+        return valor or defecto
+
+    producto = _param('landing_producto', 'Plataforma de Gestión para Catering')
+    whatsapp = _param('whatsapp_contacto', '5541991454952')
+    whatsapp_num = ''.join(ch for ch in whatsapp if ch.isdigit())
+    msg_demo = quote(f'Hola, me interesa una demo de {producto}.')
+
+    return render(request, 'base/landing.html', {
+        'landing_producto': producto,
+        'landing_eslogan': _param(
+            'landing_eslogan',
+            'El sistema todo-en-uno para administrar tu catering: clientes, menús, '
+            'cocina, entregas y cobranza, con inteligencia artificial integrada.',
+        ),
+        'landing_sobre': _param(
+            'landing_sobre_nosotros',
+            'Una plataforma completa para operar tu negocio de catering de punta a punta: '
+            'desde el catálogo de recetas y la planificación de menús, hasta la producción en '
+            'cocina, la optimización de rutas de entrega y la cobranza. Personalizable con tu '
+            'marca y potenciada con IA para ahorrarte tiempo cada día.',
+        ),
+        'whatsapp_numero': whatsapp,
+        'whatsapp_url': f'https://wa.me/{whatsapp_num}?text={msg_demo}' if whatsapp_num else '',
+    })
 
 
 class CustomLoginView(AuthLoginView):
