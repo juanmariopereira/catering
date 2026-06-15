@@ -13,6 +13,7 @@ urlpatterns = [
     path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('courier/context/', views.CourierContextView.as_view(), name='courier_context'),
+    path('courier/config/', views.CourierConfigView.as_view(), name='courier_config'),
     path('events/', views.EventView.as_view(), name='events'),
     path('mobile/version/', views.MobileVersionView.as_view(), name='mobile_version'),
 ]

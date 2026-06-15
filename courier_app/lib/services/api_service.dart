@@ -89,6 +89,21 @@ class ApiService {
     return CourierContextResponse.fromJson(data, res.statusCode);
   }
 
+  /// GET /courier/config/ -> {auto_checkin, radio_metros, ping_segundos}
+  Future<Map<String, dynamic>?> getCourierConfig() async {
+    final uri = Uri.parse('$_baseUrl/courier/config/');
+    final res = await _client.get(uri, headers: await _authHeaders());
+    if (res.statusCode == 401 || res.statusCode == 403) {
+      final refreshed = await _refreshToken();
+      if (refreshed) return getCourierConfig();
+      return null;
+    }
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    return null;
+  }
+
   Future<bool> _refreshToken() async {
     final prefs = await SharedPreferences.getInstance();
     final refresh = prefs.getString(_refreshKey);

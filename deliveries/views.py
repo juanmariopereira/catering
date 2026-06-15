@@ -15,6 +15,18 @@ from .serializers import EventRequestSerializer
 from .services.route_sync import get_or_create_today_route_for_courier
 from .services.active_stop import get_active_stop, get_allowed_actions
 from .services.event_processor import process_event, EventProcessingError
+from .services.courier_config import resolver_config
+from .services.proximity import get_stop_coordinates, haversine_km
+
+
+def _distance_m(stop, lat, lon):
+    """Distancia en metros del courier a la parada, o None."""
+    if stop is None or lat is None or lon is None:
+        return None
+    slat, slon = get_stop_coordinates(stop)
+    if slat is None or slon is None:
+        return None
+    return round(haversine_km(lat, lon, slat, slon) * 1000)
 
 
 def _build_context_response(delivery_route, profile, courier_lat=None, courier_lon=None):
@@ -33,14 +45,17 @@ def _build_context_response(delivery_route, profile, courier_lat=None, courier_l
             'status': profile and 'No route assigned for today.' or 'You are not a courier.',
             'current_active_stop': None,
             'next_stop': None,
+            'config': resolver_config(profile.entregador if profile else None),
         }
+    cfg = resolver_config(delivery_route.courier_entregador)
+    radio_km = cfg['radio_metros'] / 1000.0
     active, next_stop, status_msg = get_active_stop(
         delivery_route, courier_lat=courier_lat, courier_lon=courier_lon
     )
     stops = list(delivery_route.stops.all().order_by('sequence'))
     stop_list = []
     for s in stops:
-        allowed = get_allowed_actions(s, courier_lat, courier_lon)
+        allowed = get_allowed_actions(s, courier_lat, courier_lon, radio_km=radio_km)
         stop_list.append({
             'id': s.pk,
             'sequence': s.sequence,
@@ -53,6 +68,12 @@ def _build_context_response(delivery_route, profile, courier_lat=None, courier_l
             'can_mark_failed': allowed['can_mark_failed'],
             'reason_if_blocked': allowed['reason_if_blocked'],
         })
+    active_summary = _stop_summary(active) if active else None
+    if active_summary is not None:
+        active_summary['distance_m'] = _distance_m(active, courier_lat, courier_lon)
+    next_summary = _stop_summary(next_stop) if next_stop else None
+    if next_summary is not None:
+        next_summary['distance_m'] = _distance_m(next_stop, courier_lat, courier_lon)
     return {
         'profile': {
             'id': profile.pk,
@@ -64,8 +85,9 @@ def _build_context_response(delivery_route, profile, courier_lat=None, courier_l
         'current_active_stop_id': active.pk if active else None,
         'next_stop_id': next_stop.pk if next_stop else None,
         'status': status_msg,
-        'current_active_stop': _stop_summary(active) if active else None,
-        'next_stop': _stop_summary(next_stop) if next_stop else None,
+        'current_active_stop': active_summary,
+        'next_stop': next_summary,
+        'config': cfg,
     }
 
 
@@ -113,6 +135,25 @@ class CourierContextView(APIView):
             )
         data = _build_context_response(delivery_route, profile)
         return Response(data)
+
+
+class CourierConfigView(APIView):
+    """
+    GET /api/v1/courier/config/
+    Returns the effective tracking config for the logged-in courier
+    (system defaults merged with per-entregador overrides).
+    """
+    permission_classes = [IsAuthenticated, IsCourier]
+
+    def get(self, request):
+        try:
+            profile = CourierProfile.objects.select_related('entregador').get(user=request.user)
+        except CourierProfile.DoesNotExist:
+            return Response(
+                {'detail': 'You are not a courier.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return Response(resolver_config(profile.entregador))
 
 
 class EventView(APIView):

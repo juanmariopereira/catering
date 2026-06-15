@@ -51,9 +51,10 @@ def get_active_stop(delivery_route, courier_lat=None, courier_lon=None):
     return (active, next_stop, status)
 
 
-def get_allowed_actions(stop, courier_lat=None, courier_lon=None):
+def get_allowed_actions(stop, courier_lat=None, courier_lon=None, radio_km=None):
     """
     Server-driven allowed actions for a stop.
+    radio_km: approach radius (km) from courier config; falls back to default if None.
     Returns dict: can_mark_arrived, can_mark_delivered, can_mark_failed, reason_if_blocked.
     """
     result = {
@@ -63,7 +64,7 @@ def get_allowed_actions(stop, courier_lat=None, courier_lon=None):
         'reason_if_blocked': None,
     }
     if stop.state == 'EN_ROUTE':
-        near, _ = is_near_stop(courier_lat or 0, courier_lon or 0, stop)
+        near, _ = is_near_stop(courier_lat or 0, courier_lon or 0, stop, threshold_km=radio_km)
         if courier_lat is not None and courier_lon is not None:
             result['can_mark_arrived'] = near
             if not near:
@@ -73,7 +74,7 @@ def get_allowed_actions(stop, courier_lat=None, courier_lon=None):
     if stop.state == 'ARRIVED':
         near = True
         if courier_lat is not None and courier_lon is not None:
-            near, _ = is_near_stop(courier_lat, courier_lon, stop)
+            near, _ = is_near_stop(courier_lat, courier_lon, stop, threshold_km=radio_km)
         result['can_mark_delivered'] = near
         result['can_mark_failed'] = True
         if not near:

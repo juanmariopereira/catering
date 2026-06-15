@@ -71,7 +71,51 @@ class StopDetailScreen extends StatelessWidget {
   }
 
   Future<void> _sendFail(BuildContext context) async {
-    final ok = await context.read<CourierRepository>().attemptFail(stopId);
+    final reason = await _askReason(context);
+    if (reason == null) return; // cancelado
+    if (!context.mounted) return;
+    final ok = await context.read<CourierRepository>().attemptFail(stopId, reason: reason);
     if (context.mounted && ok) Navigator.of(context).pop();
+  }
+
+  Future<String?> _askReason(BuildContext context) {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        String? errorText;
+        return StatefulBuilder(
+          builder: (ctx, setState) => AlertDialog(
+            title: const Text('Motivo de no entrega'),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Ej.: cliente ausente, dirección incorrecta…',
+                errorText: errorText,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final text = controller.text.trim();
+                  if (text.isEmpty) {
+                    setState(() => errorText = 'El motivo es obligatorio');
+                    return;
+                  }
+                  Navigator.of(ctx).pop(text);
+                },
+                child: const Text('Confirmar'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

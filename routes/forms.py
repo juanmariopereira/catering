@@ -32,7 +32,10 @@ class EntregadorForm(forms.ModelForm):
 
     class Meta:
         model = Entregador
-        fields = ['nombre', 'telefono', 'vehiculo', 'activo', 'notas']
+        fields = [
+            'nombre', 'telefono', 'vehiculo', 'activo', 'notas',
+            'checkin_auto', 'checkin_radio_metros', 'ping_intervalo_segundos',
+        ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../services/api_service.dart';
@@ -9,6 +8,7 @@ class CourierRepository extends ChangeNotifier {
   final ApiService _api;
   final List<_QueuedEvent> _queue = [];
   Map<String, dynamic>? _lastContext;
+  Map<String, dynamic>? _config;
   String? _error;
 
   CourierRepository(this._api);
@@ -16,12 +16,37 @@ class CourierRepository extends ChangeNotifier {
   Map<String, dynamic>? get lastContext => _lastContext;
   String? get error => _error;
 
-  /// Fetch courier context (route, stops, current_active_stop_id, allowed_actions).
+  /// Tracking config (system + per-courier). Falls back to context-embedded config.
+  Map<String, dynamic>? get config =>
+      _config ?? (_lastContext?['config'] as Map<String, dynamic>?);
+  bool get autoCheckin => (config?['auto_checkin'] as bool?) ?? false;
+  int get radioMetros => (config?['radio_metros'] as int?) ?? 150;
+  int get pingSegundos {
+    final v = config?['ping_segundos'];
+    return (v is int && v > 0) ? v : 5;
+  }
+
+  void _captureConfig(Map<String, dynamic>? ctx) {
+    final c = ctx?['config'];
+    if (c is Map<String, dynamic>) _config = c;
+  }
+
+  /// Load config early (before route is available).
+  Future<void> loadConfig() async {
+    final c = await _api.getCourierConfig();
+    if (c != null) {
+      _config = c;
+      notifyListeners();
+    }
+  }
+
+  /// Fetch courier context (route, stops, current_active_stop_id, allowed_actions, config).
   Future<void> fetchContext() async {
     _error = null;
     final res = await _api.getCourierContext();
     if (res.ok && res.data != null) {
       _lastContext = res.data;
+      _captureConfig(res.data);
     } else {
       _error = res.statusCode == 401 ? 'Sesión expirada' : 'No se pudo cargar la ruta';
     }
@@ -43,6 +68,7 @@ class CourierRepository extends ChangeNotifier {
     );
     if (res.ok && res.context != null) {
       _lastContext = res.context;
+      _captureConfig(res.context);
       _error = null;
       notifyListeners();
       return true;
@@ -123,6 +149,7 @@ class CourierRepository extends ChangeNotifier {
   void logout() {
     _api.clearTokens();
     _lastContext = null;
+    _config = null;
     _queue.clear();
     _error = null;
     notifyListeners();

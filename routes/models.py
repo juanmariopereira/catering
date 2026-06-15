@@ -31,6 +31,27 @@ class Entregador(models.Model):
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, verbose_name="Actualizado")
     notas = models.TextField(blank=True, null=True, verbose_name="Notas adicionales")
 
+    # Configuración de seguimiento GPS por entregador. Si es None, hereda el valor del
+    # sistema (ParametroSistema). Permite afinar el comportamiento por repartidor.
+    checkin_auto = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name="Check-in automático por GPS",
+        help_text="Vacío = usar el valor del sistema. Marca la llegada automáticamente al entrar en el radio.",
+    )
+    checkin_radio_metros = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Radio de aproximación (m)",
+        help_text="Vacío = usar el valor del sistema. Distancia para considerar que llegó a la parada.",
+    )
+    ping_intervalo_segundos = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Intervalo de envío GPS (s)",
+        help_text="Vacío = usar el valor del sistema. Cada cuántos segundos la app envía su ubicación.",
+    )
+
     class Meta:
         verbose_name = "Entregador"
         verbose_name_plural = "Entregadores"

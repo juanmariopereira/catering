@@ -14,6 +14,7 @@ from deliveries.models import (
 )
 from deliveries.services.proximity import is_near_stop
 from deliveries.services.active_stop import get_active_stop, get_allowed_actions
+from deliveries.services.courier_config import resolver_config
 
 
 class EventProcessingError(Exception):
@@ -22,6 +23,36 @@ class EventProcessingError(Exception):
         self.message = message
         self.status_code = status_code
         super().__init__(message)
+
+
+def _config_for_route(delivery_route):
+    """Resolved courier config for the route's entregador (system + per-delivery)."""
+    ent = getattr(delivery_route, 'courier_entregador', None) if delivery_route else None
+    return resolver_config(ent)
+
+
+def _auto_checkin(delivery_route, courier_user, lat, lon, radio_km):
+    """
+    GPS-based automatic check-in: if the active stop is EN_ROUTE and the courier is
+    within the approach radius, transition it to ARRIVED. Delivery/fail stay manual.
+    """
+    import uuid as _uuid
+    active, _next, _status = get_active_stop(delivery_route)
+    if not active or active.state != StopState.EN_ROUTE:
+        return
+    near, _dist = is_near_stop(lat, lon, active, threshold_km=radio_km)
+    if not near or not active.can_transition_to(StopState.ARRIVED):
+        return
+    with transaction.atomic():
+        active.state = StopState.ARRIVED
+        active.save(update_fields=['state', 'updated_at'])
+        DeliveryActionEvent.objects.create(
+            request_id=_uuid.uuid4(),
+            courier=courier_user,
+            stop=active,
+            action_type=ActionType.ATTEMPT_ARRIVE,
+            payload={'auto': True, 'latitude': lat, 'longitude': lon},
+        )
 
 
 def _emit_outbox(event_type, stop, payload=None):
@@ -69,14 +100,18 @@ def process_event(courier_user, request_id, action_type, stop_id=None, payload=N
         delivery_route, err = get_or_create_today_route_for_courier(courier_user)
         if err:
             raise EventProcessingError(err, status_code=403)
+        rkm = _config_for_route(delivery_route)['radio_metros'] / 1000.0
         active, next_stop, status = get_active_stop(
             delivery_route, courier_lat=courier_lat, courier_lon=courier_lon
         )
-        return (delivery_route, _build_context(delivery_route, active, next_stop, status, courier_lat, courier_lon))
+        return (delivery_route, _build_context(delivery_route, active, next_stop, status, courier_lat, courier_lon, radio_km=rkm))
 
     delivery_route, err = get_or_create_today_route_for_courier(courier_user)
     if err:
         raise EventProcessingError(err, status_code=403)
+
+    cfg = _config_for_route(delivery_route)
+    rkm = cfg['radio_metros'] / 1000.0
 
     if action_type == ActionType.LOCATION_PING:
         from deliveries.models import CourierLocationPing
@@ -96,10 +131,13 @@ def process_event(courier_user, request_id, action_type, stop_id=None, payload=N
                     longitude=courier_lon,
                 )
         ensure_first_stop_en_route(delivery_route)
+        # Check-in automático por GPS (si está habilitado para este entregador)
+        if cfg['auto_checkin'] and courier_lat is not None and courier_lon is not None:
+            _auto_checkin(delivery_route, courier_user, courier_lat, courier_lon, rkm)
         active, next_stop, status = get_active_stop(
             delivery_route, courier_lat=courier_lat, courier_lon=courier_lon
         )
-        return (delivery_route, _build_context(delivery_route, active, next_stop, status, courier_lat, courier_lon))
+        return (delivery_route, _build_context(delivery_route, active, next_stop, status, courier_lat, courier_lon, radio_km=rkm))
 
     # Stop actions require stop_id
     if not stop_id:
@@ -115,7 +153,7 @@ def process_event(courier_user, request_id, action_type, stop_id=None, payload=N
                 f'Cannot mark arrived: stop is in state {stop.state}. Valid transitions: {StopState.VALID_TRANSITIONS.get(stop.state, [])}',
                 status_code=409,
             )
-        allowed = get_allowed_actions(stop, courier_lat, courier_lon)
+        allowed = get_allowed_actions(stop, courier_lat, courier_lon, radio_km=rkm)
         if not allowed['can_mark_arrived']:
             raise EventProcessingError(
                 allowed['reason_if_blocked'] or 'Cannot mark arrived.',
@@ -133,7 +171,7 @@ def process_event(courier_user, request_id, action_type, stop_id=None, payload=N
             )
             # Outbox for "arrived" can be added if needed; EN_ROUTE was emitted when stop entered EN_ROUTE
         active, next_stop, status = get_active_stop(delivery_route, courier_lat, courier_lon)
-        return (delivery_route, _build_context(delivery_route, active, next_stop, status, courier_lat, courier_lon))
+        return (delivery_route, _build_context(delivery_route, active, next_stop, status, courier_lat, courier_lon, radio_km=rkm))
 
     if action_type == ActionType.ATTEMPT_DELIVER:
         if not stop.can_transition_to(StopState.DELIVERED):
@@ -141,7 +179,7 @@ def process_event(courier_user, request_id, action_type, stop_id=None, payload=N
                 f'Cannot mark delivered: stop is in state {stop.state}.',
                 status_code=409,
             )
-        allowed = get_allowed_actions(stop, courier_lat, courier_lon)
+        allowed = get_allowed_actions(stop, courier_lat, courier_lon, radio_km=rkm)
         if not allowed['can_mark_delivered']:
             raise EventProcessingError(
                 allowed['reason_if_blocked'] or 'Cannot mark delivered.',
@@ -161,7 +199,7 @@ def process_event(courier_user, request_id, action_type, stop_id=None, payload=N
             )
             _emit_outbox(DeliveryEventOutbox.EVENT_DELIVERED, stop, payload)
         active, next_stop, status = get_active_stop(delivery_route, courier_lat, courier_lon)
-        return (delivery_route, _build_context(delivery_route, active, next_stop, status, courier_lat, courier_lon))
+        return (delivery_route, _build_context(delivery_route, active, next_stop, status, courier_lat, courier_lon, radio_km=rkm))
 
     if action_type == ActionType.ATTEMPT_FAIL:
         if not stop.can_transition_to(StopState.FAILED):
@@ -184,17 +222,28 @@ def process_event(courier_user, request_id, action_type, stop_id=None, payload=N
             )
             _emit_outbox(DeliveryEventOutbox.EVENT_FAILED, stop, payload)
         active, next_stop, status = get_active_stop(delivery_route, courier_lat, courier_lon)
-        return (delivery_route, _build_context(delivery_route, active, next_stop, status, courier_lat, courier_lon))
+        return (delivery_route, _build_context(delivery_route, active, next_stop, status, courier_lat, courier_lon, radio_km=rkm))
 
     raise EventProcessingError(f'Unknown action type: {action_type}.', status_code=400)
 
 
-def _build_context(delivery_route, active_stop, next_stop, status_message, courier_lat, courier_lon):
-    """Build context dict for API response: route, stops, current_active_stop_id, next_stop_id, status, allowed_actions per stop."""
+def _distance_m(stop, courier_lat, courier_lon):
+    """Distance in meters from the courier to a stop, or None if unknown."""
+    if stop is None or courier_lat is None or courier_lon is None:
+        return None
+    from deliveries.services.proximity import get_stop_coordinates, haversine_km
+    slat, slon = get_stop_coordinates(stop)
+    if slat is None or slon is None:
+        return None
+    return round(haversine_km(courier_lat, courier_lon, slat, slon) * 1000)
+
+
+def _build_context(delivery_route, active_stop, next_stop, status_message, courier_lat, courier_lon, radio_km=None):
+    """Build context dict for API response: route, stops, allowed_actions, config, distance to active stop."""
     stops = list(delivery_route.stops.all().order_by('sequence'))
     stop_list = []
     for s in stops:
-        allowed = get_allowed_actions(s, courier_lat, courier_lon)
+        allowed = get_allowed_actions(s, courier_lat, courier_lon, radio_km=radio_km)
         stop_list.append({
             'id': s.pk,
             'sequence': s.sequence,
@@ -207,6 +256,12 @@ def _build_context(delivery_route, active_stop, next_stop, status_message, couri
             'can_mark_failed': allowed['can_mark_failed'],
             'reason_if_blocked': allowed['reason_if_blocked'],
         })
+    active_summary = _stop_summary(active_stop) if active_stop else None
+    if active_summary is not None:
+        active_summary['distance_m'] = _distance_m(active_stop, courier_lat, courier_lon)
+    next_summary = _stop_summary(next_stop) if next_stop else None
+    if next_summary is not None:
+        next_summary['distance_m'] = _distance_m(next_stop, courier_lat, courier_lon)
     return {
         'route': {
             'id': delivery_route.pk,
@@ -216,8 +271,9 @@ def _build_context(delivery_route, active_stop, next_stop, status_message, couri
         'current_active_stop_id': active_stop.pk if active_stop else None,
         'next_stop_id': next_stop.pk if next_stop else None,
         'status': status_message,
-        'current_active_stop': _stop_summary(active_stop) if active_stop else None,
-        'next_stop': _stop_summary(next_stop) if next_stop else None,
+        'current_active_stop': active_summary,
+        'next_stop': next_summary,
+        'config': _config_for_route(delivery_route),
     }
 
 
