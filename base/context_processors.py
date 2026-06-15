@@ -56,4 +56,8 @@ def catering_context(request):
     else:
         ctx['contratos_sin_ruta_hoy_count'] = 0
         ctx['contratos_sin_ruta_hoy_fecha'] = None
+    # Consumo de tokens de IA de la petición anterior (flujos HTML/redirect).
+    # Se extrae (pop) para mostrarlo una sola vez.
+    session = getattr(request, 'session', None)
+    ctx['tokens_ia_flash'] = session.pop('tokens_ia_flash', None) if session is not None else None
     return ctx

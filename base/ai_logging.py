@@ -1,7 +1,40 @@
 """
 Utilidad para registrar llamadas a la API de IA.
 """
+import threading
 from typing import Dict, Optional
+
+# Acumulador de tokens por petición (request). El middleware lo reinicia al
+# inicio de cada request y lo lee al final para mostrar al usuario cuántos
+# tokens consumió la IA en esa interacción.
+_token_usage_local = threading.local()
+
+
+def reset_token_usage() -> None:
+    """Reinicia el acumulador de tokens de IA para la petición actual."""
+    _token_usage_local.data = {
+        'prompt_tokens': 0,
+        'completion_tokens': 0,
+        'total_tokens': 0,
+        'llamadas': 0,
+    }
+
+
+def _acumular_token_usage(prompt_tokens: int, completion_tokens: int, total_tokens: int) -> None:
+    """Suma el uso de tokens de una llamada al acumulador de la petición."""
+    data = getattr(_token_usage_local, 'data', None)
+    if data is None:
+        reset_token_usage()
+        data = _token_usage_local.data
+    data['prompt_tokens'] += prompt_tokens or 0
+    data['completion_tokens'] += completion_tokens or 0
+    data['total_tokens'] += total_tokens or 0
+    data['llamadas'] += 1
+
+
+def get_token_usage() -> Optional[Dict[str, int]]:
+    """Devuelve el uso de tokens acumulado en la petición actual (o None)."""
+    return getattr(_token_usage_local, 'data', None)
 
 
 def registrar_llamada_ia(
@@ -31,6 +64,10 @@ def registrar_llamada_ia(
         objeto_id: ID del objeto
         usuario: Usuario que realizó la acción (opcional)
     """
+    total_efectivo = total_tokens or (prompt_tokens + completion_tokens)
+    # Acumular en la petición actual aunque falle el guardado en BD, para poder
+    # mostrar el consumo al usuario.
+    _acumular_token_usage(prompt_tokens, completion_tokens, total_efectivo)
     try:
         from base.models import AIRequestLog
 
@@ -39,7 +76,7 @@ def registrar_llamada_ia(
             modelo=modelo or 'gpt-4o-mini',
             prompt_tokens=prompt_tokens or 0,
             completion_tokens=completion_tokens or 0,
-            total_tokens=total_tokens or (prompt_tokens + completion_tokens),
+            total_tokens=total_efectivo,
             exito=exito,
             mensaje_error=mensaje_error[:2000] if mensaje_error else '',
             objeto_tipo=objeto_tipo or '',

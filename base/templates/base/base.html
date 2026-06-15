@@ -498,6 +498,34 @@
         .main-content {
             flex: 1;
         }
+        /* Aviso flotante: tokens consumidos por la IA en cada interacción */
+        .ia-token-toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 320px;
+            padding: 12px 16px;
+            background: #312e81;
+            color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+            font-size: 0.9rem;
+            line-height: 1.3;
+            opacity: 0;
+            transform: translateY(12px);
+            pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        .ia-token-toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .ia-token-toast .ia-token-icon { font-size: 1.4rem; flex-shrink: 0; }
+        .ia-token-toast small { opacity: 0.85; }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/choices.js/10.0.0/choices.min.css">
     {% block extra_css %}{% endblock %}
@@ -639,6 +667,56 @@
         } else {
             initSearchableSelects();
         }
+    })();
+    </script>
+    <!-- Aviso de consumo de tokens de IA -->
+    <div id="ia-token-toast" class="ia-token-toast no-print" role="status" aria-live="polite"></div>
+    <script>
+    (function() {
+        function mostrarTokensIA(t) {
+            if (!t || !t.total) return;
+            var el = document.getElementById('ia-token-toast');
+            if (!el) return;
+            var detalle = 'entrada ' + (t.prompt || 0) + ' · salida ' + (t.completion || 0);
+            if (t.llamadas && t.llamadas > 1) { detalle += ' · ' + t.llamadas + ' llamadas'; }
+            el.innerHTML = '<span class="ia-token-icon" aria-hidden="true">🧠</span>' +
+                '<span><strong>' + t.total + ' tokens de IA</strong><br><small>' + detalle + '</small></span>';
+            el.classList.add('show');
+            clearTimeout(el._hideTimer);
+            el._hideTimer = setTimeout(function() { el.classList.remove('show'); }, 6000);
+        }
+        window.mostrarTokensIA = mostrarTokensIA;
+
+        // Intercepta respuestas JSON con "tokens_ia" (acciones de IA vía AJAX/fetch).
+        var origFetch = window.fetch;
+        if (origFetch) {
+            window.fetch = function() {
+                var p = origFetch.apply(this, arguments);
+                try {
+                    p.then(function(resp) {
+                        try {
+                            var ct = (resp.headers && resp.headers.get) ? (resp.headers.get('content-type') || '') : '';
+                            if (ct.indexOf('application/json') !== -1) {
+                                resp.clone().json().then(function(data) {
+                                    if (data && data.tokens_ia) { mostrarTokensIA(data.tokens_ia); }
+                                }).catch(function() {});
+                            }
+                        } catch (e) {}
+                    }).catch(function() {});
+                } catch (e) {}
+                return p;
+            };
+        }
+
+        // Flash en sesión (flujos HTML/redirect, p. ej. importar receta).
+        {% if tokens_ia_flash %}
+        mostrarTokensIA({
+            prompt: {{ tokens_ia_flash.prompt|default:0 }},
+            completion: {{ tokens_ia_flash.completion|default:0 }},
+            total: {{ tokens_ia_flash.total|default:0 }},
+            llamadas: {{ tokens_ia_flash.llamadas|default:0 }}
+        });
+        {% endif %}
     })();
     </script>
     {% block extra_js %}{% endblock %}

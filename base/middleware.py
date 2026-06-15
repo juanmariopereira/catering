@@ -2,8 +2,12 @@
 Middleware de restricción por perfil: Admin (acceso completo), Cocina (kitchen + recipes),
 Entregador (solo delivery relacionado con su usuario).
 """
+import json
+
 from django.shortcuts import redirect
 from django.http import HttpResponseForbidden
+
+from .ai_logging import reset_token_usage, get_token_usage
 
 from .auth_utils import (
     is_admin,
@@ -55,3 +59,52 @@ class ProfileAccessMiddleware:
             return redirect(get_user_home_url(request.user))
 
         return self.get_response(request)
+
+
+class AITokenUsageMiddleware:
+    """
+    Muestra al usuario cuántos tokens consumió la IA en cada interacción.
+
+    - Reinicia el acumulador de tokens al inicio de cada petición.
+    - Si durante la petición hubo llamadas a la IA:
+        * Respuestas JSON (acciones AJAX): añade la clave "tokens_ia" al cuerpo.
+        * Otras respuestas (HTML / redirect, p. ej. importar receta): guarda el
+          consumo como "flash" en la sesión para mostrarlo en la próxima página.
+    El front-end (base.html) muestra un aviso flotante con esta información.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        reset_token_usage()
+        response = self.get_response(request)
+
+        try:
+            usage = get_token_usage()
+            if not usage or usage.get('total_tokens', 0) <= 0:
+                return response
+
+            tokens = {
+                'prompt': usage.get('prompt_tokens', 0),
+                'completion': usage.get('completion_tokens', 0),
+                'total': usage.get('total_tokens', 0),
+                'llamadas': usage.get('llamadas', 0),
+            }
+
+            content_type = (response.get('Content-Type', '') or '').lower()
+            es_json = 'application/json' in content_type and hasattr(response, 'content') and not getattr(response, 'streaming', False)
+
+            if es_json:
+                data = json.loads(response.content.decode('utf-8'))
+                if isinstance(data, dict):
+                    data['tokens_ia'] = tokens
+                    response.content = json.dumps(data).encode('utf-8')
+                    if response.has_header('Content-Length'):
+                        response['Content-Length'] = str(len(response.content))
+            elif hasattr(request, 'session'):
+                # Flujo HTML/redirect: mostrar en la próxima carga de página.
+                request.session['tokens_ia_flash'] = tokens
+        except Exception:
+            pass
+
+        return response
