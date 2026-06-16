@@ -6,8 +6,8 @@ configuración del admin (ProveedorIA / ModeloIA / AsignacionUsoIA), aplica los
 límites de uso (tokens y solicitudes por minuto/día) y despacha la llamada al
 SDK correcto:
 
-- OpenAI, Gemini y Grok: SDK de OpenAI con el ``base_url`` del proveedor
-  (Gemini y Grok exponen un endpoint compatible con la API de OpenAI).
+- OpenAI, Gemini y Groq: SDK de OpenAI con el ``base_url`` del proveedor
+  (Gemini y Groq exponen un endpoint compatible con la API de OpenAI).
 - Anthropic (Claude): SDK ``anthropic``.
 
 Las funciones de servicio (recetas, planning, dietas, contratos) llaman a
@@ -36,7 +36,7 @@ class LimiteIAExcedido(Exception):
 # base_url por proveedor para el SDK de OpenAI. None = endpoint propio de OpenAI.
 BASE_URLS = {
     'openai': None,
-    'grok': 'https://api.x.ai/v1',
+    'groq': 'https://api.groq.com/openai/v1',
     'gemini': 'https://generativelanguage.googleapis.com/v1beta/openai/',
 }
 
@@ -110,7 +110,7 @@ def verificar_limites(modelo) -> None:
 
 
 def _completar_openai_compat(modelo, system_prompt, user_prompt, json_mode, temperature, max_tokens) -> Tuple[str, Dict[str, int]]:
-    """Llamada vía SDK de OpenAI (OpenAI, Gemini o Grok)."""
+    """Llamada vía SDK de OpenAI (OpenAI, Gemini o Groq)."""
     from openai import OpenAI
 
     base_url = BASE_URLS.get(modelo.proveedor.codigo)

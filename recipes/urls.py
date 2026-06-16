@@ -11,6 +11,7 @@ urlpatterns = [
     path('calcular-nutricion/', views.calcular_nutricion_receta_view, name='calcular_nutricion_receta'),
     path('sugerir-nutricion-receta/', views.sugerir_nutricion_receta_view, name='sugerir_nutricion_receta'),
     path('sugerir-descripcion/', views.sugerir_descripcion_receta_view, name='sugerir_descripcion_receta'),
+    path('generar-descripcion-nutricion/', views.generar_descripcion_nutricion_view, name='generar_descripcion_nutricion'),
     path('sugerir-ingredientes/', views.sugerir_ingredientes_receta_view, name='sugerir_ingredientes_receta'),
     path('<int:pk>/editar/', views.RecetaUpdateView.as_view(), name='editar'),
     path('<int:pk>/duplicar/', views.receta_duplicar_view, name='duplicar'),

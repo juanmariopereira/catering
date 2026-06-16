@@ -228,15 +228,15 @@ class UserActionLog(models.Model):
 
 class ProveedorIA(models.Model):
     """
-    Proveedor de IA (OpenAI, Anthropic, Gemini, Grok). Guarda la clave API y si
-    está habilitado. OpenAI, Gemini y Grok se consumen vía el SDK de OpenAI
+    Proveedor de IA (OpenAI, Anthropic, Gemini, Groq). Guarda la clave API y si
+    está habilitado. OpenAI, Gemini y Groq se consumen vía el SDK de OpenAI
     (endpoint compatible); Anthropic vía su propio SDK.
     """
     CODIGO_CHOICES = [
         ('openai', 'OpenAI'),
         ('anthropic', 'Anthropic (Claude)'),
         ('gemini', 'Google Gemini'),
-        ('grok', 'xAI Grok'),
+        ('groq', 'Groq'),
     ]
 
     codigo = models.CharField(
@@ -278,7 +278,7 @@ class ProveedorIA(models.Model):
 class ModeloIA(models.Model):
     """
     Modelo concreto de un proveedor (ej. gpt-4o-mini, claude-opus-4-8,
-    gemini-2.0-flash, grok-2-latest), con sus límites de uso editables.
+    gemini-2.0-flash, llama-3.3-70b-versatile), con sus límites de uso editables.
     Un límite en 0 significa "sin límite".
     """
     proveedor = models.ForeignKey(

@@ -36,6 +36,7 @@ from .services.ai_nutricion import (
     sugerir_descripcion_receta_ia,
     sugerir_ingredientes_receta_ia,
     importar_receta_desde_texto_ia,
+    generar_descripcion_y_nutricion_desde_campos,
 )
 
 
@@ -162,6 +163,41 @@ def sugerir_descripcion_receta_view(request):
         if not descripcion:
             return JsonResponse({'ok': False, 'error': 'No se pudo generar la descripción.'}, status=400)
         return JsonResponse({'ok': True, 'descripcion': descripcion})
+    except ValueError as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(['POST'])
+def generar_descripcion_nutricion_view(request):
+    """
+    Vista AJAX: genera con IA la descripción y la información nutricional de una
+    receta a partir de los campos básicos del formulario (nombre, tipo(s) de
+    receta y momento(s) del día). Funciona también para recetas nuevas aún no
+    guardadas.
+    POST: nombre, tipos_receta (lista de ids), momentos_dia (lista de ids)
+    Returns: JSON { "ok": true, "descripcion": "...", "info_nutricional": {...} }
+    """
+    from diets.models import TipoComida
+
+    nombre = (request.POST.get('nombre') or '').strip()
+    if not nombre:
+        return JsonResponse({'ok': False, 'error': 'Escriba primero el nombre de la receta.'}, status=400)
+
+    tipos_ids = request.POST.getlist('tipos_receta')
+    momentos_ids = request.POST.getlist('momentos_dia')
+    tipos = list(TipoReceta.objects.filter(pk__in=tipos_ids).values_list('nombre', flat=True))
+    momentos = list(TipoComida.objects.filter(pk__in=momentos_ids).values_list('nombre', flat=True))
+
+    try:
+        descripcion, info = generar_descripcion_y_nutricion_desde_campos(
+            nombre, tipos, momentos, request=request
+        )
+        if not descripcion and not info:
+            return JsonResponse({'ok': False, 'error': 'No se pudo generar contenido.'}, status=400)
+        return JsonResponse({'ok': True, 'descripcion': descripcion, 'info_nutricional': info})
     except ValueError as e:
         return JsonResponse({'ok': False, 'error': str(e)}, status=400)
     except Exception as e:

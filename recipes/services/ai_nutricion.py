@@ -300,6 +300,84 @@ Escribe una descripción breve y atractiva para esta receta. Solo el texto, sin 
         return ''
 
 
+def generar_descripcion_y_nutricion_desde_campos(nombre, tipos=None, momentos=None, request=None) -> Tuple[str, Dict[str, Any]]:
+    """
+    Genera con IA una descripción y la información nutricional estimada de una
+    receta a partir únicamente de sus campos básicos: nombre, tipo(s) de receta
+    y momento(s) del día. No requiere ingredientes ni que la receta esté guardada,
+    por lo que funciona también en el formulario de receta nueva.
+
+    Args:
+        nombre: nombre de la receta.
+        tipos: lista de nombres de tipos de receta.
+        momentos: lista de nombres de momentos del día.
+
+    Returns:
+        (descripcion: str, info_nutricional: dict con calorias/proteinas/carbohidratos/grasas/fibra)
+    """
+    nombre = (nombre or '').strip()
+    tipos = [str(t).strip() for t in (tipos or []) if str(t).strip()]
+    momentos = [str(m).strip() for m in (momentos or []) if str(m).strip()]
+
+    tipos_str = ', '.join(tipos) if tipos else '—'
+    momentos_str = ', '.join(momentos) if momentos else '—'
+
+    # 1) Descripción
+    system_desc = """Eres un chef y redactor de recetas. Escribes descripciones breves y atractivas
+para recetas de catering. La descripción debe ser 2-4 oraciones, en español,
+destacando el plato y para qué momento del día es adecuado."""
+    user_desc = f"""Receta: {nombre}
+Tipo(s): {tipos_str}
+Momento(s) del día: {momentos_str}
+
+Escribe una descripción breve y atractiva para esta receta a partir de su nombre, tipo y momento del día. Solo el texto, sin título ni formato especial."""
+
+    descripcion = (completar_ia(
+        'sugerir_descripcion_receta',
+        system_desc,
+        user_desc,
+        temperature=0.6,
+        request=request,
+        objeto_tipo='receta',
+    ) or '').strip()
+
+    # 2) Información nutricional (apoyada en la descripción recién generada)
+    system_nut = """Eres un nutricionista. Estimas la información nutricional total de una receta
+(una ración típica) a partir de su nombre, tipo, momento del día y descripción.
+Responde ÚNICAMENTE con un JSON válido: {"calorias": N, "proteinas": N, "carbohidratos": N, "grasas": N, "fibra": N}
+Valores numéricos para la receta completa (una ración típica). Usa 0 cuando un nutriente sea insignificante."""
+    user_nut = f"""Receta: {nombre}
+Tipo(s): {tipos_str}
+Momento(s) del día: {momentos_str}
+Descripción: {descripcion or '—'}
+
+Estima calorías y macronutrientes para una ración típica de esta receta. Responde solo el JSON."""
+
+    info: Dict[str, Any] = {}
+    content = completar_ia(
+        'estimar_nutricion_receta',
+        system_nut,
+        user_nut,
+        json_mode=True,
+        temperature=0.2,
+        request=request,
+        objeto_tipo='receta',
+    )
+    if content:
+        try:
+            data = json.loads(content)
+            for k in ('calorias', 'proteinas', 'carbohidratos', 'grasas', 'fibra'):
+                if k in data:
+                    try:
+                        info[k] = round(float(data[k]), 1)
+                    except (TypeError, ValueError):
+                        info[k] = 0
+        except json.JSONDecodeError as e:
+            logger.warning('La IA devolvió JSON inválido para nutrición de receta %s: %s', nombre, e)
+
+    return descripcion, info
+
+
 def sugerir_ingredientes_receta_ia(receta, request=None) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], bool]:
     """
     Sugiere ingredientes y cantidades para una receta usando IA.

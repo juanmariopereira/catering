@@ -87,6 +87,15 @@
                 {% if form.momentos_dia.errors %}<div style="color: #c62828; font-size: 12px;">{{ form.momentos_dia.errors }}</div>{% endif %}
             </div>
         </div>
+        {% if openai_available %}
+        <div class="form-row form-row-1">
+            <div class="form-group">
+                <button type="button" class="btn btn-ai" id="btn-generar-desc-nut" title="Genera la descripción y la información nutricional con IA a partir del nombre, el tipo de receta y el momento del día">✨ Generar descripción y nutrición con IA</button>
+                <span id="generar-desc-nut-status" class="sugerir-status"></span>
+                <div class="help-text">Rellena la descripción y la información nutricional usando el nombre, el tipo de receta y el momento del día.</div>
+            </div>
+        </div>
+        {% endif %}
         <div class="form-row form-row-1">
             <div class="form-group">
                 <label for="{{ form.descripcion.id_for_label }}">{{ form.descripcion.label }}</label>
@@ -215,8 +224,60 @@
 </div>
 {% endblock %}
 
-{% if object %}
 {% block extra_js %}
+{% if openai_available %}
+<script>
+(function() {
+    var btnGen = document.getElementById('btn-generar-desc-nut');
+    if (!btnGen) return;
+    var statusGen = document.getElementById('generar-desc-nut-status');
+    var nombreInput = document.querySelector('#id_nombre, input[name="nombre"]');
+    var tiposSelect = document.querySelector('select[name="tipos_receta"]');
+    var momentosSelect = document.querySelector('select[name="momentos_dia"]');
+    var descInput = document.querySelector('#id_descripcion, textarea[name="descripcion"]');
+    var infoInput = document.querySelector('#id_info_nutricional, textarea[name="info_nutricional"], input[name="info_nutricional"]');
+
+    function selectedValues(sel) {
+        var out = [];
+        if (!sel) return out;
+        for (var i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].selected && sel.options[i].value) out.push(sel.options[i].value);
+        }
+        return out;
+    }
+
+    btnGen.addEventListener('click', function() {
+        var nombre = ((nombreInput && nombreInput.value) || '').trim();
+        if (!nombre) {
+            if (statusGen) { statusGen.textContent = 'Escriba primero el nombre de la receta.'; statusGen.className = 'sugerir-status error'; }
+            if (nombreInput) nombreInput.focus();
+            return;
+        }
+        btnGen.disabled = true;
+        if (statusGen) { statusGen.textContent = 'Generando descripción y nutrición...'; statusGen.className = 'sugerir-status'; }
+        var fd = new FormData();
+        fd.append('nombre', nombre);
+        selectedValues(tiposSelect).forEach(function(v) { fd.append('tipos_receta', v); });
+        selectedValues(momentosSelect).forEach(function(v) { fd.append('momentos_dia', v); });
+        fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        fetch('{% url "recipes:generar_descripcion_nutricion" %}', { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ok) {
+                    if (data.descripcion && descInput) descInput.value = data.descripcion;
+                    if (data.info_nutricional && infoInput) infoInput.value = JSON.stringify(data.info_nutricional, null, 2);
+                    if (statusGen) { statusGen.textContent = 'Descripción y nutrición generadas.'; statusGen.className = 'sugerir-status success'; }
+                } else {
+                    if (statusGen) { statusGen.textContent = data.error || 'No se pudo generar.'; statusGen.className = 'sugerir-status error'; }
+                }
+            })
+            .catch(function() { if (statusGen) { statusGen.textContent = 'Error de conexión.'; statusGen.className = 'sugerir-status error'; } })
+            .finally(function() { btnGen.disabled = false; });
+    });
+})();
+</script>
+{% endif %}
+{% if object %}
 {{ ingrediente_unidad_defecto|json_script:"ingrediente-unidad-defecto" }}
 {{ ingrediente_tipo_unidad|json_script:"ingrediente-tipo-unidad" }}
 {{ unidad_tipo_by_id|json_script:"unidad-tipo-by-id" }}
@@ -671,5 +732,5 @@
     }
 })();
 </script>
-{% endblock %}
 {% endif %}
+{% endblock %}

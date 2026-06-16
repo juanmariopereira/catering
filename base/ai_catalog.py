@@ -23,7 +23,7 @@ DEFAULTS_POR_PROVEEDOR = {
     'openai':    {'tokens_por_minuto': 200000,  'tokens_por_dia': 10000000, 'requests_por_minuto': 500,  'requests_por_dia': 10000},
     'anthropic': {'tokens_por_minuto': 40000,   'tokens_por_dia': 1000000,  'requests_por_minuto': 50,   'requests_por_dia': 5000},
     'gemini':    {'tokens_por_minuto': 1000000, 'tokens_por_dia': 50000000, 'requests_por_minuto': 1000, 'requests_por_dia': 50000},
-    'grok':      {'tokens_por_minuto': 100000,  'tokens_por_dia': 2000000,  'requests_por_minuto': 60,   'requests_por_dia': 5000},
+    'groq':      {'tokens_por_minuto': 6000,    'tokens_por_dia': 100000,   'requests_por_minuto': 30,   'requests_por_dia': 1000},
 }
 
 # Modelos conocidos: modelo_id -> {proveedor, nombre, límites...}
@@ -51,11 +51,13 @@ MODELOS_CONOCIDOS = {
                        'tokens_por_minuto': 2000000, 'tokens_por_dia': 50000000, 'requests_por_minuto': 1000, 'requests_por_dia': 50000},
     'gemini-1.5-flash': {'proveedor': 'gemini', 'nombre': 'Gemini 1.5 Flash',
                          'tokens_por_minuto': 1000000, 'tokens_por_dia': 50000000, 'requests_por_minuto': 2000, 'requests_por_dia': 50000},
-    # xAI Grok
-    'grok-2-latest': {'proveedor': 'grok', 'nombre': 'Grok 2',
-                      'tokens_por_minuto': 100000, 'tokens_por_dia': 2000000, 'requests_por_minuto': 60, 'requests_por_dia': 5000},
-    'grok-beta': {'proveedor': 'grok', 'nombre': 'Grok Beta',
-                  'tokens_por_minuto': 100000, 'tokens_por_dia': 2000000, 'requests_por_minuto': 60, 'requests_por_dia': 5000},
+    # Groq (límites del plan gratuito; ajustables según tu tier)
+    'llama-3.3-70b-versatile': {'proveedor': 'groq', 'nombre': 'Groq · Llama 3.3 70B',
+                                'tokens_por_minuto': 12000, 'tokens_por_dia': 100000, 'requests_por_minuto': 30, 'requests_por_dia': 1000},
+    'llama-3.1-8b-instant': {'proveedor': 'groq', 'nombre': 'Groq · Llama 3.1 8B Instant',
+                             'tokens_por_minuto': 6000, 'tokens_por_dia': 500000, 'requests_por_minuto': 30, 'requests_por_dia': 14400},
+    'openai/gpt-oss-120b': {'proveedor': 'groq', 'nombre': 'Groq · GPT-OSS 120B',
+                            'tokens_por_minuto': 8000, 'tokens_por_dia': 200000, 'requests_por_minuto': 30, 'requests_por_dia': 1000},
 }
 
 
@@ -96,5 +98,5 @@ def catalogo_para_select():
         })
     return [
         {'codigo': cod, 'nombre': nombres_prov.get(cod, cod), 'modelos': grupos[cod]}
-        for cod in ('openai', 'anthropic', 'gemini', 'grok') if cod in grupos
+        for cod in ('openai', 'anthropic', 'gemini', 'groq') if cod in grupos
     ]
