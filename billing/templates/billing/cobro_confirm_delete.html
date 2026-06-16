@@ -14,25 +14,11 @@
 <span>Eliminar</span>
 {% endblock %}
 
-{% block extra_css %}
-<style>
-    .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
-    .btn-primary { background-color: {{ brand_color }}; }
-    .btn-primary:hover { background-color: {{ brand_color_hover }}; }
-    .btn-danger { background-color: #F44336; }
-    .btn-danger:hover { background-color: #D32F2F; }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="container">
-    <h1>Eliminar cobro</h1>
-    <p>¿Está seguro de que desea eliminar el cobro <strong>{{ object.numero_cobro|default:object.id }}</strong> ({{ object.contrato.cliente.nombre }})?</p>
-    <p>Se eliminarán también todos los pagos asociados. Esta acción no se puede deshacer.</p>
-    <form method="post">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-danger">Eliminar</button>
-        <a href="{% url 'billing:cobro_detalle' object.pk %}" class="btn btn-primary">Cancelar</a>
-    </form>
+    {% include "base/page_title.html" with title="Eliminar cobro" icon="🗑️" %}
+    <p style="font-size: 1.05rem;">¿Seguro que quieres eliminar el cobro <strong>{{ object.numero_cobro|default:object.id }}</strong> ({{ object.contrato.cliente.nombre }})?</p>
+    {% url 'billing:cobro_detalle' object.pk as cancel_url %}
+    {% include 'base/_confirm_delete.html' with cancel_url=cancel_url submit_text="Sí, eliminar cobro" advertencia="Se eliminarán también todos los pagos asociados." %}
 </div>
 {% endblock %}

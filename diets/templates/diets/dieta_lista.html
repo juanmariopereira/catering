@@ -13,9 +13,6 @@
 {% block extra_css %}
 <style>
     .actions { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .btn { display: inline-block; padding: 10px 20px; background-color: var(--brand-color); color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
-    .btn:hover { background-color: var(--brand-color-hover); }
-    .btn-secondary { background-color: #6c757d; }
     .search-form { display: flex; gap: 10px; margin-bottom: 20px; }
     .search-form input, .search-form select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -64,8 +61,8 @@
                     <td>{{ dieta.dieta_recetas.count }}</td>
                     <td><span class="badge badge-{% if dieta.activa %}activa{% else %}inactiva{% endif %}">{% if dieta.activa %}Activa{% else %}Inactiva{% endif %}</span></td>
                     <td class="table-actions">
-                        <a href="{% url 'diets:editar' dieta.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
-                        <a href="{% url 'diets:eliminar' dieta.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
+                        <a class="action-edit" href="{% url 'diets:editar' dieta.pk %}" title="Editar" aria-label="Editar"><span class="ta-icon" aria-hidden="true">✏️</span> Editar</a>
+                        <a class="action-delete" href="{% url 'diets:eliminar' dieta.pk %}" title="Eliminar" aria-label="Eliminar"><span class="ta-icon" aria-hidden="true">🗑</span> Borrar</a>
                     </td>
                 </tr>
             {% empty %}

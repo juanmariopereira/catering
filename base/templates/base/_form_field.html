@@ -1,0 +1,12 @@
+{% comment %}
+Campo de formulario estándar (label + widget + ayuda + errores).
+Uso:  {% include 'base/_form_field.html' with field=form.mi_campo %}
+- Marca el label como obligatorio (asterisco) si el campo es required.
+- Los errores se pintan con el estilo .errorlist definido en base.html.
+{% endcomment %}
+<div class="form-group">
+    <label for="{{ field.id_for_label }}"{% if field.field.required %} class="required"{% endif %}>{{ field.label }}</label>
+    {{ field }}
+    {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+    {% if field.errors %}{{ field.errors }}{% endif %}
+</div>

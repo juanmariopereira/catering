@@ -13,10 +13,6 @@
 {% block extra_css %}
 <style>
     .actions { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .btn { display: inline-block; padding: 10px 20px; background-color: var(--brand-color); color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
-    .btn:hover { background-color: var(--brand-color-hover); }
-    .btn-secondary { background-color: #6c757d; }
-    .btn-secondary:hover { background-color: #5a6268; }
     .search-form { display: flex; gap: 10px; margin-bottom: 20px; }
     .search-form input, .search-form select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
     .filtros-form { background: #f9f9f9; padding: 16px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #eee; }
@@ -149,10 +145,10 @@
                         {% if contrato.latitud and contrato.longitud %}<span class="coords-ok" aria-label="Tiene coordenadas">✓</span>{% else %}<span class="coords-no" aria-label="Sin coordenadas">—</span>{% endif %}
                     </td>
                     <td class="table-actions">
-                        <a href="{% url 'contracts:detalle' contrato.pk %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
-                        <a href="{% url 'contracts:editar' contrato.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
+                        <a class="action-view" href="{% url 'contracts:detalle' contrato.pk %}" title="Ver detalle" aria-label="Ver detalle"><span class="ta-icon" aria-hidden="true">🔍</span> Ver</a>
+                        <a class="action-edit" href="{% url 'contracts:editar' contrato.pk %}" title="Editar" aria-label="Editar"><span class="ta-icon" aria-hidden="true">✏️</span> Editar</a>
                         {% if contrato.estado == 'activo' %}<a href="{% url 'planning:clientes_por_fecha' %}" title="Ir a planificación" aria-label="Ir a planificación"><span aria-hidden="true">📅</span></a>{% endif %}
-                        <a href="{% url 'contracts:eliminar' contrato.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
+                        <a class="action-delete" href="{% url 'contracts:eliminar' contrato.pk %}" title="Eliminar" aria-label="Eliminar"><span class="ta-icon" aria-hidden="true">🗑</span> Borrar</a>
                     </td>
                 </tr>
             {% empty %}

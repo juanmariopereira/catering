@@ -12,25 +12,11 @@
 <span>Eliminar {{ object.nombre }}</span>
 {% endblock %}
 
-{% block extra_css %}
-<style>
-    .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
-    .btn-primary { background-color: var(--brand-color); }
-    .btn-primary:hover { background-color: var(--brand-color-hover); }
-    .btn-danger { background-color: #F44336; }
-    .btn-danger:hover { background-color: #D32F2F; }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="container">
-    <h1>Eliminar Plan</h1>
-    <p>¿Está seguro de que desea eliminar el plan <strong>{{ object.nombre }}</strong>?</p>
-    <p>Esta acción no se puede deshacer.</p>
-    <form method="post">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-danger">Eliminar</button>
-        <a href="{% url 'plans:lista' %}" class="btn btn-primary">Cancelar</a>
-    </form>
+    {% include "base/page_title.html" with title="Eliminar plan" icon="🗑️" %}
+    <p style="font-size: 1.05rem;">¿Seguro que quieres eliminar el plan <strong>{{ object.nombre }}</strong>?</p>
+    {% url 'plans:lista' as cancel_url %}
+    {% include 'base/_confirm_delete.html' with cancel_url=cancel_url submit_text="Sí, eliminar plan" %}
 </div>
 {% endblock %}

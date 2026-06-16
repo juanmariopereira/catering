@@ -12,25 +12,11 @@
 <span>Eliminar ruta</span>
 {% endblock %}
 
-{% block extra_css %}
-<style>
-    .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
-    .btn-primary { background-color: {{ brand_color }}; }
-    .btn-primary:hover { background-color: {{ brand_color_hover }}; }
-    .btn-danger { background-color: #F44336; }
-    .btn-danger:hover { background-color: #D32F2F; }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="container">
-    <h1>Eliminar Ruta</h1>
-    <p>¿Está seguro de que desea eliminar la ruta del <strong>{{ ruta.fecha|date:"d/m/Y" }}</strong> ({{ ruta.entregador.nombre }})?</p>
-    <p>Se eliminarán las asignaciones de clientes en esta ruta. Esta acción no se puede deshacer.</p>
-    <form method="post">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-danger">Eliminar</button>
-        <a href="{% url 'delivery:lista' %}" class="btn btn-primary">Cancelar</a>
-    </form>
+    {% include "base/page_title.html" with title="Eliminar ruta" icon="🗑️" %}
+    <p style="font-size: 1.05rem;">¿Seguro que quieres eliminar la ruta del <strong>{{ ruta.fecha|date:"d/m/Y" }}</strong> ({{ ruta.entregador.nombre }})?</p>
+    {% url 'delivery:lista' as cancel_url %}
+    {% include 'base/_confirm_delete.html' with cancel_url=cancel_url submit_text="Sí, eliminar ruta" advertencia="Se eliminarán las asignaciones de clientes en esta ruta." %}
 </div>
 {% endblock %}

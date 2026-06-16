@@ -1,0 +1,20 @@
+{% comment %}
+Bloque estándar de confirmación de borrado (advertencia + botones seguros).
+El botón "Cancelar" es el dominante (btn-lg); "Eliminar" queda en rojo, secundario en peso.
+Cualquier aviso de dependencias específico se pone ANTES de este include, en la plantilla.
+
+Uso:  {% include 'base/_confirm_delete.html' with cancel_url=mi_url %}
+Variables opcionales:
+- advertencia : texto extra de advertencia.
+- submit_text : texto del botón de borrar (default "Sí, eliminar").
+- cancel_text : texto del botón cancelar (default "Cancelar").
+{% endcomment %}
+<div class="alert alert-danger" role="alert" style="margin-top: 16px;">
+    <span class="alert-icon" aria-hidden="true">⚠️</span>
+    <span class="alert-text"><strong>Esta acción no se puede deshacer.</strong>{% if advertencia %} {{ advertencia }}{% endif %}</span>
+</div>
+<form method="post" class="confirm-delete-form" style="margin-top: 18px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+    {% csrf_token %}
+    <a href="{{ cancel_url }}" class="btn btn-secondary btn-lg">{{ cancel_text|default:"Cancelar" }}</a>
+    <button type="submit" class="btn btn-danger">{{ submit_text|default:"Sí, eliminar" }}</button>
+</form>

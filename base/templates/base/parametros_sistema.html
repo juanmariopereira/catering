@@ -16,11 +16,6 @@
     .form-layout label { display: block; margin-bottom: 4px; font-weight: 600; }
     .form-layout input, .form-layout textarea { width: 100%; max-width: 480px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
     .form-layout .help-text { font-size: 0.85rem; color: #666; margin-top: 4px; }
-    .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; }
-    .btn:hover { background-color: {{ brand_color_hover }}; }
-    .btn-secondary { background-color: #6c757d; }
-    .btn-secondary:hover { background-color: #5a6268; }
-    .btn-sm { padding: 6px 12px; font-size: 0.9rem; }
     .param-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
     .param-table th, .param-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #ddd; }
     .param-table th { background-color: #f5f5f5; font-weight: 600; }
@@ -49,14 +44,6 @@
     <p class="help-text" style="margin-bottom: 24px;">
         Configure aquí los parámetros básicos del sistema, como el punto de partida de las entregas y otros valores de configuración.
     </p>
-
-    {% if messages %}
-    <ul class="messages" style="list-style: none; padding: 0; margin: 0 0 20px 0;">
-        {% for message in messages %}
-        <li style="padding: 10px 14px; margin-bottom: 8px; border-radius: 4px; background: {% if message.tags == 'success' %}var(--brand-bg-soft){% else %}#fff3e0{% endif %}; color: #333;">{{ message }}</li>
-        {% endfor %}
-    </ul>
-    {% endif %}
 
     <!-- Logo de la empresa -->
     <section class="param-section">

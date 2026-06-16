@@ -14,50 +14,42 @@
 <span>Eliminar</span>
 {% endblock %}
 
-{% block extra_css %}
-<style>
-    .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
-    .btn-primary { background-color: var(--brand-color); }
-    .btn-primary:hover { background-color: var(--brand-color-hover); }
-    .btn-danger { background-color: #F44336; }
-    .btn-danger:hover { background-color: #D32F2F; }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="container">
-    <h1>Eliminar Cliente</h1>
-    <p>¿Está seguro de que desea eliminar al cliente <strong>{{ object.nombre }}</strong>?</p>
-    <p>Esta acción no se puede deshacer.</p>
+    {% include "base/page_title.html" with title="Eliminar cliente" icon="🗑️" %}
+    <p style="font-size: 1.05rem;">¿Seguro que quieres eliminar al cliente <strong>{{ object.nombre }}</strong>?</p>
 
     {% if contratos_activos %}
-    <div class="aviso-contratos" style="margin: 20px 0; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
-        <strong>Contratos activos de este cliente ({{ contratos_activos|length }}):</strong>
-        <ul style="margin: 10px 0 0 20px; padding: 0;">
+    <div class="alert alert-warning" role="alert" style="margin-top: 16px; flex-direction: column; align-items: stretch;">
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span class="alert-icon" aria-hidden="true">⚠️</span>
+            <span class="alert-text"><strong>Contratos activos de este cliente ({{ contratos_activos|length }}):</strong></span>
+        </div>
+        <ul style="margin: 8px 0 0 32px; padding: 0;">
             {% for c in contratos_activos %}
             <li>{{ c.plan.nombre }} — desde {{ c.fecha_inicio|date:"d/m/Y" }}{% if c.fecha_fin %} hasta {{ c.fecha_fin|date:"d/m/Y" }}{% endif %}</li>
             {% endfor %}
         </ul>
-        <p style="margin: 10px 0 0 0; font-size: 0.95rem;">Al eliminar el cliente también se eliminarán estos contratos.</p>
+        <p style="margin: 8px 0 0 32px;">Al eliminar el cliente también se eliminarán estos contratos.</p>
     </div>
     {% endif %}
 
     {% if dependientes_con_contratos_activos %}
-    <div class="aviso-dependientes" style="margin: 20px 0; padding: 15px; background: #f8d7da; border-left: 4px solid #dc3545; border-radius: 4px;">
-        <strong>Dependientes de este cliente con contratos activos ({{ dependientes_con_contratos_activos|length }}):</strong>
-        <ul style="margin: 10px 0 0 20px; padding: 0;">
+    <div class="alert alert-danger" role="alert" style="margin-top: 16px; flex-direction: column; align-items: stretch;">
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span class="alert-icon" aria-hidden="true">⛔</span>
+            <span class="alert-text"><strong>Dependientes de este cliente con contratos activos ({{ dependientes_con_contratos_activos|length }}):</strong></span>
+        </div>
+        <ul style="margin: 8px 0 0 32px; padding: 0;">
             {% for dep in dependientes_con_contratos_activos %}
             <li><a href="{% url 'clients:detalle' dep.pk %}">{{ dep.nombre }}</a></li>
             {% endfor %}
         </ul>
-        <p style="margin: 10px 0 0 0; font-size: 0.95rem;">Estos clientes tienen a «{{ object.nombre }}» como titular. Revise o cambie su titular antes de eliminar.</p>
+        <p style="margin: 8px 0 0 32px;">Estos clientes tienen a «{{ object.nombre }}» como titular. Revisa o cambia su titular antes de eliminar.</p>
     </div>
     {% endif %}
 
-    <form method="post">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-danger">Eliminar</button>
-        <a href="{% url 'clients:detalle' object.pk %}" class="btn btn-primary">Cancelar</a>
-    </form>
+    {% url 'clients:detalle' object.pk as cancel_url %}
+    {% include 'base/_confirm_delete.html' with cancel_url=cancel_url submit_text="Sí, eliminar cliente" %}
 </div>
 {% endblock %}

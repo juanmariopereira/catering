@@ -13,9 +13,6 @@
 {% block extra_css %}
 <style>
     .actions { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .btn { display: inline-block; padding: 10px 20px; background-color: var(--brand-color); color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
-    .btn:hover { background-color: var(--brand-color-hover); }
-    .btn-secondary { background-color: #6c757d; }
     .search-form { display: flex; gap: 10px; margin-bottom: 20px; }
     .search-form input, .search-form select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -62,8 +59,8 @@
                     <td class="text-right">Bs. {{ plan.precio_base|floatformat:2 }}</td>
                     <td><span class="badge badge-{% if plan.activo %}activo{% else %}inactivo{% endif %}">{% if plan.activo %}Activo{% else %}Inactivo{% endif %}</span></td>
                     <td class="table-actions">
-                        <a href="{% url 'plans:editar' plan.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
-                        <a href="{% url 'plans:eliminar' plan.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
+                        <a class="action-edit" href="{% url 'plans:editar' plan.pk %}" title="Editar" aria-label="Editar"><span class="ta-icon" aria-hidden="true">✏️</span> Editar</a>
+                        <a class="action-delete" href="{% url 'plans:eliminar' plan.pk %}" title="Eliminar" aria-label="Eliminar"><span class="ta-icon" aria-hidden="true">🗑</span> Borrar</a>
                     </td>
                 </tr>
             {% empty %}

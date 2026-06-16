@@ -13,8 +13,6 @@
     .actions { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
     .btn:hover { background-color: {{ brand_color_hover }}; }
-    .btn-secondary { background-color: #6c757d; }
-    .btn-secondary:hover { background-color: #5a6268; }
     .filtro-año { display: flex; gap: 8px; align-items: center; }
     .filtro-año input { width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -55,8 +53,8 @@
                 <td>{{ f.fecha|date:"d/m/Y" }}</td>
                 <td>{{ f.nombre }}</td>
                 <td class="table-actions">
-                    <a href="{% url 'feriado_editar' f.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
-                    <a href="{% url 'feriado_eliminar' f.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
+                    <a class="action-edit" href="{% url 'feriado_editar' f.pk %}" title="Editar" aria-label="Editar"><span class="ta-icon" aria-hidden="true">✏️</span> Editar</a>
+                    <a class="action-delete" href="{% url 'feriado_eliminar' f.pk %}" title="Eliminar" aria-label="Eliminar"><span class="ta-icon" aria-hidden="true">🗑</span> Borrar</a>
                 </td>
             </tr>
             {% empty %}

@@ -14,10 +14,6 @@
 
 {% block extra_css %}
 <style>
-    .btn { display: inline-block; padding: 10px 20px; background-color: var(--brand-color); color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
-    .btn:hover { background-color: var(--brand-color-hover); }
-    .btn-secondary { background-color: #6c757d; }
-    .btn-secondary:hover { background-color: #5a6268; }
     .form-layout .form-group.checkbox-group label { font-weight: normal; margin-left: 8px; }
     .form-layout .form-group.checkbox-group input { width: auto; }
     .ingredientes-section { margin-top: 30px; padding-top: 20px; border-top: 2px solid var(--brand-color); }
@@ -28,14 +24,9 @@
     .formset-table input, .formset-table select { width: 100%; padding: 6px; }
     .formset-table .delete { width: 40px; text-align: center; }
     .formset-table .delete input { width: auto; }
-    .btn-ai { background-color: #6366f1 !important; }
-    .btn-ai:hover { background-color: #4f46e5 !important; }
-    .btn-ai:disabled { opacity: 0.6; cursor: not-allowed; }
     .sugerir-status { margin-left: 8px; font-size: 0.9rem; color: #555; }
     .sugerir-status.error { color: #c62828; }
     .sugerir-status.success { color: var(--brand-dark); }
-    .btn-add-row { background-color: var(--brand-color-hover) !important; }
-    .btn-add-row:hover { background-color: var(--brand-darker) !important; }
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
     .modal-overlay.show { display: flex; }
     .modal-box { background: #fff; padding: 24px; border-radius: 8px; max-width: 420px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }

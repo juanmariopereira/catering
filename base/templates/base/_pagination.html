@@ -1,0 +1,25 @@
+{% comment %}
+Paginación reutilizable.
+Uso:  {% include 'base/_pagination.html' with page_obj=page_obj base_qs=query_base %}
+- page_obj : objeto Page de Django (obligatorio).
+- base_qs  : querystring SIN 'page' ni '?' (opcional). Ej: "q=ana&order=nombre".
+{% endcomment %}
+{% if page_obj.has_other_pages %}
+<nav class="pagination" aria-label="Paginación de resultados">
+    {% if page_obj.has_previous %}
+        <a href="?{% if base_qs %}{{ base_qs }}&{% endif %}page=1" aria-label="Primera página">« Primera</a>
+        <a href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Página anterior">‹ Anterior</a>
+    {% else %}
+        <span class="disabled">« Primera</span>
+        <span class="disabled">‹ Anterior</span>
+    {% endif %}
+    <span class="current">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+        <a href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ page_obj.next_page_number }}" aria-label="Página siguiente">Siguiente ›</a>
+        <a href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ page_obj.paginator.num_pages }}" aria-label="Última página">Última »</a>
+    {% else %}
+        <span class="disabled">Siguiente ›</span>
+        <span class="disabled">Última »</span>
+    {% endif %}
+</nav>
+{% endif %}

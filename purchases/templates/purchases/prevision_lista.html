@@ -13,15 +13,6 @@
 {% block extra_css %}
 <style>
     .actions { margin-bottom: 20px; }
-    .btn {
-        display: inline-block;
-        padding: 10px 20px;
-        background-color: #FF9800;
-        color: white;
-        text-decoration: none;
-        border-radius: 4px;
-    }
-    .btn:hover { background-color: #F57C00; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
     th { background-color: #FF9800; color: white; }
@@ -54,12 +45,12 @@
                     <td>{% if prevision.fecha_desde == prevision.fecha_hasta %}{{ prevision.fecha_desde|date:"d/m/Y" }}{% else %}{{ prevision.fecha_desde|date:"d/m/Y" }} - {{ prevision.fecha_hasta|date:"d/m/Y" }}{% endif %}</td>
                     <td>{{ prevision.items.count }}</td>
                     <td class="table-actions">
-                        <a href="{% url 'purchases:detalle' prevision.id %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
-                        <a href="{% url 'purchases:editar' prevision.id %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
+                        <a class="action-view" href="{% url 'purchases:detalle' prevision.id %}" title="Ver detalle" aria-label="Ver detalle"><span class="ta-icon" aria-hidden="true">🔍</span> Ver</a>
+                        <a class="action-edit" href="{% url 'purchases:editar' prevision.id %}" title="Editar" aria-label="Editar"><span class="ta-icon" aria-hidden="true">✏️</span> Editar</a>
                         <a href="{% url 'purchases:exportar_excel' prevision.id %}" title="Exportar a Excel" aria-label="Exportar a Excel"><span aria-hidden="true">📊</span></a>
                         <a href="{% url 'purchases:exportar_pdf' prevision.id %}" title="Exportar a PDF" aria-label="Exportar a PDF"><span aria-hidden="true">📄</span></a>
                         <a href="{% url 'purchases:checklist_imprimible' prevision.id %}" title="Checklist imprimible" aria-label="Checklist imprimible" target="_blank"><span aria-hidden="true">☑</span></a>
-                        <a href="{% url 'purchases:eliminar' prevision.id %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
+                        <a class="action-delete" href="{% url 'purchases:eliminar' prevision.id %}" title="Eliminar" aria-label="Eliminar"><span class="ta-icon" aria-hidden="true">🗑</span> Borrar</a>
                     </td>
                 </tr>
             {% empty %}

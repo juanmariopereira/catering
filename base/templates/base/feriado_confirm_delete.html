@@ -10,41 +10,17 @@
 <span>Eliminar {{ feriado.nombre }}</span>
 {% endblock %}
 
-{% block extra_css %}
-<style>
-    .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
-    .btn-primary { background-color: {{ brand_color }}; }
-    .btn-primary:hover { background-color: {{ brand_color_hover }}; }
-    .btn-danger { background-color: #F44336; }
-    .btn-danger:hover { background-color: #D32F2F; }
-    .aviso-impacto {
-        padding: 14px 18px;
-        margin: 20px 0;
-        background-color: #fff3cd;
-        border: 1px solid #ffc107;
-        border-left-width: 4px;
-        border-radius: 4px;
-        font-size: 0.95rem;
-        line-height: 1.5;
-    }
-    .aviso-impacto strong { color: #856404; }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="container">
-    <h1>Eliminar feriado</h1>
-    <p>¿Está seguro de que desea eliminar el feriado <strong>{{ feriado.nombre }}</strong> ({{ feriado.fecha|date:"d/m/Y" }})?</p>
+    {% include "base/page_title.html" with title="Eliminar feriado" icon="🗑️" %}
+    <p style="font-size: 1.05rem;">¿Seguro que quieres eliminar el feriado <strong>{{ feriado.nombre }}</strong> ({{ feriado.fecha|date:"d/m/Y" }})?</p>
 
-    <div class="aviso-impacto" role="alert">
-        <strong>Impacto en contratos:</strong> Al eliminar este feriado se <strong>recalculará automáticamente la fecha de vencimiento</strong> de todos los contratos que tengan una pausa que incluya esta fecha (se acortará el contrato en los días correspondientes). Asegúrese de que desea continuar.
+    <div class="alert alert-warning" role="alert">
+        <span class="alert-icon" aria-hidden="true">⚠️</span>
+        <span class="alert-text"><strong>Impacto en contratos.</strong> Al eliminar este feriado se recalculará automáticamente la fecha de vencimiento de todos los contratos que tengan una pausa que incluya esta fecha (el contrato se acortará en los días correspondientes). También dejará de considerarse día sin entregas en pausas y planificación.</span>
     </div>
 
-    <p>Dejará de considerarse día sin entregas en pausas y planificación.</p>
-    <form method="post" id="feriado-delete-form" onsubmit="return confirm('¿Está seguro de eliminar este feriado? Se recalculará la fecha de vencimiento de los contratos afectados.');">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-danger">Sí, eliminar feriado</button>
-        <a href="{% url 'feriado_lista' %}" class="btn btn-primary">Cancelar</a>
-    </form>
+    {% url 'feriado_lista' as cancel_url %}
+    {% include 'base/_confirm_delete.html' with cancel_url=cancel_url submit_text="Sí, eliminar feriado" %}
 </div>
 {% endblock %}

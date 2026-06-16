@@ -202,7 +202,7 @@
                 <td class="text-right">Bs. {{ cobro.monto|separador_miles:2 }}</td>
                 <td>{{ cobro.fecha_vencimiento|date:"d/m/Y" }}</td>
                 <td class="table-actions">
-                    <a href="{% url 'billing:cobro_detalle' cobro.pk %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
+                    <a class="action-view" href="{% url 'billing:cobro_detalle' cobro.pk %}" title="Ver detalle" aria-label="Ver detalle"><span class="ta-icon" aria-hidden="true">🔍</span> Ver</a>
                     {% if cobro.estado != 'pagada' %}
                     <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.pk }}" class="btn-cobrar" title="Registrar pago" aria-label="Registrar pago"><span aria-hidden="true">💰</span></a>
                     {% endif %}
@@ -238,7 +238,7 @@
                 <td class="text-right">Bs. {{ cobro.monto|separador_miles:2 }}</td>
                 <td>{{ cobro.fecha_vencimiento|date:"d/m/Y" }}</td>
                 <td class="table-actions">
-                    <a href="{% url 'billing:cobro_detalle' cobro.pk %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
+                    <a class="action-view" href="{% url 'billing:cobro_detalle' cobro.pk %}" title="Ver detalle" aria-label="Ver detalle"><span class="ta-icon" aria-hidden="true">🔍</span> Ver</a>
                     {% if cobro.estado != 'pagada' %}
                     <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.pk }}" class="btn-cobrar" title="Registrar pago" aria-label="Registrar pago"><span aria-hidden="true">💰</span></a>
                     {% endif %}

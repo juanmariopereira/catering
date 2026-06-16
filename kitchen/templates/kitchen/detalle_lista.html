@@ -15,10 +15,6 @@
     .filtros-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 20px; padding: 12px; background: #f9f9f9; border-radius: 8px; border: 1px solid #eee; }
     .filtros-form input[type="date"] { padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; height: 38px; box-sizing: border-box; }
     .filtros-form label { font-size: 0.9rem; color: #555; margin-right: 4px; }
-    .btn { display: inline-block; padding: 10px 20px; background-color: var(--brand-color); color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
-    .btn:hover { background-color: var(--brand-color-hover); }
-    .btn-secondary { background-color: #6c757d; color: white; }
-    .btn-secondary:hover { background-color: #5a6268; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
     th { background-color: var(--brand-color); color: white; }
@@ -58,8 +54,8 @@
                 <tr class="{% if detalle.fecha == hoy %}fila-hoy{% endif %}">
                     <td>{{ detalle.fecha|date:"d/m/Y" }}</td>
                     <td class="table-actions">
-                        <a href="{% url 'kitchen:detalle_fecha' detalle.fecha|date:'Y-m-d' %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
-                        <a href="{% url 'kitchen:editar_notas' detalle.pk %}" title="Editar notas" aria-label="Editar notas"><span aria-hidden="true">✏️</span></a>
+                        <a class="action-view" href="{% url 'kitchen:detalle_fecha' detalle.fecha|date:'Y-m-d' %}" title="Ver detalle" aria-label="Ver detalle"><span class="ta-icon" aria-hidden="true">🔍</span> Ver</a>
+                        <a class="action-edit" href="{% url 'kitchen:editar_notas' detalle.pk %}" title="Editar notas" aria-label="Editar notas"><span class="ta-icon" aria-hidden="true">✏️</span> Editar</a>
                     </td>
                 </tr>
             {% empty %}

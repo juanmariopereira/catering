@@ -15,9 +15,6 @@
 {% block extra_css %}
 <style>
     .actions { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .btn { display: inline-block; padding: 10px 20px; background-color: var(--brand-color); color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
-    .btn:hover { background-color: var(--brand-color-hover); }
-    .btn-secondary { background-color: #6c757d; }
     .search-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 0; }
     .search-form input, .search-form select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; height: 38px; box-sizing: border-box; vertical-align: middle; }
     .search-form button[type="submit"] { height: 38px; box-sizing: border-box; padding: 8px 16px; }
@@ -85,8 +82,8 @@
                     <td>{{ ingrediente.unidad_medida }}</td>
                     <td><span class="badge badge-{% if ingrediente.activo %}activo{% else %}inactivo{% endif %}">{% if ingrediente.activo %}Activo{% else %}Inactivo{% endif %}</span></td>
                     <td class="table-actions">
-                        <a href="{% url 'recipes:ingrediente_editar' ingrediente.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
-                        <a href="{% url 'recipes:ingrediente_eliminar' ingrediente.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
+                        <a class="action-edit" href="{% url 'recipes:ingrediente_editar' ingrediente.pk %}" title="Editar" aria-label="Editar"><span class="ta-icon" aria-hidden="true">✏️</span> Editar</a>
+                        <a class="action-delete" href="{% url 'recipes:ingrediente_eliminar' ingrediente.pk %}" title="Eliminar" aria-label="Eliminar"><span class="ta-icon" aria-hidden="true">🗑</span> Borrar</a>
                     </td>
                 </tr>
             {% empty %}

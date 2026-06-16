@@ -15,8 +15,6 @@
     .actions { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
     .btn:hover { background-color: {{ brand_color_hover }}; }
-    .btn-secondary { background-color: #6c757d; }
-    .btn-secondary:hover { background-color: #5a6268; }
     .filtro-q { display: flex; gap: 8px; align-items: center; }
     .filtro-q input { width: 200px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -68,9 +66,9 @@
                     {% if u.is_staff and u.is_active and not u.groups.exists %}—{% endif %}
                 </td>
                 <td class="table-actions">
-                    <a href="{% url 'user_editar' u.pk %}" title="Editar" aria-label="Editar"><span aria-hidden="true">✏️</span></a>
+                    <a class="action-edit" href="{% url 'user_editar' u.pk %}" title="Editar" aria-label="Editar"><span class="ta-icon" aria-hidden="true">✏️</span> Editar</a>
                     {% if u.pk != request.user.pk %}
-                    <a href="{% url 'user_eliminar' u.pk %}" title="Eliminar" aria-label="Eliminar"><span aria-hidden="true">🗑</span></a>
+                    <a class="action-delete" href="{% url 'user_eliminar' u.pk %}" title="Eliminar" aria-label="Eliminar"><span class="ta-icon" aria-hidden="true">🗑</span> Borrar</a>
                     {% else %}
                     <span title="No puede eliminarse a sí mismo" style="color: #ccc; cursor: not-allowed;">🗑</span>
                     {% endif %}

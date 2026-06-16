@@ -13,18 +13,6 @@
 {% block extra_css %}
 <style>
     .actions { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .btn {
-        display: inline-block;
-        padding: 10px 20px;
-        background-color: #F44336;
-        color: white;
-        text-decoration: none;
-        border-radius: 4px;
-        margin-right: 10px;
-    }
-    .btn:hover { background-color: #D32F2F; }
-    .btn-secondary { background-color: #6c757d; }
-    .btn-secondary:hover { background-color: #5a6268; }
     .filtros-form { background: #f9f9f9; padding: 16px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #eee; }
     .filtros-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
     .filtros-row:last-of-type { margin-bottom: 0; }
@@ -159,7 +147,7 @@
                         </span>
                     </td>
                     <td class="table-actions">
-                        <a href="{% url 'billing:cobro_detalle' cobro.pk %}" title="Ver detalle" aria-label="Ver detalle"><span aria-hidden="true">🔍</span></a>
+                        <a class="action-view" href="{% url 'billing:cobro_detalle' cobro.pk %}" title="Ver detalle" aria-label="Ver detalle"><span class="ta-icon" aria-hidden="true">🔍</span> Ver</a>
                         <a href="{% url 'contracts:detalle' cobro.contrato_id %}" title="Ver contrato" aria-label="Ver contrato"><span aria-hidden="true">📋</span></a>
                         {% if cobro.estado != 'pagada' %}
                         <a href="{% url 'billing:pago_crear' %}?cobro={{ cobro.id }}" title="Registrar pago" aria-label="Registrar pago"><span aria-hidden="true">💰</span></a>
