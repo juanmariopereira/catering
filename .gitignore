@@ -34,6 +34,11 @@ courier_app/android/build/
 courier_app/android/app/build/
 courier_app/android/local.properties
 
+# Android signing — SECRETOS: nunca commitear
+courier_app/android/key.properties
+courier_app/**/*.jks
+courier_app/**/*.keystore
+
 # IDE
 .idea/
 *.iml
