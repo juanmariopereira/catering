@@ -35,9 +35,17 @@ class FeriadoForm(forms.ModelForm):
         model = Feriado
         fields = ('fecha', 'nombre')
         widgets = {
-            'fecha': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            # format='%Y-%m-%d' es imprescindible: el input HTML5 type=date solo
+            # muestra el valor inicial/instancia si viene en formato ISO.
+            'fecha': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
             'nombre': forms.TextInput(attrs={'class': 'form-control', 'maxlength': 255}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Aceptar la fecha en formato ISO (lo que envía el input type=date),
+        # con independencia de la localización activa.
+        self.fields['fecha'].input_formats = ['%Y-%m-%d']
 
     def clean_fecha(self):
         fecha = self.cleaned_data.get('fecha')

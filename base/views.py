@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.db.models import Q, Sum
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy, reverse
+import calendar
 from datetime import date, timedelta, datetime
 
 from django.contrib.auth import get_user_model
@@ -282,31 +283,89 @@ def page_not_found(request, exception):
 
 # --- Gestión de Feriados ---
 
+MESES_ES = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+]
+
+
 class FeriadoListView(LoginRequiredMixin, ListView):
-    """Lista de feriados ordenados por fecha."""
+    """
+    Calendario anual de feriados (12 meses). Por defecto el año actual; permite
+    navegar a otros años (incluido el año siguiente) vía ?año=YYYY.
+    """
     model = Feriado
     template_name = 'base/feriado_lista.html'
     context_object_name = 'feriados'
-    paginate_by = 50
+
+    def get_año(self):
+        hoy = date.today()
+        try:
+            y = int(self.request.GET.get('año') or hoy.year)
+        except (ValueError, TypeError):
+            y = hoy.year
+        if y < 2000 or y > 2100:
+            y = hoy.year
+        return y
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        año = self.request.GET.get('año')
-        if año:
-            try:
-                y = int(año)
-                qs = qs.filter(fecha__year=y)
-            except ValueError:
-                pass
-        return qs.order_by('fecha')
+        return Feriado.objects.filter(fecha__year=self.get_año()).order_by('fecha')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        año = self.get_año()
+        hoy = date.today()
+        feriados_por_fecha = {f.fecha: f for f in ctx['feriados']}
+
+        cal = calendar.Calendar(firstweekday=0)  # lunes
+        meses = []
+        for m in range(1, 13):
+            semanas = []
+            for semana in cal.monthdatescalendar(año, m):
+                celdas = []
+                for d in semana:
+                    en_mes = d.month == m
+                    celdas.append({
+                        'dia': d.day if en_mes else None,
+                        'fecha': d if en_mes else None,
+                        'feriado': feriados_por_fecha.get(d) if en_mes else None,
+                        'es_hoy': en_mes and d == hoy,
+                        'fin_de_semana': d.weekday() >= 5,
+                    })
+                semanas.append(celdas)
+            meses.append({'numero': m, 'nombre': MESES_ES[m - 1], 'semanas': semanas})
+
+        ctx['año'] = año
+        ctx['meses'] = meses
+        ctx['año_actual'] = hoy.year
+        ctx['año_anterior'] = año - 1
+        ctx['año_siguiente'] = año + 1
+        ctx['año_siguiente_real'] = hoy.year + 1
+        ctx['total_feriados'] = len(feriados_por_fecha)
+        return ctx
 
 
 class FeriadoCreateView(LogUserActionMixin, LoginRequiredMixin, CreateView):
-    """Crear un nuevo feriado."""
+    """Crear un nuevo feriado. Acepta ?fecha=YYYY-MM-DD para prellenar la fecha."""
     model = Feriado
     form_class = FeriadoForm
     template_name = 'base/feriado_form.html'
     success_url = reverse_lazy('feriado_lista')
+
+    def get_initial(self):
+        initial = super().get_initial()
+        fecha_str = self.request.GET.get('fecha')
+        if fecha_str:
+            try:
+                initial['fecha'] = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+            except ValueError:
+                pass
+        return initial
+
+    def get_success_url(self):
+        if self.object and self.object.fecha:
+            return f"{reverse('feriado_lista')}?año={self.object.fecha.year}"
+        return super().get_success_url()
 
     def form_valid(self, form):
         messages.success(self.request, 'Feriado creado correctamente.')
@@ -320,6 +379,11 @@ class FeriadoUpdateView(LogUserActionMixin, LoginRequiredMixin, UpdateView):
     template_name = 'base/feriado_form.html'
     context_object_name = 'feriado'
     success_url = reverse_lazy('feriado_lista')
+
+    def get_success_url(self):
+        if self.object and self.object.fecha:
+            return f"{reverse('feriado_lista')}?año={self.object.fecha.year}"
+        return super().get_success_url()
 
     def form_valid(self, form):
         messages.success(self.request, 'Feriado actualizado correctamente.')
