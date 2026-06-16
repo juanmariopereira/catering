@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../repositories/courier_repository.dart';
 import '../services/location_service.dart';
 import 'stop_detail_screen.dart';
+import 'group_stop_screen.dart';
 import 'login_screen.dart';
 
 class RouteOverviewScreen extends StatefulWidget {
@@ -44,6 +45,84 @@ class _RouteOverviewScreenState extends State<RouteOverviewScreen> {
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (r) => false,
     );
+  }
+
+  /// Renders stop list: GroupCard for grouped stops, individual card for the rest.
+  /// Groups appear at the position of their first stop; subsequent stops in the group are skipped.
+  List<Widget> _buildStopWidgets(
+      BuildContext context, List<dynamic> stops, dynamic currentId) {
+    final rendered = <int>{};
+    final widgets = <Widget>[];
+
+    for (final raw in stops) {
+      final stop = raw as Map<String, dynamic>;
+      final id = stop['id'] as int?;
+      if (id == null) continue;
+      final pe = stop['punto_entrega'] as Map<String, dynamic>?;
+
+      if (pe != null) {
+        final peId = pe['id'] as int;
+        if (rendered.contains(peId)) continue; // already rendered this group
+        rendered.add(peId);
+
+        // Collect all stops in this group (in original order)
+        final groupStops = stops
+            .whereType<Map<String, dynamic>>()
+            .where((s) {
+              final p = s['punto_entrega'] as Map<String, dynamic>?;
+              return p != null && p['id'] == peId;
+            })
+            .toList();
+
+        widgets.add(Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          color: Theme.of(context).colorScheme.secondaryContainer,
+          child: ListTile(
+            leading: const Icon(Icons.apartment),
+            title: Text(pe['nombre'] as String? ?? 'Grupo'),
+            subtitle: Text(
+              '${groupStops.length} entregas · ${pe['notas_acceso'] ?? ''}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => GroupStopScreen(
+                  grupoPeId: peId,
+                  grupoNombre: pe['nombre'] as String? ?? 'Grupo',
+                  notasAcceso: pe['notas_acceso'] as String? ?? '',
+                  stops: groupStops,
+                ),
+              ),
+            ),
+          ),
+        ));
+      } else {
+        final isActive = id == currentId;
+        widgets.add(Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            title: Text(
+              'Parada #${stop['sequence']} - ${stop['codigo_entrega'] ?? ''}',
+              style: TextStyle(fontWeight: isActive ? FontWeight.bold : null),
+            ),
+            subtitle: Text(
+              '${stop['state']} - ${stop['address'] ?? ''}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => StopDetailScreen(stopId: id, stopData: stop),
+              ),
+            ),
+          ),
+        ));
+      }
+    }
+    return widgets;
   }
 
   String _distanceLabel(dynamic distanceM) {
@@ -151,33 +230,7 @@ class _RouteOverviewScreenState extends State<RouteOverviewScreen> {
                   ),
                 ],
                 const Divider(height: 28),
-                ...stops.asMap().entries.map((e) {
-                  final stop = e.value as Map<String, dynamic>;
-                  final id = stop['id'] as int?;
-                  final isActive = id == currentId;
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      title: Text(
-                        'Parada #${stop['sequence']} - ${stop['codigo_entrega'] ?? ''}',
-                        style: TextStyle(fontWeight: isActive ? FontWeight.bold : null),
-                      ),
-                      subtitle: Text(
-                        '${stop['state']} - ${stop['address'] ?? ''}',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: id != null
-                          ? () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => StopDetailScreen(stopId: id, stopData: stop),
-                                ),
-                              )
-                          : null,
-                    ),
-                  );
-                }),
+                ..._buildStopWidgets(context, stops, currentId),
               ],
             ),
           );

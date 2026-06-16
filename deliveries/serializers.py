@@ -57,7 +57,7 @@ class EventRequestSerializer(serializers.Serializer):
     """Request body for POST /events/."""
     request_id = serializers.UUIDField()
     type = serializers.ChoiceField(choices=[
-        'LOCATION_PING', 'ATTEMPT_ARRIVE', 'ATTEMPT_DELIVER', 'ATTEMPT_FAIL',
+        'LOCATION_PING', 'ATTEMPT_ARRIVE', 'ATTEMPT_DELIVER', 'ATTEMPT_FAIL', 'ATTEMPT_CORRECT',
     ])
     stop_id = serializers.IntegerField(required=False, allow_null=True)
     payload = serializers.JSONField(required=False, default=dict)

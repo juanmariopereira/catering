@@ -63,6 +63,7 @@ def _build_context_response(delivery_route, profile, courier_lat=None, courier_l
             'ruta_cliente_id': s.ruta_cliente_id,
             'codigo_entrega': s.ruta_cliente.codigo_entrega,
             'address': _stop_address(s),
+            'punto_entrega': _stop_punto_entrega(s),
             'can_mark_arrived': allowed['can_mark_arrived'],
             'can_mark_delivered': allowed['can_mark_delivered'],
             'can_mark_failed': allowed['can_mark_failed'],
@@ -82,6 +83,7 @@ def _build_context_response(delivery_route, profile, courier_lat=None, courier_l
         },
         'route': {'id': delivery_route.pk, 'date': str(delivery_route.date)},
         'stops': stop_list,
+        'grupos': _build_grupos(stops),
         'current_active_stop_id': active.pk if active else None,
         'next_stop_id': next_stop.pk if next_stop else None,
         'status': status_msg,
@@ -100,6 +102,17 @@ def _stop_address(stop):
         return ''
 
 
+def _stop_punto_entrega(stop):
+    """Returns PuntoEntrega info dict or None."""
+    try:
+        pe = stop.ruta_cliente.contrato.punto_entrega
+        if pe:
+            return {'id': pe.pk, 'nombre': pe.nombre, 'notas_acceso': pe.notas_acceso}
+    except Exception:
+        pass
+    return None
+
+
 def _stop_summary(stop):
     if not stop:
         return None
@@ -109,7 +122,21 @@ def _stop_summary(stop):
         'state': stop.state,
         'codigo_entrega': stop.ruta_cliente.codigo_entrega,
         'address': _stop_address(stop),
+        'punto_entrega': _stop_punto_entrega(stop),
     }
+
+
+def _build_grupos(stops):
+    """Build list of grupo summaries: {id, nombre, stop_ids} for groups present in stops."""
+    grupos = {}
+    for s in stops:
+        pe = _stop_punto_entrega(s)
+        if pe:
+            pe_id = pe['id']
+            if pe_id not in grupos:
+                grupos[pe_id] = {'id': pe_id, 'nombre': pe['nombre'], 'notas_acceso': pe['notas_acceso'], 'stop_ids': []}
+            grupos[pe_id]['stop_ids'].append(s.pk)
+    return list(grupos.values())
 
 
 class CourierContextView(APIView):

@@ -30,15 +30,18 @@ def haversine_km(lat1, lon1, lat2, lon2):
 
 def get_stop_coordinates(stop):
     """
-    Get (lat, lon) for a DeliveryStop from linked RutaCliente/Contrato.
-    Returns (None, None) if no coordinates.
+    Get (lat, lon) for a DeliveryStop.
+    Prefers PuntoEntrega coordinates when the stop belongs to a group (same physical
+    location for all sub-deliveries). Falls back to Contrato coordinates.
+    Returns (None, None) if no coordinates are available.
     """
     try:
         contrato = stop.ruta_cliente.contrato
-        lat = contrato.latitud
-        lon = contrato.longitud
-        if lat is not None and lon is not None:
-            return (lat, lon)
+        pe = contrato.punto_entrega
+        if pe is not None and pe.latitud is not None and pe.longitud is not None:
+            return (pe.latitud, pe.longitud)
+        if contrato.latitud is not None and contrato.longitud is not None:
+            return (contrato.latitud, contrato.longitud)
     except Exception:
         pass
     return (None, None)

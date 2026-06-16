@@ -4,6 +4,34 @@ from django.db import models
 from django.core.validators import MinValueValidator
 
 
+class PuntoEntrega(models.Model):
+    """Ubicación física compartida por varios contratos (edificio, condominio, oficina)."""
+    nombre = models.CharField(max_length=200, verbose_name="Nombre")
+    direccion = models.TextField(blank=True, verbose_name="Dirección")
+    latitud = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Latitud"
+    )
+    longitud = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Longitud"
+    )
+    notas_acceso = models.TextField(
+        blank=True,
+        verbose_name="Notas de acceso",
+        help_text="Portero, citófono, piso, código de acceso, etc.",
+    )
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Punto de entrega"
+        verbose_name_plural = "Puntos de entrega"
+        ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
 class Entregador(models.Model):
     """Modelo para gestionar entregadores. Si user no es None, ese usuario tiene perfil Entregador y solo ve sus rutas."""
     nombre = models.CharField(max_length=200, verbose_name="Nombre completo")

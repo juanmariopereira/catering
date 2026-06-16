@@ -28,8 +28,8 @@ class StopState:
         PENDING: [EN_ROUTE],
         EN_ROUTE: [ARRIVED, FAILED],
         ARRIVED: [DELIVERED, FAILED],
-        DELIVERED: [],
-        FAILED: [],
+        DELIVERED: [FAILED],   # corrección post-entrega
+        FAILED: [DELIVERED],   # corrección post-fallo
     }
 
 
@@ -39,12 +39,14 @@ class ActionType:
     ATTEMPT_ARRIVE = 'ATTEMPT_ARRIVE'
     ATTEMPT_DELIVER = 'ATTEMPT_DELIVER'
     ATTEMPT_FAIL = 'ATTEMPT_FAIL'
+    ATTEMPT_CORRECT = 'ATTEMPT_CORRECT'  # corrección bidireccional DELIVERED↔FAILED
 
     CHOICES = [
         (LOCATION_PING, 'Location ping'),
         (ATTEMPT_ARRIVE, 'Attempt arrive'),
         (ATTEMPT_DELIVER, 'Attempt deliver'),
         (ATTEMPT_FAIL, 'Attempt fail'),
+        (ATTEMPT_CORRECT, 'Attempt correct'),
     ]
 
 

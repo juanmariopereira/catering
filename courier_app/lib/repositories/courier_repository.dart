@@ -126,6 +126,35 @@ class CourierRepository extends ChangeNotifier {
     );
   }
 
+  /// Corrección bidireccional: DELIVERED → FAILED o FAILED → DELIVERED.
+  Future<bool> attemptCorrect(int stopId, String newState, {String? reason}) async {
+    final payload = <String, dynamic>{'new_state': newState};
+    if (reason != null && reason.isNotEmpty) payload['reason'] = reason;
+    return sendEvent(type: 'ATTEMPT_CORRECT', stopId: stopId, payload: payload);
+  }
+
+  /// Confirma el grupo: para cada ítem envía ATTEMPT_ARRIVE + ATTEMPT_DELIVER (si delivered=true)
+  /// o ATTEMPT_FAIL (si delivered=false). Stops ya en DELIVERED/FAILED se omiten.
+  Future<void> confirmGroup(List<Map<String, dynamic>> items) async {
+    for (final item in items) {
+      final stopId = item['stopId'] as int;
+      final delivered = item['delivered'] as bool;
+      final reason = item['reason'] as String?;
+      final state = item['state'] as String? ?? '';
+      if (delivered) {
+        if (state != 'DELIVERED') {
+          if (state != 'ARRIVED') await attemptArrive(stopId);
+          await attemptDeliver(stopId);
+        }
+      } else {
+        if (state != 'FAILED') {
+          await attemptFail(stopId, reason: reason ?? 'No entregado');
+        }
+      }
+    }
+    await fetchContext();
+  }
+
   /// Flush queued events when back online (call after fetchContext succeeds).
   Future<void> flushQueue() async {
     while (_queue.isNotEmpty) {

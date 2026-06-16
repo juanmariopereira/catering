@@ -1,5 +1,16 @@
 from django.contrib import admin
-from .models import Entregador, Ruta, RutaCliente, HistoricoAsignacionEntrega
+from .models import Entregador, Ruta, RutaCliente, HistoricoAsignacionEntrega, PuntoEntrega
+
+
+@admin.register(PuntoEntrega)
+class PuntoEntregaAdmin(admin.ModelAdmin):
+    list_display = ['nombre', 'direccion', 'activo', 'total_contratos']
+    list_filter = ['activo']
+    search_fields = ['nombre', 'direccion']
+
+    def total_contratos(self, obj):
+        return obj.contratos.count()
+    total_contratos.short_description = 'Contratos'
 
 
 @admin.register(Entregador)

@@ -2,6 +2,7 @@
 Event processing: validate event, apply state transitions, record event, emit outbox.
 Idempotent by request_id; invalid transitions return 409 with explanation.
 """
+import uuid
 from django.utils import timezone
 from django.db import transaction
 
@@ -53,6 +54,25 @@ def _auto_checkin(delivery_route, courier_user, lat, lon, radio_km):
             action_type=ActionType.ATTEMPT_ARRIVE,
             payload={'auto': True, 'latitude': lat, 'longitude': lon},
         )
+
+
+def _get_grupo_stops(stop, delivery_route):
+    """
+    Returns other DeliveryStops in the same PuntoEntrega group (excluding stop itself).
+    Returns empty list if the stop has no PuntoEntrega.
+    """
+    try:
+        pe_id = stop.ruta_cliente.contrato.punto_entrega_id
+    except Exception:
+        pe_id = None
+    if not pe_id:
+        return []
+    return list(
+        DeliveryStop.objects.filter(
+            delivery_route=delivery_route,
+            ruta_cliente__contrato__punto_entrega_id=pe_id,
+        ).exclude(pk=stop.pk).select_related('ruta_cliente__contrato')
+    )
 
 
 def _emit_outbox(event_type, stop, payload=None):
@@ -159,7 +179,10 @@ def process_event(courier_user, request_id, action_type, stop_id=None, payload=N
                 allowed['reason_if_blocked'] or 'Cannot mark arrived.',
                 status_code=409,
             )
+        grupo_stops = _get_grupo_stops(stop, delivery_route)
+        when = timezone.now()
         with transaction.atomic():
+            # Transicionar el stop principal a ARRIVED
             stop.state = StopState.ARRIVED
             stop.save(update_fields=['state', 'updated_at'])
             DeliveryActionEvent.objects.create(
@@ -169,7 +192,34 @@ def process_event(courier_user, request_id, action_type, stop_id=None, payload=N
                 action_type=action_type,
                 payload=payload,
             )
-            # Outbox for "arrived" can be added if needed; EN_ROUTE was emitted when stop entered EN_ROUTE
+            if grupo_stops:
+                # Pasar todos los hermanos EN_ROUTE → ARRIVED
+                for gs in grupo_stops:
+                    if gs.state == StopState.EN_ROUTE and gs.can_transition_to(StopState.ARRIVED):
+                        gs.state = StopState.ARRIVED
+                        gs.save(update_fields=['state', 'updated_at'])
+                        DeliveryActionEvent.objects.create(
+                            request_id=uuid.uuid4(),
+                            courier=courier_user,
+                            stop=gs,
+                            action_type=ActionType.ATTEMPT_ARRIVE,
+                            payload={'auto_grupo': True},
+                        )
+                # Marcar TODO el grupo (principal + hermanos) como DELIVERED
+                todos = [stop] + grupo_stops
+                for gs in todos:
+                    if gs.state == StopState.ARRIVED and gs.can_transition_to(StopState.DELIVERED):
+                        gs.state = StopState.DELIVERED
+                        gs.save(update_fields=['state', 'updated_at'])
+                        _sync_ruta_cliente_delivered(gs, when)
+                        DeliveryActionEvent.objects.create(
+                            request_id=uuid.uuid4(),
+                            courier=courier_user,
+                            stop=gs,
+                            action_type=ActionType.ATTEMPT_DELIVER,
+                            payload={'auto_grupo': True},
+                        )
+                        _emit_outbox(DeliveryEventOutbox.EVENT_DELIVERED, gs, {'auto_grupo': True})
         active, next_stop, status = get_active_stop(delivery_route, courier_lat, courier_lon)
         return (delivery_route, _build_context(delivery_route, active, next_stop, status, courier_lat, courier_lon, radio_km=rkm))
 
@@ -224,6 +274,39 @@ def process_event(courier_user, request_id, action_type, stop_id=None, payload=N
         active, next_stop, status = get_active_stop(delivery_route, courier_lat, courier_lon)
         return (delivery_route, _build_context(delivery_route, active, next_stop, status, courier_lat, courier_lon, radio_km=rkm))
 
+    if action_type == ActionType.ATTEMPT_CORRECT:
+        new_state = payload.get('new_state', '')
+        if new_state not in (StopState.DELIVERED, StopState.FAILED):
+            raise EventProcessingError(
+                "ATTEMPT_CORRECT requires payload.new_state = 'DELIVERED' or 'FAILED'.",
+                status_code=400,
+            )
+        if not stop.can_transition_to(new_state):
+            raise EventProcessingError(
+                f'Cannot correct: stop is in state {stop.state}; correction to {new_state} not allowed.',
+                status_code=409,
+            )
+        reason = payload.get('reason', '') or payload.get('motivo_no_entrega', '')
+        when = timezone.now()
+        with transaction.atomic():
+            stop.state = new_state
+            stop.save(update_fields=['state', 'updated_at'])
+            if new_state == StopState.FAILED:
+                _sync_ruta_cliente_failed(stop, reason, when)
+                _emit_outbox(DeliveryEventOutbox.EVENT_FAILED, stop, payload)
+            else:
+                _sync_ruta_cliente_delivered(stop, when)
+                _emit_outbox(DeliveryEventOutbox.EVENT_DELIVERED, stop, payload)
+            DeliveryActionEvent.objects.create(
+                request_id=request_id,
+                courier=courier_user,
+                stop=stop,
+                action_type=action_type,
+                payload=payload,
+            )
+        active, next_stop, status = get_active_stop(delivery_route, courier_lat, courier_lon)
+        return (delivery_route, _build_context(delivery_route, active, next_stop, status, courier_lat, courier_lon, radio_km=rkm))
+
     raise EventProcessingError(f'Unknown action type: {action_type}.', status_code=400)
 
 
@@ -236,6 +319,29 @@ def _distance_m(stop, courier_lat, courier_lon):
     if slat is None or slon is None:
         return None
     return round(haversine_km(courier_lat, courier_lon, slat, slon) * 1000)
+
+
+def _stop_punto_entrega(stop):
+    """Returns PuntoEntrega info dict or None."""
+    try:
+        pe = stop.ruta_cliente.contrato.punto_entrega
+        if pe:
+            return {'id': pe.pk, 'nombre': pe.nombre, 'notas_acceso': pe.notas_acceso}
+    except Exception:
+        pass
+    return None
+
+
+def _build_grupos(stops):
+    grupos = {}
+    for s in stops:
+        pe = _stop_punto_entrega(s)
+        if pe:
+            pe_id = pe['id']
+            if pe_id not in grupos:
+                grupos[pe_id] = {'id': pe_id, 'nombre': pe['nombre'], 'notas_acceso': pe['notas_acceso'], 'stop_ids': []}
+            grupos[pe_id]['stop_ids'].append(s.pk)
+    return list(grupos.values())
 
 
 def _build_context(delivery_route, active_stop, next_stop, status_message, courier_lat, courier_lon, radio_km=None):
@@ -251,6 +357,7 @@ def _build_context(delivery_route, active_stop, next_stop, status_message, couri
             'ruta_cliente_id': s.ruta_cliente_id,
             'codigo_entrega': s.ruta_cliente.codigo_entrega,
             'address': _stop_address(s),
+            'punto_entrega': _stop_punto_entrega(s),
             'can_mark_arrived': allowed['can_mark_arrived'],
             'can_mark_delivered': allowed['can_mark_delivered'],
             'can_mark_failed': allowed['can_mark_failed'],
@@ -268,6 +375,7 @@ def _build_context(delivery_route, active_stop, next_stop, status_message, couri
             'date': str(delivery_route.date),
         },
         'stops': stop_list,
+        'grupos': _build_grupos(stops),
         'current_active_stop_id': active_stop.pk if active_stop else None,
         'next_stop_id': next_stop.pk if next_stop else None,
         'status': status_message,

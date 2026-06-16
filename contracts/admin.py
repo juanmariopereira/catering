@@ -34,7 +34,7 @@ class EstadoContratoListFilter(admin.SimpleListFilter):
 
 @admin.register(Contrato)
 class ContratoAdmin(admin.ModelAdmin):
-    list_display = ['cliente', 'plan', 'fecha_inicio', 'fecha_fin', 'precio', 'estado_badge', 'frecuencia_pago']
+    list_display = ['cliente', 'plan', 'fecha_inicio', 'fecha_fin', 'precio', 'estado_badge', 'frecuencia_pago', 'punto_entrega']
     list_filter = [EstadoContratoListFilter, 'frecuencia_pago', 'fecha_inicio', 'fecha_creacion']
     search_fields = ['cliente__nombre', 'plan__nombre']
     readonly_fields = ['fecha_creacion', 'fecha_actualizacion', 'estado_display']
@@ -50,7 +50,7 @@ class ContratoAdmin(admin.ModelAdmin):
             'fields': ('precio', 'frecuencia_pago')
         }),
         ('Entrega', {
-            'fields': ('direccion_entrega', 'link_maps', 'horario_entrega', 'dias_entrega', 'no_incluye_delivery')
+            'fields': ('punto_entrega', 'direccion_entrega', 'link_maps', 'horario_entrega', 'dias_entrega', 'no_incluye_delivery', 'notas_entregador')
         }),
         ('Pausa global', {
             'fields': ('fecha_pausa', 'fecha_reanudacion'),

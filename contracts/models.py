@@ -105,6 +105,15 @@ class Contrato(models.Model):
         verbose_name="No incluye delivery",
         help_text="Si está marcado, este contrato no incluye servicio de entrega a domicilio."
     )
+    punto_entrega = models.ForeignKey(
+        'routes.PuntoEntrega',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='contratos',
+        verbose_name="Punto de entrega",
+        help_text="Edificio, condominio u oficina donde se agrupan varias entregas en la misma ubicación física.",
+    )
     notas_entregador = models.TextField(
         blank=True,
         null=True,
