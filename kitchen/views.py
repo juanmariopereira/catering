@@ -110,3 +110,55 @@ def detalle_cocina_fecha(request, fecha_str=None):
     }
 
     return render(request, 'kitchen/detalle_fecha.html', context)
+
+
+@login_required
+def orden_preparacion_imprimible(request, fecha_str=None):
+    """
+    Orden de preparación diaria imprimible para la cocina.
+    Acepta ?modo=resumen (cantidades por comida) o ?modo=detalle
+    (ingredientes y clientes por ración). Por defecto: resumen.
+    """
+    if fecha_str:
+        try:
+            fecha = date.fromisoformat(fecha_str)
+        except ValueError:
+            fecha = timezone.now().date()
+    else:
+        fecha = timezone.now().date()
+
+    modo = request.GET.get('modo', 'resumen')
+    if modo not in ('resumen', 'detalle'):
+        modo = 'resumen'
+
+    from planning.utils import resumen_cocina_por_momento
+    from base.models import es_feriado, get_feriado
+
+    detalle_cocina, _ = DetalleCocina.objects.get_or_create(fecha=fecha)
+    context = {
+        'fecha': fecha,
+        'modo': modo,
+        'detalle_cocina': detalle_cocina,
+        'es_feriado': es_feriado(fecha),
+        'feriado': get_feriado(fecha),
+    }
+
+    if modo == 'detalle':
+        recetas_info = DetalleCocina.obtener_recetas_por_fecha(fecha)
+        from delivery.utils import contratos_en_ruta_fecha
+        from routes.models import PlantillaRutaCliente
+        ids_en_ruta = contratos_en_ruta_fecha(fecha)
+        rutas_clientes_fecha = dict(
+            PlantillaRutaCliente.objects.filter(contrato_id__in=ids_en_ruta).values_list('contrato_id', 'codigo_entrega')
+        )
+        for item in recetas_info:
+            for p in item.get('planificaciones', []):
+                c = p.get('contrato')
+                cid = c.id if c else None
+                p['codigo_entrega'] = rutas_clientes_fecha.get(cid) if cid else None
+                p['hora_entrega'] = (c.horario_entrega.strftime('%H:%M') if c and c.horario_entrega and hasattr(c.horario_entrega, 'strftime') else '')
+        context['recetas_info'] = recetas_info
+    else:
+        context['resumen_momento'] = resumen_cocina_por_momento(fecha)
+
+    return render(request, 'kitchen/orden_preparacion_imprimible.html', context)

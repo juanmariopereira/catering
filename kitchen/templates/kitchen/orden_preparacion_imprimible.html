@@ -1,0 +1,173 @@
+{% load i18n %}<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orden de preparación {{ fecha|date:"d/m/Y" }} — {{ catering_name }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 20px; background: #fff; color: #333; font-size: 14px; }
+        .no-print { margin-bottom: 16px; }
+        .no-print .btn { display: inline-block; padding: 10px 20px; background: {{ brand_color }}; color: #fff; text-decoration: none; border-radius: 4px; margin-right: 8px; }
+        .no-print .btn:hover { opacity: 0.9; }
+        .no-print .btn.secondary { background: #607D8B; }
+        .header { text-align: center; border-bottom: 3px solid {{ brand_color }}; padding-bottom: 14px; margin-bottom: 22px; }
+        .header h1 { color: {{ brand_color }}; margin: 0 0 6px 0; font-size: 1.5rem; }
+        .header .fecha-titulo { font-size: 1.05rem; color: #555; font-weight: 600; text-transform: capitalize; }
+        .header .modo-titulo { font-size: 0.9rem; color: #777; margin-top: 4px; }
+        .aviso-feriado { padding: 10px 14px; margin-bottom: 16px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; }
+
+        /* Resumen por momento */
+        .grupo-momento { margin-bottom: 22px; page-break-inside: avoid; }
+        .grupo-momento h2 { margin: 0 0 8px 0; padding: 6px 0; color: {{ brand_color }}; font-size: 1.15rem; border-bottom: 2px solid #ddd; }
+        .resumen-tabla { width: 100%; border-collapse: collapse; }
+        .resumen-tabla th, .resumen-tabla td { padding: 7px 10px; text-align: left; border-bottom: 1px solid #eee; vertical-align: top; }
+        .resumen-tabla th { background: #f5f5f5; font-weight: 600; color: #444; font-size: 0.9rem; }
+        .resumen-tabla .col-cant { width: 80px; white-space: nowrap; text-align: center; font-weight: 700; }
+        .resumen-tabla .receta-nombre { font-weight: 500; }
+        .resumen-tabla .cambios { font-size: 0.85rem; color: #856404; }
+        .resumen-tabla .cambio-item { margin: 2px 0; }
+        .resumen-tabla .cambio-item::before { content: "↳ "; }
+
+        /* Detalle completo */
+        .receta-item { border: 1px solid #ddd; border-radius: 4px; padding: 12px 14px; margin-bottom: 12px; page-break-inside: avoid; }
+        .receta-header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+        .receta-titulo { font-size: 1.1rem; font-weight: 700; color: #333; }
+        .receta-categoria { color: #777; font-style: italic; font-size: 0.85rem; }
+        .receta-cantidad { flex-shrink: 0; background: {{ brand_color }}; color: #fff; padding: 3px 12px; border-radius: 14px; font-weight: 700; white-space: nowrap; }
+        .receta-descripcion { color: #555; margin: 4px 0 8px 0; font-size: 0.9rem; }
+        .bloque { margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; }
+        .bloque h3 { font-size: 0.95rem; color: #444; margin: 0 0 6px 0; }
+        .ingrediente-item { padding: 2px 0; color: #555; font-size: 0.9rem; }
+        .clientes-lista { margin-top: 4px; }
+        .cliente-item { padding: 3px 0; font-size: 0.9rem; }
+        .cliente-item.sustituta { color: #856404; }
+        .cliente-item.sustituta::before { content: "↳ "; }
+        .codigo-entrega { display: inline-block; margin-right: 6px; padding: 1px 7px; background: #455A64; color: #fff; font-size: 0.75rem; font-weight: 600; border-radius: 3px; }
+        .hora-entrega { display: inline-block; margin-right: 6px; font-size: 0.85rem; color: #455A64; font-weight: 600; }
+
+        .notas { margin-top: 18px; padding: 12px 14px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px; }
+        .notas .notas-texto { white-space: pre-wrap; margin-top: 6px; }
+        .sin-datos { text-align: center; padding: 36px; color: #999; font-size: 1rem; }
+        .pie { margin-top: 24px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 0.75rem; color: #999; text-align: center; }
+
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none !important; }
+            .header { padding-bottom: 10px; margin-bottom: 14px; }
+            a { color: inherit; text-decoration: none; }
+            @page { margin: 1.2cm; size: A4; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <a href="javascript:window.print()" class="btn">🖨️ Imprimir</a>
+        {% if modo == 'resumen' %}
+            <a href="{% url 'kitchen:orden_imprimible' fecha|date:'Y-m-d' %}?modo=detalle" class="btn secondary">Ver versión detallada</a>
+        {% else %}
+            <a href="{% url 'kitchen:orden_imprimible' fecha|date:'Y-m-d' %}?modo=resumen" class="btn secondary">Ver versión resumida</a>
+        {% endif %}
+        <a href="{% url 'kitchen:detalle_fecha' fecha|date:'Y-m-d' %}" class="btn secondary">← Volver a cocina</a>
+    </div>
+
+    <div class="header">
+        <h1>Orden de Preparación — Cocina</h1>
+        <div class="fecha-titulo">{{ fecha|date:"l, d \d\e F \d\e Y" }}</div>
+        <div class="modo-titulo">{% if modo == 'detalle' %}Versión detallada (ingredientes y clientes por ración){% else %}Versión resumida (cantidades por comida){% endif %}</div>
+    </div>
+
+    {% if es_feriado %}
+    <div class="aviso-feriado"><strong>Feriado:</strong> {{ feriado.nombre }} — Sin entregas este día.</div>
+    {% endif %}
+
+    {% if modo == 'detalle' %}
+        {% if recetas_info %}
+            {% for item in recetas_info %}
+            <div class="receta-item">
+                <div class="receta-header">
+                    <div>
+                        <span class="receta-titulo">{{ item.receta.nombre }}</span>
+                        <div class="receta-categoria">{% for t in item.receta.tipos_receta.all %}{{ t.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</div>
+                    </div>
+                    <span class="receta-cantidad">{{ item.cantidad }} {{ item.cantidad|pluralize:"ración,raciones" }}</span>
+                </div>
+                {% if item.receta.descripcion %}
+                    <div class="receta-descripcion">{{ item.receta.descripcion }}</div>
+                {% endif %}
+                {% if item.planificaciones %}
+                <div class="bloque">
+                    <h3>Para ({{ item.cantidad }} {{ item.cantidad|pluralize:"ración,raciones" }}):</h3>
+                    <div class="clientes-lista">
+                        {% for p in item.planificaciones %}
+                        <div class="cliente-item {% if p.es_sustituta %}sustituta{% endif %}">
+                            {% if p.codigo_entrega %}<span class="codigo-entrega">{{ p.codigo_entrega }}</span>{% endif %}
+                            {% if p.hora_entrega %}<span class="hora-entrega">🕐 {{ p.hora_entrega }}</span>{% endif %}
+                            {{ p.contrato.cliente.nombre }}{% if p.es_sustituta %} (en lugar de «{{ p.receta_original_nombre|default:'' }}»){% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                <div class="bloque">
+                    <h3>Ingredientes necesarios:</h3>
+                    {% for ri in item.receta.receta_ingredientes.all %}
+                        <div class="ingrediente-item">
+                            • {{ ri.ingrediente.nombre }}: {{ ri.cantidad }} {{ ri.unidad_medida }}
+                            {% if item.cantidad > 1 %}<strong>(Total: {% widthratio ri.cantidad 1 item.cantidad %} {{ ri.unidad_medida }})</strong>{% endif %}
+                        </div>
+                    {% empty %}
+                        <div class="ingrediente-item">—</div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="sin-datos">No hay recetas planificadas para esta fecha.</div>
+        {% endif %}
+    {% else %}
+        {% if resumen_momento %}
+            {% for bloque in resumen_momento %}
+            <div class="grupo-momento">
+                <h2>{{ bloque.tipo_comida.nombre }}</h2>
+                <table class="resumen-tabla">
+                    <thead>
+                        <tr>
+                            <th>Receta</th>
+                            <th class="col-cant">Cantidad</th>
+                            <th>Cambios (plato distinto por cliente)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in bloque.items %}
+                        <tr>
+                            <td class="receta-nombre">{{ item.receta.nombre }}</td>
+                            <td class="col-cant">{{ item.cantidad }}</td>
+                            <td class="cambios">
+                                {% if item.sustituciones %}
+                                    {% for s in item.sustituciones %}
+                                    <div class="cambio-item">{{ s.cliente_nombre }}: en lugar de «{{ s.receta_original_nombre }}»</div>
+                                    {% endfor %}
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="sin-datos">No hay recetas planificadas para esta fecha.</div>
+        {% endif %}
+    {% endif %}
+
+    {% if detalle_cocina.notas %}
+    <div class="notas">
+        <strong>Notas para el cocinero:</strong>
+        <div class="notas-texto">{{ detalle_cocina.notas }}</div>
+    </div>
+    {% endif %}
+
+    <div class="pie">{{ catering_name }} — Impreso desde el sistema de planificación de cocina.</div>
+</body>
+</html>
